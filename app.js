@@ -3,21 +3,23 @@ const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ── Estado da Aplicação ─────────────────────────────────────────
-let perfilAtivo = sessionStorage.getItem('rsm_perfil_ativo') || null; // 'admin', 'reservas', 'pos_venda'
-let abaAtiva = 'cotas'; // 'cotas', 'vouchers', 'reservas', 'modelos'
+// Usuários Reais do Sistema (padrões caso não haja no banco/localStorage)
+const USUARIOS_PADRAO = [
+  { id: 'usr-admin', nome: 'Administrador Geral', usuario: 'admin', senha: '1234', perfil: 'admin', ativo: true, created_at: '2026-10-15T12:00:00Z' },
+  { id: 'usr-reservas', nome: 'Equipe de Reservas', usuario: 'reservas', senha: '2345', perfil: 'reservas', ativo: true, created_at: '2026-10-15T12:00:00Z' },
+  { id: 'usr-posvenda', nome: 'Equipe de Pós Venda', usuario: 'posvenda', senha: '3456', perfil: 'pos_venda', ativo: true, created_at: '2026-10-15T12:00:00Z' }
+];
+
+let listaUsuarios = JSON.parse(localStorage.getItem('rsm_usuarios') || 'null') || USUARIOS_PADRAO;
+let usuarioLogado = JSON.parse(sessionStorage.getItem('rsm_usuario_logado') || 'null');
+let perfilAtivo = usuarioLogado ? usuarioLogado.perfil : (sessionStorage.getItem('rsm_perfil_ativo') || null);
+let abaAtiva = 'cotas'; // 'cotas', 'vouchers', 'solicitacoes', 'reservas', 'modelos', 'usuarios'
 let filtroStatusVouchers = '';
 let filtroCotas = 'todos';
 let buscaVouchersTimer = null;
 let buscaCotasTimer = null;
 let buscaReservasTimer = null;
 let idParaDeletar = null;
-
-// PINs de acesso (configuráveis)
-const PINS_PADRAO = {
-  admin: '1234',
-  reservas: '2345',
-  pos_venda: '3456'
-};
 
 // Modelos padrão de voucher
 const MODELOS_PADRAO = [
@@ -216,7 +218,7 @@ let roleSelecionadaLogin = 'admin';
 
 function initControleAcesso() {
   const overlay = document.getElementById('loginOverlay');
-  if (!perfilAtivo) {
+  if (!usuarioLogado) {
     overlay.classList.remove('hidden');
     overlay.style.display = 'flex';
   } else {
@@ -225,40 +227,59 @@ function initControleAcesso() {
     aplicarPermissoesPerfil();
   }
 
-  // Seletor de Perfil no Login
-  document.querySelectorAll('.role-option').forEach(opt => {
+  // Presets rápidos no Login
+  document.querySelectorAll('[data-preset]').forEach(opt => {
     opt.addEventListener('click', () => {
-      document.querySelectorAll('.role-option').forEach(o => o.classList.remove('selected'));
+      document.querySelectorAll('[data-preset]').forEach(o => o.classList.remove('selected'));
       opt.classList.add('selected');
-      roleSelecionadaLogin = opt.dataset.role;
-
-      const dicas = { admin: 'PIN padrão: 1234', reservas: 'PIN padrão: 2345', pos_venda: 'PIN padrão: 3456' };
-      document.getElementById('pinDica').textContent = dicas[roleSelecionadaLogin] || '';
-      document.getElementById('inputPin').value = '';
-      document.getElementById('inputPin').focus();
+      const preset = opt.dataset.preset;
+      const defaults = {
+        admin: { u: 'admin', p: '1234' },
+        reservas: { u: 'reservas', p: '2345' },
+        pos_venda: { u: 'posvenda', p: '3456' }
+      };
+      if (defaults[preset]) {
+        const uIn = document.getElementById('inputUsuario');
+        const sIn = document.getElementById('inputSenha');
+        if (uIn) uIn.value = defaults[preset].u;
+        if (sIn) sIn.value = defaults[preset].p;
+      }
     });
   });
 
-  // Função global de Login
+  // Função global de Login com Usuários Reais
   function executarLogin() {
-    const pinInput = document.getElementById('inputPin');
-    const pin = (pinInput ? pinInput.value : '').trim();
-    const pinsSalvos = Object.assign({}, PINS_PADRAO, JSON.parse(localStorage.getItem('rsm_pins') || '{}'));
-    const pinCorreto = String(pinsSalvos[roleSelecionadaLogin] || PINS_PADRAO[roleSelecionadaLogin]);
+    const uInput = document.getElementById('inputUsuario');
+    const sInput = document.getElementById('inputSenha');
+    const usuarioDigitado = (uInput ? uInput.value : '').trim().toLowerCase();
+    const senhaDigitada = (sInput ? sInput.value : '').trim();
 
-    if (pin === pinCorreto || pin === PINS_PADRAO[roleSelecionadaLogin]) {
-      perfilAtivo = roleSelecionadaLogin;
+    if (!usuarioDigitado || !senhaDigitada) {
+      showToast('Por favor, informe seu usuário e senha.', 'error');
+      return;
+    }
+
+    const usr = listaUsuarios.find(u => (u.usuario || '').trim().toLowerCase() === usuarioDigitado && String(u.senha).trim() === senhaDigitada);
+
+    if (usr) {
+      if (usr.ativo === false) {
+        showToast('Este usuário está desativado pelo Administrador.', 'error');
+        return;
+      }
+      usuarioLogado = usr;
+      perfilAtivo = usr.perfil;
+      sessionStorage.setItem('rsm_usuario_logado', JSON.stringify(usuarioLogado));
       sessionStorage.setItem('rsm_perfil_ativo', perfilAtivo);
       if (overlay) {
         overlay.classList.add('hidden');
         overlay.style.setProperty('display', 'none', 'important');
       }
-      showToast(`Bem-vindo, acesso ${nomePerfil(perfilAtivo)} ativado!`);
+      showToast(`Bem-vindo(a), ${usr.nome}!`);
       aplicarPermissoesPerfil();
       sincronizarCotas();
     } else {
-      showToast('PIN incorreto para este perfil.', 'error');
-      if (pinInput) pinInput.select();
+      showToast('Usuário ou senha incorretos.', 'error');
+      if (sInput) sInput.select();
     }
   }
   window.executarLogin = executarLogin;
@@ -271,9 +292,12 @@ function initControleAcesso() {
 
   // Botão Trocar Perfil / Sair
   document.getElementById('btnTrocarPerfil').addEventListener('click', () => {
+    sessionStorage.removeItem('rsm_usuario_logado');
     sessionStorage.removeItem('rsm_perfil_ativo');
+    usuarioLogado = null;
     perfilAtivo = null;
-    document.getElementById('inputPin').value = '';
+    const sIn = document.getElementById('inputSenha');
+    if (sIn) sIn.value = '';
     overlay.classList.remove('hidden');
     overlay.style.display = 'flex';
   });
@@ -295,7 +319,8 @@ function aplicarPermissoesPerfil() {
     reservas: '🛎️ Reservas',
     pos_venda: '💼 Pós Venda'
   };
-  badge.textContent = labels[perfilAtivo] || perfilAtivo;
+  const primeiroNome = usuarioLogado ? usuarioLogado.nome.split(' ')[0] : '';
+  badge.textContent = primeiroNome ? `${labels[perfilAtivo]} (${primeiroNome})` : (labels[perfilAtivo] || perfilAtivo);
 
   const btnAssinatura = document.getElementById('btnAssinaturaAdmin');
   const btnNovo = document.getElementById('btnNovo');
@@ -304,6 +329,7 @@ function aplicarPermissoesPerfil() {
   const tabSolicitacoes = document.getElementById('tabNavSolicitacoes');
   const tabReservas = document.getElementById('tabNavReservas');
   const tabModelos = document.getElementById('tabNavModelos');
+  const tabUsuarios = document.getElementById('tabNavUsuarios');
 
   if (perfilAtivo === 'admin') {
     btnAssinatura.style.display = 'inline-flex';
@@ -313,6 +339,7 @@ function aplicarPermissoesPerfil() {
     tabSolicitacoes.style.display = 'inline-flex';
     tabReservas.style.display = 'inline-flex';
     tabModelos.style.display = 'inline-flex';
+    if (tabUsuarios) tabUsuarios.style.display = 'inline-flex';
   } else if (perfilAtivo === 'pos_venda') {
     btnAssinatura.style.display = 'none';
     btnNovo.style.display = 'inline-flex';
@@ -321,7 +348,8 @@ function aplicarPermissoesPerfil() {
     tabSolicitacoes.style.display = 'inline-flex';
     tabReservas.style.display = 'none';
     tabModelos.style.display = 'none';
-    if (abaAtiva === 'reservas' || abaAtiva === 'modelos') mudarAba('cotas');
+    if (tabUsuarios) tabUsuarios.style.display = 'none';
+    if (abaAtiva === 'reservas' || abaAtiva === 'modelos' || abaAtiva === 'usuarios') mudarAba('cotas');
   } else if (perfilAtivo === 'reservas') {
     btnAssinatura.style.display = 'none';
     btnNovo.style.display = 'none';
@@ -330,6 +358,7 @@ function aplicarPermissoesPerfil() {
     tabSolicitacoes.style.display = 'inline-flex';
     tabReservas.style.display = 'inline-flex';
     tabModelos.style.display = 'none';
+    if (tabUsuarios) tabUsuarios.style.display = 'none';
     if (abaAtiva !== 'vouchers' && abaAtiva !== 'reservas' && abaAtiva !== 'solicitacoes') mudarAba('reservas');
   }
 
@@ -340,7 +369,7 @@ function aplicarPermissoesPerfil() {
 function mudarAba(novaAba) {
   abaAtiva = novaAba;
 
-  const abas = ['cotas', 'vouchers', 'solicitacoes', 'reservas', 'modelos'];
+  const abas = ['cotas', 'vouchers', 'solicitacoes', 'reservas', 'modelos', 'usuarios'];
   abas.forEach(a => {
     const btn = document.getElementById(`tabNav${a.charAt(0).toUpperCase() + a.slice(1)}`);
     const secao = document.getElementById(`secao${a.charAt(0).toUpperCase() + a.slice(1)}`);
@@ -353,6 +382,7 @@ function mudarAba(novaAba) {
   if (novaAba === 'solicitacoes') renderTabelaSolicitacoes();
   if (novaAba === 'reservas') renderTabelaReservas();
   if (novaAba === 'modelos') renderModelos();
+  if (novaAba === 'usuarios') renderTabelaUsuarios();
 }
 
 // ── Sincronização dos Dados de Cotas e Vouchers ─────────────────
@@ -396,6 +426,9 @@ async function sincronizarCotas() {
 
   // 5. Buscar solicitações
   await carregarSolicitacoes();
+
+  // 6. Buscar usuários
+  await carregarUsuarios();
 
   renderStatsCotas();
   renderTabelaCotas();
@@ -520,23 +553,26 @@ function renderTabelaCotas() {
 
 // ── Renderização dos Vouchers Emitidos ──────────────────────────
 async function carregarVouchers() {
-  const busca = document.getElementById('inputBusca').value.trim();
+  const busca = (document.getElementById('inputBusca')?.value || '').trim();
 
-  let query = db.from('vouchers').select('*').order('created_at', { ascending: false });
+  try {
+    let query = db.from('vouchers').select('*').order('created_at', { ascending: false });
 
-  if (busca) query = query.ilike('nome_socio', `%${busca}%`);
-  if (filtroStatusVouchers === 'usado') query = query.eq('usado', true);
-  if (filtroStatusVouchers === 'disponivel') query = query.eq('usado', false);
+    if (busca) query = query.ilike('nome_socio', `%${busca}%`);
+    if (filtroStatusVouchers === 'usado') query = query.eq('usado', true);
+    if (filtroStatusVouchers === 'disponivel') query = query.eq('usado', false);
 
-  const { data, error } = await query;
-
-  if (error) {
-    document.getElementById('tbodyVouchers').innerHTML =
-      '<tr><td colspan="7" class="empty">Erro ao carregar vouchers.</td></tr>';
-    return;
+    const { data, error } = await query;
+    if (!error && data) {
+      listaVouchers = data;
+      localStorage.setItem('rsm_vouchers_cache', JSON.stringify(data));
+    } else {
+      listaVouchers = JSON.parse(localStorage.getItem('rsm_vouchers_cache') || '[]');
+    }
+  } catch (err) {
+    listaVouchers = JSON.parse(localStorage.getItem('rsm_vouchers_cache') || '[]');
   }
 
-  listaVouchers = data || [];
   atualizarStatusCotasComVouchers();
   renderStatsVouchers(listaVouchers);
   renderTabelaVouchers(listaVouchers);
@@ -572,10 +608,16 @@ function renderTabelaVouchers(dados) {
     const tot = v.diarias_totais || v.diarias || 2;
     const usd = v.diarias_usadas || (v.usado ? tot : 0);
     const saldo = Math.max(0, tot - usd);
+    const isPendenteAssinatura = v.status_fluxo === 'aguardando_assinatura';
 
-    const statusBadge = v.usado || saldo === 0
-      ? '<span class="badge badge-red">Utilizado</span>'
-      : (usd > 0 ? `<span class="badge badge-yellow" style="background:#fef9c3;color:#854d0e;">Parcial (${saldo} restam)</span>` : '<span class="badge badge-green">Disponível</span>');
+    let statusBadge = '';
+    if (isPendenteAssinatura) {
+      statusBadge = '<span class="badge badge-yellow" style="background:#fef3c7;color:#b45309;">✍️ Aguarda Assinatura</span>';
+    } else {
+      statusBadge = v.usado || saldo === 0
+        ? '<span class="badge badge-red">Utilizado</span>'
+        : (usd > 0 ? `<span class="badge badge-yellow" style="background:#fef9c3;color:#854d0e;">Parcial (${saldo} restam)</span>` : '<span class="badge badge-green">Disponível</span>');
+    }
 
     return `
       <tr>
@@ -596,10 +638,14 @@ function renderTabelaVouchers(dados) {
         </td>
         <td>
           <div class="actions">
+            ${isPendenteAssinatura && perfilAtivo === 'admin' ? `
+            <button class="btn btn-primary" style="padding:.25rem .55rem;font-size:.75rem;" onclick="abrirModalAssinarVoucher('${v.id}')" title="Conferir e assinar voucher">
+              ✍️ Assinar
+            </button>` : ''}
             <a href="${linkVoucher(v.codigo)}" target="_blank" class="btn-icon" title="Visualizar / Imprimir">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
             </a>
-            ${perfilAtivo !== 'pos_venda' ? `
+            ${perfilAtivo !== 'pos_venda' && !isPendenteAssinatura ? `
             <button class="btn-icon" title="Registrar Hospedagem / Baixa" onclick="abrirModalBaixa('${v.id}')">
               🛎️
             </button>` : ''}
@@ -1110,6 +1156,10 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
   const modeloObj = listaModelos.find(m => m.id === modeloId);
   const diariasTotais = Number(document.getElementById('inputDiarias').value) || 2;
 
+  const solicitacaoAtual = solicitacaoEmAtendimentoId ? listaSolicitacoes.find(s => s.id === solicitacaoEmAtendimentoId) : null;
+  const isFluxoAdmin = perfilAtivo === 'admin';
+  const statusFluxo = isFluxoAdmin ? 'ativo' : 'aguardando_assinatura';
+
   const payload = {
     nome_socio:         document.getElementById('inputNome').value.trim(),
     sala_venda:         document.getElementById('inputSala').value.trim() || null,
@@ -1122,8 +1172,21 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
     especificacoes_uso: document.getElementById('inputEspecUso').value.trim() || null,
     modelo_id:          modeloId,
     modelo_nome:        modeloObj ? modeloObj.nome : null,
-    assinatura_url:     assinaturaAdminAtual || null
+    status_fluxo:       statusFluxo,
+    pos_venda_nome:     usuarioLogado ? usuarioLogado.nome : 'Equipe de Pós Venda',
+    assinatura_url:     (isFluxoAdmin ? (assinaturaAdminAtual || null) : null)
   };
+
+  if (isFluxoAdmin && assinaturaAdminAtual) {
+    payload.admin_assinante_nome = usuarioLogado ? usuarioLogado.nome : 'Administrador Geral';
+    payload.assinado_em = new Date().toISOString();
+  }
+
+  if (solicitacaoAtual) {
+    payload.periodo_checkin = solicitacaoAtual.periodo_checkin || null;
+    payload.periodo_checkout = solicitacaoAtual.periodo_checkout || null;
+    payload.solicitante_nome = solicitacaoAtual.solicitante_nome || solicitacaoAtual.solicitante || null;
+  }
 
   try {
     let resultData;
@@ -1136,10 +1199,29 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
       payload.codigo = nanoid(10);
       payload.diarias_usadas = 0;
       payload.usado = false;
-      const { data, error } = await db.from('vouchers').insert([payload]).select().single();
-      if (error) throw error;
-      resultData = data;
-      showToast(`Voucher emitido com sucesso! Código: ${resultData.codigo}`);
+      payload.created_at = new Date().toISOString();
+      payload.id = `vouch-${nanoid(8)}`;
+      payload.numero = (listaVouchers[0]?.numero || 0) + 1;
+
+      try {
+        const { data, error } = await db.from('vouchers').insert([payload]).select().single();
+        if (!error && data) {
+          resultData = data;
+        } else {
+          resultData = payload;
+        }
+      } catch (e) {
+        resultData = payload;
+      }
+
+      listaVouchers.unshift(resultData);
+      localStorage.setItem('rsm_vouchers_cache', JSON.stringify(listaVouchers));
+
+      if (isFluxoAdmin) {
+        showToast(`Voucher #${resultData.codigo} emitido e assinado com sucesso!`);
+      } else {
+        showToast(`Minuta do voucher #${resultData.codigo} gerada! Enviado para assinatura do Administrador.`);
+      }
 
       if (cotaId) {
         const cota = listaCotas.find(c => c.id === cotaId);
@@ -1149,22 +1231,25 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
         }
       }
 
-      // Se este voucher veio de uma solicitação de Reservas, marcar como gerado
+      // Se este voucher veio de uma solicitação de Reservas, atualizar status da solicitação
       if (solicitacaoEmAtendimentoId) {
         const sId = solicitacaoEmAtendimentoId;
         solicitacaoEmAtendimentoId = null;
+        const novoStatusSolic = isFluxoAdmin ? 'gerado' : 'aguardando_assinatura';
         try {
           await db.from('voucher_solicitacoes').update({
-            status: 'gerado',
+            status: novoStatusSolic,
             voucher_codigo: resultData.codigo,
+            pos_venda_nome: usuarioLogado ? usuarioLogado.nome : 'Pós Venda',
             gerado_em: new Date().toISOString()
           }).eq('id', sId);
         } catch (e) {}
 
         const idx = listaSolicitacoes.findIndex(s => s.id === sId);
         if (idx !== -1) {
-          listaSolicitacoes[idx].status = 'gerado';
+          listaSolicitacoes[idx].status = novoStatusSolic;
           listaSolicitacoes[idx].voucher_codigo = resultData.codigo;
+          listaSolicitacoes[idx].pos_venda_nome = usuarioLogado ? usuarioLogado.nome : 'Pós Venda';
           listaSolicitacoes[idx].gerado_em = new Date().toISOString();
           localStorage.setItem('rsm_solicitacoes', JSON.stringify(listaSolicitacoes));
         }
@@ -1271,7 +1356,7 @@ function renderTabelaSolicitacoes() {
     if (busca) {
       const matchNome = (s.nome_socio || '').toLowerCase().includes(busca);
       const matchMotivo = (s.motivo || '').toLowerCase().includes(busca);
-      const matchSolicitante = (s.solicitante || '').toLowerCase().includes(busca);
+      const matchSolicitante = (s.solicitante || s.solicitante_nome || '').toLowerCase().includes(busca);
       return matchNome || matchMotivo || matchSolicitante;
     }
     return true;
@@ -1283,19 +1368,25 @@ function renderTabelaSolicitacoes() {
   }
 
   tbody.innerHTML = dados.map(s => {
-    let statusBadge = '<span class="badge badge-yellow">Pendente</span>';
-    if (s.status === 'gerado') {
-      statusBadge = `<span class="badge badge-green">Emitido ${s.voucher_codigo ? `(#${s.voucher_codigo})` : ''}</span>`;
+    let statusBadge = '<span class="badge badge-yellow">1. Solicitado (Reservas)</span>';
+    if (s.status === 'aguardando_assinatura') {
+      statusBadge = '<span class="badge badge-yellow" style="background:#fef3c7;color:#b45309;">2. Aguarda Assinatura (Admin)</span>';
+    } else if (s.status === 'gerado') {
+      statusBadge = `<span class="badge badge-green">3. Ativo & Assinado ${s.voucher_codigo ? `(#${s.voucher_codigo})` : ''}</span>`;
     } else if (s.status === 'cancelado') {
       statusBadge = '<span class="badge badge-red">Cancelado</span>';
     }
+
+    const periodoStr = (s.periodo_checkin && s.periodo_checkout)
+      ? `${fmtDate(s.periodo_checkin)} até ${fmtDate(s.periodo_checkout)}`
+      : (s.periodo_checkin ? `A partir de ${fmtDate(s.periodo_checkin)}` : '—');
 
     let acoesHtml = '';
     if (s.status === 'pendente') {
       if (perfilAtivo === 'pos_venda' || perfilAtivo === 'admin') {
         acoesHtml += `
-          <button class="btn btn-primary" style="padding:.3rem .6rem;font-size:.78rem;" onclick="atenderSolicitacao('${s.id}')" title="Gerar Voucher para esta solicitação">
-            ⚡ Gerar Voucher
+          <button class="btn btn-primary" style="padding:.3rem .6rem;font-size:.78rem;" onclick="atenderSolicitacao('${s.id}')" title="Registrar Diárias Disponíveis e Preparar Voucher">
+            ⚡ Atender & Registrar Diárias
           </button>
         `;
       }
@@ -1304,6 +1395,16 @@ function renderTabelaSolicitacoes() {
           ✕ Cancelar
         </button>
       `;
+    } else if (s.status === 'aguardando_assinatura') {
+      if (perfilAtivo === 'admin') {
+        acoesHtml += `
+          <button class="btn btn-primary" style="padding:.3rem .6rem;font-size:.78rem;background:#0f766e;border-color:#0f766e;" onclick="abrirModalAssinarVoucherPorCodigo('${s.voucher_codigo}')" title="Conferir e assinar voucher">
+            ✍️ Assinar Voucher
+          </button>
+        `;
+      } else {
+        acoesHtml = '<span style="font-size:.78rem;color:var(--text-3);">Aguardando Admin</span>';
+      }
     } else if (s.status === 'gerado' && s.voucher_codigo) {
       acoesHtml += `
         <a href="${linkVoucher(s.voucher_codigo)}" target="_blank" class="btn btn-ghost" style="padding:.3rem .6rem;font-size:.78rem;" title="Ver Voucher">
@@ -1318,10 +1419,10 @@ function renderTabelaSolicitacoes() {
       <tr>
         <td style="font-size:.8rem;color:var(--text-3);">${fmtDateTime(s.created_at)}</td>
         <td><strong>${escHtml(s.nome_socio)}</strong></td>
+        <td style="font-size:.82rem;font-weight:600;color:var(--primary);">${periodoStr}</td>
         <td><span class="badge badge-blue" style="font-size:.75rem;">${escHtml(s.modelo_nome || s.modelo_id || 'Padrão')}</span></td>
-        <td><strong>${s.diarias_solicitadas || 2}</strong> diária(s)</td>
-        <td style="max-width:280px;font-size:.82rem;">${escHtml(s.motivo || '—')}</td>
-        <td style="font-size:.8rem;color:var(--text-2);">${escHtml(s.solicitante || 'Reservas')}</td>
+        <td style="max-width:240px;font-size:.82rem;">${escHtml(s.motivo || '—')}</td>
+        <td style="font-size:.8rem;color:var(--text-2);">${escHtml(s.solicitante_nome || s.solicitante || 'Reservas')}</td>
         <td>${statusBadge}</td>
         <td><div class="actions">${acoesHtml}</div></td>
       </tr>
@@ -1346,7 +1447,15 @@ function abrirModalSolicitarVoucher(nomeSocioPreenchido = '') {
   const inputNome = document.getElementById('solicNomeSocio');
   inputNome.value = nomeSocioPreenchido || '';
   document.getElementById('solicMotivo').value = '';
-  document.getElementById('solicOperador').value = perfilAtivo === 'reservas' ? 'Equipe de Reservas' : (perfilAtivo === 'admin' ? 'Administrador' : 'Pós Venda');
+
+  const hoje = new Date().toISOString().split('T')[0];
+  const inputCheckin = document.getElementById('solicCheckin');
+  const inputCheckout = document.getElementById('solicCheckout');
+  if (inputCheckin) inputCheckin.value = hoje;
+  if (inputCheckout) inputCheckout.value = '';
+
+  const opNome = usuarioLogado ? usuarioLogado.nome : (perfilAtivo === 'reservas' ? 'Equipe de Reservas' : (perfilAtivo === 'admin' ? 'Administrador' : 'Pós Venda'));
+  document.getElementById('solicOperador').value = opNome;
 
   atualizarDicaSocioSolicitacao(nomeSocioPreenchido);
 
@@ -1378,7 +1487,7 @@ function atualizarDicaSocioSolicitacao(nome) {
     if (inputDiarias) inputDiarias.value = diariasTotais;
   } else {
     if (lblDica) {
-      lblDica.innerHTML = `⚠️ Sócio não localizado diretamente na lista de cotas. Você pode prosseguir normalmente informando as diárias desejadas.`;
+      lblDica.innerHTML = `⚠️ Sócio não localizado diretamente na lista de cotas. Você pode prosseguir normalmente informando o período e observações.`;
     }
   }
 }
@@ -1395,8 +1504,17 @@ async function atenderSolicitacao(idSolicitacao) {
   if (solic.modelo_id) {
     document.getElementById('selectModelo').value = solic.modelo_id;
   }
-  document.getElementById('inputDiarias').value = solic.diarias_solicitadas || 2;
-  document.getElementById('inputObs').value = `Solicitado por ${solic.solicitante || 'Reservas'}: ${solic.motivo || ''}`.trim();
+
+  // Pós Venda define/confere as diárias disponíveis com base nas cotas do sócio
+  const diariasCalculadas = calcularDiariasSocio(solic.nome_socio);
+  document.getElementById('inputDiarias').value = diariasCalculadas;
+  document.getElementById('lblDicaDiarias').textContent = `(Pós Venda: ${diariasCalculadas} diárias disponíveis calculadas pelo plano)`;
+
+  const periodoStr = (solic.periodo_checkin && solic.periodo_checkout)
+    ? `Período pretendido: ${fmtDate(solic.periodo_checkin)} até ${fmtDate(solic.periodo_checkout)}.`
+    : '';
+
+  document.getElementById('inputObs').value = `${periodoStr} Solicitado por ${solic.solicitante_nome || solic.solicitante || 'Reservas'}: ${solic.motivo || ''}`.trim();
   
   // Replicar especificação de regras do modelo
   const mod = listaModelos.find(m => m.id === solic.modelo_id) || listaModelos[0] || MODELOS_PADRAO[0];
@@ -1448,7 +1566,7 @@ document.getElementById('solicNomeSocio').addEventListener('input', (e) => {
   atualizarDicaSocioSolicitacao(e.target.value);
 });
 
-// Envio de Solicitação
+// Envio de Solicitação (Reservas ➔ Pós Venda)
 document.getElementById('formSolicitarVoucher').addEventListener('submit', async (e) => {
   e.preventDefault();
   const btn = document.getElementById('btnConfirmarSolicitacao');
@@ -1456,21 +1574,32 @@ document.getElementById('formSolicitarVoucher').addEventListener('submit', async
   btn.textContent = 'Enviando...';
 
   const nomeSocio = document.getElementById('solicNomeSocio').value.trim();
+  const checkin = document.getElementById('solicCheckin') ? document.getElementById('solicCheckin').value : '';
+  const checkout = document.getElementById('solicCheckout') ? document.getElementById('solicCheckout').value : '';
   const modeloId = document.getElementById('solicModelo').value;
   const modeloObj = listaModelos.find(m => m.id === modeloId);
-  const diarias = Number(document.getElementById('solicDiarias').value) || 2;
   const motivo = document.getElementById('solicMotivo').value.trim();
-  const solicitante = document.getElementById('solicOperador').value.trim() || 'Equipe de Reservas';
+  const solicitanteNome = usuarioLogado ? usuarioLogado.nome : (document.getElementById('solicOperador').value.trim() || 'Equipe de Reservas');
+
+  if (!checkin || !checkout) {
+    showToast('Por favor, informe o período pretendido de Check-in e Check-out.', 'error');
+    btn.disabled = false;
+    btn.textContent = 'Enviar Solicitação ao Pós Venda';
+    return;
+  }
 
   const novaSolic = {
     id: nanoid(16),
     nome_socio: nomeSocio,
     modelo_id: modeloId,
     modelo_nome: modeloObj ? modeloObj.nome : modeloId,
-    diarias_solicitadas: diarias,
+    periodo_checkin: checkin,
+    periodo_checkout: checkout,
     motivo: motivo,
-    solicitante: solicitante,
+    solicitante: solicitanteNome,
+    solicitante_nome: solicitanteNome,
     status: 'pendente',
+    status_fluxo: 'solicitado',
     created_at: new Date().toISOString()
   };
 
@@ -1485,7 +1614,7 @@ document.getElementById('formSolicitarVoucher').addEventListener('submit', async
 
   listaSolicitacoes.unshift(novaSolic);
   localStorage.setItem('rsm_solicitacoes', JSON.stringify(listaSolicitacoes));
-  showToast('Solicitação de voucher enviada com sucesso para o Pós Venda!');
+  showToast('Solicitação registrada! Aguardando o Pós Venda registrar as diárias.');
   fecharModalSolicitarVoucher();
   atualizarBadgeSolicitacoes();
   if (abaAtiva === 'solicitacoes') renderTabelaSolicitacoes();
@@ -1557,10 +1686,312 @@ document.getElementById('inputBuscaReservas').addEventListener('input', () => {
   buscaReservasTimer = setTimeout(renderTabelaReservas, 250);
 });
 
+// ── Gestão de Usuários do Sistema (Admin) ─────────────────────
+async function carregarUsuarios() {
+  try {
+    const { data, error } = await db.from('usuarios_sistema').select('*').order('created_at', { ascending: true });
+    if (!error && data && data.length > 0) {
+      listaUsuarios = data;
+      localStorage.setItem('rsm_usuarios', JSON.stringify(data));
+    }
+  } catch (err) {
+    console.warn('Erro ao carregar usuários do Supabase, usando local:', err);
+  }
+  if (abaAtiva === 'usuarios') {
+    renderTabelaUsuarios();
+  }
+}
+
+function renderTabelaUsuarios() {
+  const tbody = document.getElementById('tbodyUsuarios');
+  if (!tbody) return;
+
+  const labels = {
+    admin: '👑 Administrador',
+    reservas: '🛎️ Reservas',
+    pos_venda: '💼 Pós Venda'
+  };
+
+  tbody.innerHTML = listaUsuarios.map(u => {
+    const isAtivo = u.ativo !== false;
+    const statusBadge = isAtivo
+      ? '<span class="badge badge-green">Ativo</span>'
+      : '<span class="badge badge-red">Inativo</span>';
+
+    return `
+      <tr>
+        <td><strong>${escHtml(u.nome)}</strong></td>
+        <td><code>${escHtml(u.usuario)}</code></td>
+        <td><span class="badge badge-blue">${labels[u.perfil] || u.perfil}</span></td>
+        <td>${statusBadge}</td>
+        <td style="font-size:.8rem;color:var(--text-3);">${fmtDate(u.created_at)}</td>
+        <td>
+          <div class="actions">
+            <button class="btn btn-ghost" style="padding:.25rem .5rem;font-size:.75rem;" onclick="abrirModalEditarUsuario('${u.id}')">✏️ Editar</button>
+            <button class="btn btn-ghost" style="padding:.25rem .5rem;font-size:.75rem;color:${isAtivo ? '#ea580c' : '#16a34a'};" onclick="alternarStatusUsuario('${u.id}')">
+              ${isAtivo ? '🚫 Desativar' : '✅ Ativar'}
+            </button>
+            ${u.usuario !== 'admin' ? `
+            <button class="btn btn-ghost" style="padding:.25rem .5rem;font-size:.75rem;color:#dc2626;" onclick="excluirUsuario('${u.id}')">🗑️</button>` : ''}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function abrirModalNovoUsuario() {
+  document.getElementById('editUsuarioId').value = '';
+  document.getElementById('modalUsuarioTitulo').textContent = 'Cadastrar Novo Usuário';
+  document.getElementById('formUsuario').reset();
+  const check = document.getElementById('checkUsuarioAtivo');
+  if (check) check.checked = true;
+  document.getElementById('modalUsuario').classList.remove('hidden');
+}
+
+function abrirModalEditarUsuario(id) {
+  const u = listaUsuarios.find(item => item.id === id);
+  if (!u) return;
+  document.getElementById('editUsuarioId').value = u.id;
+  document.getElementById('modalUsuarioTitulo').textContent = `Editar — ${u.nome}`;
+  document.getElementById('inputUsuarioNome').value = u.nome;
+  document.getElementById('inputUsuarioLogin').value = u.usuario;
+  document.getElementById('inputUsuarioSenha').value = u.senha;
+  document.getElementById('selectUsuarioPerfil').value = u.perfil;
+  const check = document.getElementById('checkUsuarioAtivo');
+  if (check) check.checked = u.ativo !== false;
+  document.getElementById('modalUsuario').classList.remove('hidden');
+}
+
+function fecharModalUsuario() {
+  document.getElementById('modalUsuario').classList.add('hidden');
+}
+
+async function alternarStatusUsuario(id) {
+  const u = listaUsuarios.find(item => item.id === id);
+  if (!u) return;
+  const novoStatus = !(u.ativo !== false);
+  u.ativo = novoStatus;
+  try {
+    await db.from('usuarios_sistema').update({ ativo: novoStatus }).eq('id', id);
+  } catch (e) {}
+  localStorage.setItem('rsm_usuarios', JSON.stringify(listaUsuarios));
+  showToast(`Usuário ${u.nome} foi ${novoStatus ? 'ativado' : 'desativado'} com sucesso!`);
+  renderTabelaUsuarios();
+}
+
+async function excluirUsuario(id) {
+  const u = listaUsuarios.find(item => item.id === id);
+  if (!u) return;
+  if (u.usuario === 'admin') {
+    showToast('Não é permitido excluir o usuário Administrador principal.', 'error');
+    return;
+  }
+  if (!confirm(`Tem certeza que deseja excluir o operador ${u.nome}?`)) return;
+  try {
+    await db.from('usuarios_sistema').delete().eq('id', id);
+  } catch (e) {}
+  listaUsuarios = listaUsuarios.filter(item => item.id !== id);
+  localStorage.setItem('rsm_usuarios', JSON.stringify(listaUsuarios));
+  showToast('Usuário excluído!');
+  renderTabelaUsuarios();
+}
+
+window.abrirModalNovoUsuario = abrirModalNovoUsuario;
+window.abrirModalEditarUsuario = abrirModalEditarUsuario;
+window.fecharModalUsuario = fecharModalUsuario;
+window.alternarStatusUsuario = alternarStatusUsuario;
+window.excluirUsuario = excluirUsuario;
+
+// Submit Usuário
+document.getElementById('formUsuario').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const id = document.getElementById('editUsuarioId').value;
+  const nome = document.getElementById('inputUsuarioNome').value.trim();
+  const usuario = document.getElementById('inputUsuarioLogin').value.trim().toLowerCase();
+  const senha = document.getElementById('inputUsuarioSenha').value.trim();
+  const perfil = document.getElementById('selectUsuarioPerfil').value;
+  const check = document.getElementById('checkUsuarioAtivo');
+  const ativo = check ? check.checked : true;
+
+  if (!nome || !usuario || !senha) {
+    showToast('Preencha todos os campos obrigatórios.', 'error');
+    return;
+  }
+
+  const loginExistente = listaUsuarios.find(u => u.usuario.toLowerCase() === usuario && u.id !== id);
+  if (loginExistente) {
+    showToast('Já existe um usuário cadastrado com este Login.', 'error');
+    return;
+  }
+
+  const payload = {
+    nome,
+    usuario,
+    senha,
+    perfil,
+    ativo,
+    updated_at: new Date().toISOString()
+  };
+
+  try {
+    if (id) {
+      await db.from('usuarios_sistema').update(payload).eq('id', id);
+      const idx = listaUsuarios.findIndex(u => u.id === id);
+      if (idx !== -1) listaUsuarios[idx] = { ...listaUsuarios[idx], ...payload };
+      showToast('Usuário atualizado com sucesso!');
+    } else {
+      payload.id = `usr-${nanoid(8)}`;
+      payload.created_at = new Date().toISOString();
+      try {
+        const { data, error } = await db.from('usuarios_sistema').insert([payload]).select().single();
+        if (!error && data) payload.id = data.id;
+      } catch (e) {}
+      listaUsuarios.push(payload);
+      showToast('Novo operador cadastrado com sucesso!');
+    }
+  } catch (err) {
+    showToast('Erro ao gravar usuário no banco de dados', 'error');
+  }
+
+  localStorage.setItem('rsm_usuarios', JSON.stringify(listaUsuarios));
+  fecharModalUsuario();
+  renderTabelaUsuarios();
+});
+
+// Usuários Listeners
+const btnNovoUsr = document.getElementById('btnNovoUsuario');
+if (btnNovoUsr) btnNovoUsr.addEventListener('click', abrirModalNovoUsuario);
+const btnFecharUsr = document.getElementById('btnFecharModalUsuario');
+if (btnFecharUsr) btnFecharUsr.addEventListener('click', fecharModalUsuario);
+const btnCancUsr = document.getElementById('btnCancelarUsuario');
+if (btnCancUsr) btnCancUsr.addEventListener('click', fecharModalUsuario);
+const tabUsr = document.getElementById('tabNavUsuarios');
+if (tabUsr) tabUsr.addEventListener('click', () => mudarAba('usuarios'));
+
+// ── Modal de Assinatura Oficial e Ativação de Voucher (Admin) ───
+function abrirModalAssinarVoucher(voucherId) {
+  const v = listaVouchers.find(item => item.id === voucherId);
+  if (!v) return;
+
+  document.getElementById('assinarVoucherId').value = v.id;
+  document.getElementById('assinarSocioNome').textContent = `Voucher #${v.numero || v.codigo} — ${v.nome_socio}`;
+
+  const periodoStr = (v.periodo_checkin && v.periodo_checkout)
+    ? `${fmtDate(v.periodo_checkin)} até ${fmtDate(v.periodo_checkout)}`
+    : 'Não especificado';
+
+  document.getElementById('assinarDetalhesResumo').innerHTML = `
+    <div><strong>Diárias Concedidas:</strong> ${v.diarias_totais || v.diarias || 2} diária(s)</div>
+    <div><strong>Período Pretendido:</strong> ${periodoStr}</div>
+    <div><strong>Modelo:</strong> ${escHtml(v.modelo_nome || 'Padrão RSM')}</div>
+    <div><strong>Preparado por:</strong> ${escHtml(v.pos_venda_nome || 'Equipe de Pós Venda')}</div>
+    ${v.solicitante_nome ? `<div><strong>Solicitado por:</strong> ${escHtml(v.solicitante_nome)}</div>` : ''}
+  `;
+
+  const imgPrev = document.getElementById('imgAssinaturaAdminPreviewModal');
+  const txtPend = document.getElementById('txtAssinaturaPendenteConfig');
+  if (assinaturaAdminAtual) {
+    imgPrev.src = assinaturaAdminAtual;
+    imgPrev.style.display = 'block';
+    txtPend.style.display = 'none';
+  } else {
+    imgPrev.style.display = 'none';
+    txtPend.style.display = 'block';
+  }
+
+  document.getElementById('modalAssinarAdmin').classList.remove('hidden');
+}
+
+function abrirModalAssinarVoucherPorCodigo(codigo) {
+  const v = listaVouchers.find(item => item.codigo === codigo);
+  if (v) {
+    abrirModalAssinarVoucher(v.id);
+  } else {
+    showToast('Voucher correspondente não localizado na lista.', 'error');
+  }
+}
+
+window.abrirModalAssinarVoucher = abrirModalAssinarVoucher;
+window.abrirModalAssinarVoucherPorCodigo = abrirModalAssinarVoucherPorCodigo;
+
+document.getElementById('btnConfirmarAssinaturaVoucher').addEventListener('click', async () => {
+  if (!assinaturaAdminAtual) {
+    showToast('Você precisa configurar sua assinatura oficial antes de assinar vouchers.', 'error');
+    return;
+  }
+
+  const vId = document.getElementById('assinarVoucherId').value;
+  const v = listaVouchers.find(item => item.id === vId);
+  if (!v) {
+    showToast('Voucher não encontrado', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btnConfirmarAssinaturaVoucher');
+  btn.disabled = true;
+  btn.textContent = 'Assinando...';
+
+  const adminNome = usuarioLogado ? usuarioLogado.nome : 'Administrador Geral';
+  const agoraIso = new Date().toISOString();
+
+  try {
+    // 1. Atualizar voucher no Supabase
+    await db.from('vouchers').update({
+      status_fluxo: 'ativo',
+      assinatura_url: assinaturaAdminAtual,
+      admin_assinante_nome: adminNome,
+      assinado_em: agoraIso
+    }).eq('id', vId);
+
+    v.status_fluxo = 'ativo';
+    v.assinatura_url = assinaturaAdminAtual;
+    v.admin_assinante_nome = adminNome;
+    v.assinado_em = agoraIso;
+
+    // 2. Atualizar solicitação vinculada se existir
+    const solic = listaSolicitacoes.find(s => s.voucher_codigo === v.codigo);
+    if (solic) {
+      solic.status = 'gerado';
+      try {
+        await db.from('voucher_solicitacoes').update({ status: 'gerado' }).eq('id', solic.id);
+      } catch (e) {}
+      localStorage.setItem('rsm_solicitacoes', JSON.stringify(listaSolicitacoes));
+    }
+
+    showToast(`Voucher #${v.numero || v.codigo} assinado e ativado com sucesso!`);
+    document.getElementById('modalAssinarAdmin').classList.add('hidden');
+    sincronizarCotas();
+    if (abaAtiva === 'vouchers') carregarVouchers();
+    if (abaAtiva === 'solicitacoes') renderTabelaSolicitacoes();
+  } catch (err) {
+    showToast('Erro ao gravar assinatura do voucher', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✓ Confirmar Assinatura & Ativar Voucher';
+  }
+});
+
+document.getElementById('btnFecharModalAssinarAdmin').addEventListener('click', () => {
+  document.getElementById('modalAssinarAdmin').classList.add('hidden');
+});
+document.getElementById('btnCancelarAssinarAdmin').addEventListener('click', () => {
+  document.getElementById('modalAssinarAdmin').classList.add('hidden');
+});
+
+// Fechar com clique fora
+document.getElementById('modalUsuario').addEventListener('click', e => {
+  if (e.target === document.getElementById('modalUsuario')) fecharModalUsuario();
+});
+document.getElementById('modalAssinarAdmin').addEventListener('click', e => {
+  if (e.target === document.getElementById('modalAssinarAdmin')) document.getElementById('modalAssinarAdmin').classList.add('hidden');
+});
+
 // ── Inicialização do Sistema ───────────────────────────────────
 initTema();
 initControleAcesso();
 initCanvasAssinatura();
 carregarSelectModelos();
 sincronizarCotas();
+
 

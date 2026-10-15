@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistema de Gestão de Vouchers & Cotas — RSM</title>
-  <link rel="stylesheet" href="style.css?v=20261015_02" />
+  <link rel="stylesheet" href="style.css?v=20261015_03" />
 </head>
 <body>
 
@@ -13,28 +13,32 @@
     <div class="login-card">
       <div class="login-icon">🔐</div>
       <h2 class="login-title">Acesso ao Sistema</h2>
-      <p class="login-desc">Selecione seu perfil e digite o PIN de 4 dígitos</p>
+      <p class="login-desc">Entre com seu usuário e senha individual</p>
 
       <div class="role-picker">
-        <div class="role-option selected" data-role="admin">
+        <div class="role-option selected" data-preset="admin" title="Preencher com acesso Admin padrão">
           <span class="role-option-icon">👑</span>
           <span class="role-option-title">Admin</span>
         </div>
-        <div class="role-option" data-role="reservas">
+        <div class="role-option" data-preset="reservas" title="Preencher com acesso Reservas padrão">
           <span class="role-option-icon">🛎️</span>
           <span class="role-option-title">Reservas</span>
         </div>
-        <div class="role-option" data-role="pos_venda">
+        <div class="role-option" data-preset="pos_venda" title="Preencher com acesso Pós Venda padrão">
           <span class="role-option-icon">💼</span>
           <span class="role-option-title">Pós Venda</span>
         </div>
       </div>
 
       <form id="formLogin" onsubmit="executarLogin(); return false;">
-        <div class="form-group" style="margin-bottom:1.25rem;">
-          <label for="inputPin">PIN de Acesso</label>
-          <input type="password" id="inputPin" class="pin-input" maxlength="4" placeholder="••••" required autofocus />
-          <small id="pinDica" style="color:var(--text-3);display:block;margin-top:.4rem;font-size:.75rem;">PIN padrão: 1234</small>
+        <div class="form-group" style="margin-bottom:.85rem;text-align:left;">
+          <label for="inputUsuario" style="font-size:.8rem;font-weight:600;">Usuário / Login *</label>
+          <input type="text" id="inputUsuario" required placeholder="Digite seu usuário..." value="admin" autocomplete="username" />
+        </div>
+        <div class="form-group" style="margin-bottom:1.25rem;text-align:left;">
+          <label for="inputSenha" style="font-size:.8rem;font-weight:600;">Senha / PIN *</label>
+          <input type="password" id="inputSenha" required placeholder="Digite sua senha..." value="1234" autocomplete="current-password" />
+          <small id="loginDica" style="color:var(--text-3);display:block;margin-top:.4rem;font-size:.72rem;">Padrão: admin (1234) | reservas (2345) | posvenda (3456)</small>
         </div>
         <button type="button" id="btnEntrarLogin" onclick="executarLogin()" class="btn btn-primary btn-full" style="padding:.75rem;">
           Entrar no Sistema
@@ -72,6 +76,9 @@
         </button>
         <button class="nav-btn" id="tabNavModelos">
           <span>📝 Modelos</span>
+        </button>
+        <button class="nav-btn" id="tabNavUsuarios">
+          <span>👥 Usuários</span>
         </button>
       </nav>
 
@@ -249,8 +256,8 @@
             <tr>
               <th>Data</th>
               <th>Sócio Solicitado</th>
-              <th>Modelo Desejado</th>
-              <th>Diárias</th>
+              <th>Período Pretendido</th>
+              <th>Modelo Sugerido</th>
               <th>Motivo / Observações</th>
               <th>Solicitante</th>
               <th>Status</th>
@@ -321,6 +328,40 @@
 
       <div class="stats-bar" id="gridModelos" style="grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));">
         <!-- Cards de modelos renderizados dinamicamente -->
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- ABA 5: GESTÃO DE USUÁRIOS REAIS DO SISTEMA (ADMIN)          -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section id="secaoUsuarios" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:1rem;">
+        <div>
+          <h2 style="font-size:1.2rem;">👥 Usuários do Sistema</h2>
+          <p style="color:var(--text-2);font-size:.85rem;">Gerencie os operadores com acessos e senhas individuais.</p>
+        </div>
+        <button class="btn btn-primary" id="btnNovoUsuario">
+          + Cadastrar Novo Usuário
+        </button>
+      </div>
+
+      <!-- Tabela de Usuários -->
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Nome Completo</th>
+              <th>Login / Usuário</th>
+              <th>Perfil de Acesso</th>
+              <th>Status</th>
+              <th>Data de Cadastro</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyUsuarios">
+            <tr><td colspan="6" class="empty">Carregando usuários...</td></tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
@@ -550,25 +591,30 @@
 
         <div class="form-row">
           <div class="form-group">
-            <label for="solicModelo">Modelo Pretendido *</label>
-            <select id="solicModelo" required style="width:100%;padding:.5rem;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);">
-              <!-- Opções carregadas dinamicamente -->
-            </select>
+            <label for="solicCheckin">Data Prevista de Check-in *</label>
+            <input type="date" id="solicCheckin" required />
           </div>
           <div class="form-group">
-            <label for="solicDiarias">Qtd. de Diárias Solicitadas *</label>
-            <input type="number" id="solicDiarias" required min="1" step="1" value="2" />
+            <label for="solicCheckout">Data Prevista de Check-out *</label>
+            <input type="date" id="solicCheckout" required />
           </div>
         </div>
 
         <div class="form-group">
-          <label for="solicMotivo">Motivo / Detalhes da Solicitação *</label>
-          <textarea id="solicMotivo" required rows="3" placeholder="Ex: Sócio entrou em contato para reservar 2 diárias na data 10/11 a 12/11, ainda não possui voucher gerado no sistema."></textarea>
+          <label for="solicModelo">Modelo Sugerido</label>
+          <select id="solicModelo" style="width:100%;padding:.5rem;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);">
+            <!-- Opções carregadas dinamicamente -->
+          </select>
         </div>
 
         <div class="form-group">
-          <label for="solicOperador">Solicitante (Seu Nome / Equipe)</label>
-          <input type="text" id="solicOperador" value="Equipe de Reservas" />
+          <label for="solicMotivo">Observações / Detalhes da Reserva *</label>
+          <textarea id="solicMotivo" required rows="3" placeholder="Ex: Sócio solicitou reserva para casal + 1 criança de 4 anos no apto Luxo para o período informado."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="solicOperador">Operador de Reservas</label>
+          <input type="text" id="solicOperador" readonly style="opacity:.85;" />
         </div>
 
         <div class="form-actions">
@@ -576,6 +622,81 @@
           <button type="submit" class="btn btn-primary" id="btnConfirmarSolicitacao">Enviar Solicitação ao Pós Venda</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ── Modal Cadastrar / Editar Usuário (Admin) ─────────────── -->
+  <div class="modal-overlay hidden" id="modalUsuario">
+    <div class="modal" style="max-width:480px;">
+      <div class="modal-header">
+        <h2 id="modalUsuarioTitulo">Cadastrar Usuário</h2>
+        <button class="modal-close" id="btnFecharModalUsuario">✕</button>
+      </div>
+      <form id="formUsuario">
+        <input type="hidden" id="editUsuarioId" />
+        <div class="form-group">
+          <label for="inputUsuarioNome">Nome Completo *</label>
+          <input type="text" id="inputUsuarioNome" required placeholder="Ex: Juliana Souza" />
+        </div>
+        <div class="form-group">
+          <label for="inputUsuarioLogin">Usuário / Login *</label>
+          <input type="text" id="inputUsuarioLogin" required placeholder="Ex: juliana.reservas" />
+          <small style="color:var(--text-3);font-size:.72rem;">Login utilizado para entrar no sistema.</small>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="inputUsuarioSenha">Senha / PIN *</label>
+            <input type="password" id="inputUsuarioSenha" required placeholder="Digite a senha..." />
+          </div>
+          <div class="form-group">
+            <label for="selectUsuarioPerfil">Perfil de Acesso *</label>
+            <select id="selectUsuarioPerfil" required style="width:100%;padding:.5rem;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);">
+              <option value="reservas">🛎️ Reservas</option>
+              <option value="pos_venda">💼 Pós Venda</option>
+              <option value="admin">👑 Admin</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="display:flex;align-items:center;gap:.5rem;margin-bottom:1.25rem;">
+          <input type="checkbox" id="checkUsuarioAtivo" checked style="width:16px;height:16px;cursor:pointer;" />
+          <label for="checkUsuarioAtivo" style="cursor:pointer;font-size:.85rem;user-select:none;margin-bottom:0;">Usuário ativo com permissão de login</label>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" id="btnCancelarUsuario">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnSalvarUsuario">Salvar Usuário</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Modal Assinar e Liberar Voucher (Admin) ──────────────── -->
+  <div class="modal-overlay hidden" id="modalAssinarAdmin">
+    <div class="modal" style="max-width:520px;">
+      <div class="modal-header">
+        <h2>✍️ Assinar e Liberar Voucher</h2>
+        <button class="modal-close" id="btnFecharModalAssinarAdmin">✕</button>
+      </div>
+      <div style="padding:1.5rem;">
+        <input type="hidden" id="assinarVoucherId" />
+        
+        <div style="background:var(--bg);padding:1rem;border-radius:var(--radius-sm);margin-bottom:1.25rem;">
+          <h3 id="assinarSocioNome" style="font-size:1.05rem;color:var(--primary);margin-bottom:.4rem;">—</h3>
+          <div id="assinarDetalhesResumo" style="font-size:.85rem;color:var(--text-2);line-height:1.6;">
+            <!-- Preenchido dinamicamente -->
+          </div>
+        </div>
+
+        <div style="background:var(--surface);border:1px dashed var(--border);padding:1rem;border-radius:var(--radius-sm);text-align:center;margin-bottom:1.25rem;">
+          <span style="font-size:.78rem;color:var(--text-2);display:block;margin-bottom:.5rem;">Assinatura Oficial a ser aplicada:</span>
+          <img id="imgAssinaturaAdminPreviewModal" src="" style="max-height:60px;margin:0 auto;display:none;" />
+          <span id="txtAssinaturaPendenteConfig" style="color:#dc2626;font-size:.8rem;display:none;">⚠️ Nenhuma assinatura configurada! Clique em "✍️ Assinatura" no topo para desenhar ou carregar.</span>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" id="btnCancelarAssinarAdmin">Voltar</button>
+          <button type="button" class="btn btn-primary" id="btnConfirmarAssinaturaVoucher">✓ Confirmar Assinatura & Ativar Voucher</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -598,8 +719,8 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js?v=20261015_02"></script>
-  <script src="cotas_dados.js?v=20261015_02"></script>
-  <script src="app.js?v=20261015_02"></script>
+  <script src="config.js?v=20261015_03"></script>
+  <script src="cotas_dados.js?v=20261015_03"></script>
+  <script src="app.js?v=20261015_03"></script>
 </body>
 </html>

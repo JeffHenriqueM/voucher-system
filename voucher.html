@@ -540,12 +540,16 @@
       document.getElementById('root').innerHTML = `
         <!-- Barra de ações -->
         <div class="actions-bar no-print">
+          ${v.status_fluxo === 'aguardando_assinatura' ? `
+          <span class="badge-status" style="background:#fef3c7;color:#b45309;">
+            ✍️ Aguardando Assinatura Admin
+          </span>` : `
           <span class="badge-status ${disponivel ? 'badge-ok' : 'badge-used'}">
             ${disponivel ? '✓ Disponível' : '✗ Utilizado'}
           </span>
           <button class="btn-uso ${disponivel ? 'marcar' : 'desmarcar'}" id="btnUso">
             ${disponivel ? 'Marcar como Utilizado' : 'Desmarcar uso'}
-          </button>
+          </button>`}
           <button class="btn-print" onclick="window.print()">
             🖨️ Imprimir
           </button>
@@ -554,6 +558,10 @@
         <!-- Documento Voucher -->
         <div class="voucher ${v.usado ? 'is-usado' : ''}" id="voucherDoc">
           <div class="v-usado-stamp">UTILIZADO</div>
+          ${v.status_fluxo === 'aguardando_assinatura' ? `
+          <div style="background:#fef3c7;color:#92400e;padding:6px 12px;font-weight:bold;text-align:center;font-size:11px;border-bottom:1px solid #fde68a;">
+            ⚠️ MINUTA DE VOUCHER — AGUARDA ASSINATURA OFICIAL DO ADMINISTRADOR PARA ATIVAÇÃO
+          </div>` : ''}
 
           <!-- Cabeçalho -->
           <div class="v-header">
@@ -631,7 +639,8 @@
               <div class="v-assinatura-linha">
                 ${assinaturaUrl ? `<img src="${assinaturaUrl}" class="v-assinatura-img" alt="Assinatura" />` : ''}
               </div>
-              <div class="v-assinatura-cargo">GERENTE</div>
+              <div class="v-assinatura-cargo">${v.admin_assinante_nome ? `ADMIN / GERENTE (${escHtml(v.admin_assinante_nome)})` : 'GERENTE'}</div>
+              ${v.assinado_em ? `<div style="font-size:7px;color:#666;margin-top:2px;">Assinado em ${fmtDateTime(v.assinado_em)}</div>` : ''}
             </div>
             <div class="v-data-impressao">
               <div>DATA IMPRESSÃO: ${agora}</div>

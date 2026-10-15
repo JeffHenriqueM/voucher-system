@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistema de Gestão de Vouchers & Cotas — RSM</title>
-  <link rel="stylesheet" href="style.css?v=20261015_05" />
+  <link rel="stylesheet" href="style.css?v=20261015_07" />
 </head>
 <body>
 
@@ -15,22 +15,7 @@
       <h2 class="login-title">Acesso ao Sistema</h2>
       <p class="login-desc">Entre com seu usuário e senha individual</p>
 
-      <div class="role-picker">
-        <div class="role-option selected" data-preset="admin" title="Preencher com acesso Admin padrão">
-          <span class="role-option-icon">👑</span>
-          <span class="role-option-title">Admin</span>
-        </div>
-        <div class="role-option" data-preset="reservas" title="Preencher com acesso Reservas padrão">
-          <span class="role-option-icon">🛎️</span>
-          <span class="role-option-title">Reservas</span>
-        </div>
-        <div class="role-option" data-preset="pos_venda" title="Preencher com acesso Pós Venda padrão">
-          <span class="role-option-icon">💼</span>
-          <span class="role-option-title">Pós Venda</span>
-        </div>
-      </div>
-
-      <form id="formLogin" onsubmit="executarLogin(); return false;">
+      <form id="formLogin" onsubmit="executarLogin(); return false;" style="margin-top:1.25rem;">
         <div class="form-group" style="margin-bottom:.85rem;text-align:left;">
           <label for="inputUsuario" style="font-size:.8rem;font-weight:600;">Usuário / Login *</label>
           <input type="text" id="inputUsuario" required placeholder="Digite seu usuário..." autocomplete="username" />
@@ -718,8 +703,8 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js?v=20261015_05"></script>
-  <script src="cotas_dados.js?v=20261015_05"></script>
-  <script src="app.js?v=20261015_05"></script>
+  <script src="config.js?v=20261015_07"></script>
+  <script src="cotas_dados.js?v=20261015_07"></script>
+  <script src="app.js?v=20261015_07"></script>
 </body>
 </html>

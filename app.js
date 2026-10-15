@@ -214,8 +214,6 @@ function calcularDiariasSocio(nomeSocio) {
 }
 
 // ── Gestão de Acessos & Perfis ─────────────────────────────────
-let roleSelecionadaLogin = 'admin';
-
 function initControleAcesso() {
   const overlay = document.getElementById('loginOverlay');
   if (!usuarioLogado) {
@@ -227,28 +225,9 @@ function initControleAcesso() {
     aplicarPermissoesPerfil();
   }
 
-  // Presets rápidos no Login
-  document.querySelectorAll('[data-preset]').forEach(opt => {
-    opt.addEventListener('click', () => {
-      document.querySelectorAll('[data-preset]').forEach(o => o.classList.remove('selected'));
-      opt.classList.add('selected');
-      const preset = opt.dataset.preset;
-      const defaults = {
-        admin: { u: 'admin', p: '1234' },
-        reservas: { u: 'reservas', p: '2345' },
-        pos_venda: { u: 'posvenda', p: '3456' }
-      };
-      if (defaults[preset]) {
-        const uIn = document.getElementById('inputUsuario');
-        const sIn = document.getElementById('inputSenha');
-        if (uIn) uIn.value = defaults[preset].u;
-        if (sIn) sIn.value = defaults[preset].p;
-      }
-    });
-  });
-
-  // Função global de Login com Usuários Reais
-  function executarLogin() {
+  // Função global de Login com Usuários Reais (autenticação em tempo real no Supabase)
+  async function executarLogin() {
+    const btn = document.getElementById('btnEntrarLogin');
     const uInput = document.getElementById('inputUsuario');
     const sInput = document.getElementById('inputSenha');
     const usuarioDigitado = (uInput ? uInput.value : '').trim().toLowerCase();
@@ -259,27 +238,78 @@ function initControleAcesso() {
       return;
     }
 
-    const usr = listaUsuarios.find(u => (u.usuario || '').trim().toLowerCase() === usuarioDigitado && String(u.senha).trim() === senhaDigitada);
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Autenticando...';
+    }
 
-    if (usr) {
-      if (usr.ativo === false) {
-        showToast('Este usuário está desativado pelo Administrador.', 'error');
-        return;
+    try {
+      let usr = null;
+
+      // 1. Tentar autenticação em tempo real no Supabase
+      try {
+        const { data, error } = await db
+          .from('usuarios_sistema')
+          .select('*')
+          .ilike('usuario', usuarioDigitado)
+          .eq('senha', senhaDigitada)
+          .maybeSingle();
+
+        if (!error && data) {
+          usr = data;
+          // Sincronizar cache local com o usuário retornado pelo banco
+          const idx = listaUsuarios.findIndex(u => (u.usuario || '').toLowerCase() === usuarioDigitado);
+          if (idx !== -1) listaUsuarios[idx] = data;
+          else listaUsuarios.push(data);
+          localStorage.setItem('rsm_usuarios', JSON.stringify(listaUsuarios));
+        } else {
+          // Se o usuário existe no Supabase mas a senha não bate, NÃO aceita senha antiga!
+          const { data: usuarioExiste } = await db
+            .from('usuarios_sistema')
+            .select('id, nome')
+            .ilike('usuario', usuarioDigitado)
+            .maybeSingle();
+
+          if (usuarioExiste) {
+            showToast('Senha incorreta para este usuário.', 'error');
+            if (sInput) { sInput.select(); sInput.focus(); }
+            return;
+          }
+        }
+      } catch (errDb) {
+        console.warn('Supabase offline ou inacessível no login, verificando cache local:', errDb);
       }
-      usuarioLogado = usr;
-      perfilAtivo = usr.perfil;
-      sessionStorage.setItem('rsm_usuario_logado', JSON.stringify(usuarioLogado));
-      sessionStorage.setItem('rsm_perfil_ativo', perfilAtivo);
-      if (overlay) {
-        overlay.classList.add('hidden');
-        overlay.style.setProperty('display', 'none', 'important');
+
+      // 2. Se não conseguiu verificar online, consulta cache local
+      if (!usr) {
+        usr = listaUsuarios.find(u => (u.usuario || '').trim().toLowerCase() === usuarioDigitado && String(u.senha).trim() === senhaDigitada);
       }
-      showToast(`Bem-vindo(a), ${usr.nome}!`);
-      aplicarPermissoesPerfil();
-      sincronizarCotas();
-    } else {
-      showToast('Usuário ou senha incorretos.', 'error');
-      if (sInput) sInput.select();
+
+      if (usr) {
+        if (usr.ativo === false) {
+          showToast('Este usuário está desativado pelo Administrador.', 'error');
+          return;
+        }
+        usuarioLogado = usr;
+        perfilAtivo = usr.perfil;
+        sessionStorage.setItem('rsm_usuario_logado', JSON.stringify(usuarioLogado));
+        sessionStorage.setItem('rsm_perfil_ativo', perfilAtivo);
+        if (overlay) {
+          overlay.classList.add('hidden');
+          overlay.style.setProperty('display', 'none', 'important');
+        }
+        showToast(`Bem-vindo(a), ${usr.nome}!`);
+        aplicarPermissoesPerfil();
+        sincronizarCotas();
+      } else {
+        showToast('Usuário ou senha incorretos.', 'error');
+        if (sInput) sInput.select();
+      }
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Entrar no Sistema';
+      }
     }
   }
   window.executarLogin = executarLogin;
@@ -1782,7 +1812,7 @@ async function alternarStatusUsuario(id) {
   const novoStatus = !(u.ativo !== false);
   u.ativo = novoStatus;
   try {
-    await db.from('usuarios_sistema').update({ ativo: novoStatus }).eq('id', id);
+    await db.from('usuarios_sistema').update({ ativo: novoStatus }).eq('usuario', u.usuario);
   } catch (e) {}
   localStorage.setItem('rsm_usuarios', JSON.stringify(listaUsuarios));
   showToast(`Usuário ${u.nome} foi ${novoStatus ? 'ativado' : 'desativado'} com sucesso!`);
@@ -1798,9 +1828,9 @@ async function excluirUsuario(id) {
   }
   if (!confirm(`Tem certeza que deseja excluir o operador ${u.nome}?`)) return;
   try {
-    await db.from('usuarios_sistema').delete().eq('id', id);
+    await db.from('usuarios_sistema').delete().eq('usuario', u.usuario);
   } catch (e) {}
-  listaUsuarios = listaUsuarios.filter(item => item.id !== id);
+  listaUsuarios = listaUsuarios.filter(item => item.id !== id && item.usuario !== u.usuario);
   localStorage.setItem('rsm_usuarios', JSON.stringify(listaUsuarios));
   showToast('Usuário excluído!');
   renderTabelaUsuarios();
@@ -1845,17 +1875,38 @@ document.getElementById('formUsuario').addEventListener('submit', async (e) => {
 
   try {
     if (id) {
-      await db.from('usuarios_sistema').update(payload).eq('id', id);
-      const idx = listaUsuarios.findIndex(u => u.id === id);
+      let atualizado = false;
+      // 1. Atualizar por usuario (mais confiável e independente do formato de ID)
+      try {
+        const { data, error } = await db.from('usuarios_sistema').update(payload).eq('usuario', usuario).select();
+        if (!error && data && data.length > 0) atualizado = true;
+      } catch (e) {}
+
+      // 2. Se não atualizou por usuario, tenta por id
+      if (!atualizado) {
+        try {
+          await db.from('usuarios_sistema').update(payload).eq('id', id);
+        } catch (e) {}
+      }
+
+      const idx = listaUsuarios.findIndex(u => u.id === id || (u.usuario || '').toLowerCase() === usuario);
       if (idx !== -1) listaUsuarios[idx] = { ...listaUsuarios[idx], ...payload };
-      showToast('Usuário atualizado com sucesso!');
+      showToast('Usuário e senha atualizados com sucesso!');
     } else {
-      payload.id = `usr-${nanoid(8)}`;
       payload.created_at = new Date().toISOString();
       try {
-        const { data, error } = await db.from('usuarios_sistema').insert([payload]).select().single();
+        const { data, error } = await db.from('usuarios_sistema').insert([{
+          nome: payload.nome,
+          usuario: payload.usuario,
+          senha: payload.senha,
+          perfil: payload.perfil,
+          ativo: payload.ativo
+        }]).select().single();
         if (!error && data) payload.id = data.id;
-      } catch (e) {}
+        else payload.id = `usr-${nanoid(8)}`;
+      } catch (e) {
+        payload.id = `usr-${nanoid(8)}`;
+      }
       listaUsuarios.push(payload);
       showToast('Novo operador cadastrado com sucesso!');
     }
@@ -1998,6 +2049,7 @@ document.getElementById('modalAssinarAdmin').addEventListener('click', e => {
 
 // ── Inicialização do Sistema ───────────────────────────────────
 initTema();
+carregarUsuarios();
 initControleAcesso();
 initCanvasAssinatura();
 carregarSelectModelos();

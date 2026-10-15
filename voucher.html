@@ -425,7 +425,7 @@
   <!-- Libs -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-  <script src="config.js?v=20261015_12"></script>
+  <script src="config.js?v=20261015_14"></script>
   <script>
     const { createClient } = supabase;
     const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -673,8 +673,13 @@
               <span class="v-label">VALOR HOSP.:</span>
               <span class="v-value">${fmt(v.valor_hospedagem)}</span>
             </div>` : ''}
+            ${(v.periodo_checkin && v.periodo_checkout) ? `
+            <div class="v-row">
+              <span class="v-label">PERÍODO HOSPEDAGEM:</span>
+              <span class="v-value"><strong>${fmtDate(v.periodo_checkin)} até ${fmtDate(v.periodo_checkout)}</strong></span>
+            </div>` : ''}
             ${v.validade ? `
-            <div class="v-validade">VALIDADE BRINDE DE: ATÉ ${fmtDate(v.validade)}</div>` : ''}
+            <div class="v-validade">VALIDADE DO VOUCHER: ATÉ ${fmtDate(v.validade)}</div>` : ''}
           </div>
 
           <!-- Especificação -->

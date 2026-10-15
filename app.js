@@ -780,6 +780,7 @@ function renderTabelaReservas() {
     const tot = v.diarias_totais || v.diarias || 2;
     const usd = v.diarias_usadas || (v.usado ? tot : 0);
     const saldo = Math.max(0, tot - usd);
+    const isSemAssinatura = v.status_fluxo === 'aguardando_assinatura' || !v.assinado_em;
 
     // Buscar histórico deste voucher
     const historico = listaHistoricoReservas.filter(h => h.voucher_codigo === v.codigo);
@@ -787,19 +788,39 @@ function renderTabelaReservas() {
       ? historico.map(h => `<div style="font-size:.75rem;">📅 <strong>${h.diarias_utilizadas}d</strong> (${fmtDate(h.data_checkin)} a ${fmtDate(h.data_checkout)})</div>`).join('')
       : '<span style="color:#94a3b8;font-size:.75rem;">Nenhuma estadia realizada</span>';
 
+    let botaoAcao = '';
+    if (isSemAssinatura) {
+      botaoAcao = `
+        <button class="btn btn-ghost" disabled style="padding:.35rem .65rem;font-size:.76rem;color:#b45309;background:#fef3c7;border:1px dashed #f59e0b;cursor:not-allowed;font-weight:600;" title="Voucher aguarda assinatura oficial do Gerente/Admin. Bloqueado para uso.">
+          ✍️ Bloqueado (Sem Assinatura)
+        </button>
+      `;
+    } else if (saldo === 0) {
+      botaoAcao = `
+        <button class="btn btn-ghost" disabled style="padding:.35rem .65rem;font-size:.78rem;opacity:.6;cursor:not-allowed;">
+          ✓ Diárias Esgotadas
+        </button>
+      `;
+    } else {
+      botaoAcao = `
+        <button class="btn btn-primary" style="padding:.35rem .75rem;font-size:.8rem;" onclick="abrirModalBaixa('${v.id}')">
+          🛎️ Dar Baixa
+        </button>
+      `;
+    }
+
     return `
       <tr>
         <td><strong>#${v.numero || v.codigo}</strong></td>
         <td><strong>${escHtml(v.nome_socio)}</strong></td>
         <td>${tot} diária(s)</td>
         <td><span style="color:#dc2626;font-weight:700;">${usd} diária(s)</span></td>
-        <td><span class="diarias-pill ${saldo > 0 ? 'diarias-disponiveis' : 'diarias-usadas'}">${saldo} restante(s)</span></td>
-        <td>${histResumo}</td>
         <td>
-          <button class="btn btn-primary" style="padding:.35rem .75rem;font-size:.8rem;" onclick="abrirModalBaixa('${v.id}')">
-            🛎️ Dar Baixa
-          </button>
+          <span class="diarias-pill ${saldo > 0 ? 'diarias-disponiveis' : 'diarias-usadas'}">${saldo} restante(s)</span>
+          ${isSemAssinatura ? '<div style="font-size:.7rem;color:#b45309;font-weight:600;margin-top:3px;">✍️ Aguarda Assinatura</div>' : ''}
         </td>
+        <td>${histResumo}</td>
+        <td>${botaoAcao}</td>
       </tr>
     `;
   }).join('');
@@ -809,6 +830,12 @@ function renderTabelaReservas() {
 function abrirModalBaixa(voucherId) {
   const v = listaVouchers.find(item => item.id === voucherId);
   if (!v) return;
+
+  // Requisito: um voucher sem assinatura não pode ser utilizado
+  if (v.status_fluxo === 'aguardando_assinatura' || !v.assinado_em) {
+    showToast('⚠️ Este voucher aguarda assinatura da Gerência/Admin e NÃO PODE ser utilizado!', 'error');
+    return;
+  }
 
   const tot = v.diarias_totais || v.diarias || 2;
   const usd = v.diarias_usadas || (v.usado ? tot : 0);
@@ -882,6 +909,14 @@ document.getElementById('formBaixaReserva').addEventListener('submit', async (e)
     return;
   }
 
+  // Validação rígida: voucher sem assinatura não pode ser utilizado
+  if (voucher.status_fluxo === 'aguardando_assinatura' || !voucher.assinado_em) {
+    showToast('Operação bloqueada: vouchers sem assinatura oficial não podem ser utilizados.', 'error');
+    btn.disabled = false;
+    btn.textContent = 'Confirmar Baixa de Diárias';
+    return;
+  }
+
   const tot = voucher.diarias_totais || voucher.diarias || 2;
   const usdAtual = voucher.diarias_usadas || (voucher.usado ? tot : 0);
   const novoUsado = usdAtual + qtdBaixa;
@@ -930,6 +965,76 @@ document.getElementById('formBaixaReserva').addEventListener('submit', async (e)
   }
 });
 
+// ── Funções de Apoio para Diárias, Brinde e Validade ───────────
+function definirValidadeMeses(meses) {
+  const d = new Date();
+  d.setMonth(d.getMonth() + meses);
+  const input = document.getElementById('inputValidade');
+  if (input) input.value = d.toISOString().split('T')[0];
+}
+window.definirValidadeMeses = definirValidadeMeses;
+
+function obterTextoDiariasPorExtenso(diarias) {
+  const d = parseInt(diarias, 10) || 1;
+  const extensos = {
+    1: 'uma (01) diária anual',
+    2: '2 (duas) diárias anuais',
+    3: '3 (três) diárias anuais',
+    4: '4 (quatro) diárias anuais',
+    5: '5 (cinco) diárias anuais',
+    6: '6 (seis) diárias anuais',
+    7: '7 (sete) diárias anuais',
+    8: '8 (oito) diárias anuais',
+    9: '9 (nove) diárias anuais',
+    10: '10 (dez) diárias anuais'
+  };
+  return extensos[d] || `${d} diárias anuais`;
+}
+
+function obterDescricaoBrindePadrao(diarias, produtoNome) {
+  const d = parseInt(diarias, 10) || 1;
+  const prefixo = String(d).padStart(2, '0');
+  const labelDiaria = d === 1 ? 'DIÁRIA ANUAL' : 'DIÁRIAS ANUAIS';
+  const sufixo = produtoNome ? ` — ${produtoNome}` : '';
+  return `${prefixo} ${labelDiaria} VILLAMOR${sufixo}`;
+}
+
+function adequarTextosPorDiarias() {
+  const d = parseInt(document.getElementById('inputDiarias')?.value, 10) || 1;
+  const cotaId = document.getElementById('cotaVinculadaId')?.value;
+  const cota = cotaId ? listaCotas.find(c => c.id === cotaId) : null;
+  const nomeDigitado = (document.getElementById('inputNome')?.value || '').trim().toUpperCase();
+  const cotaEncontrada = cota || listaCotas.find(c => (c.nome_socio || '').trim().toUpperCase() === nomeDigitado);
+  const produto = cotaEncontrada ? cotaEncontrada.produto : '';
+
+  // 1. Adequar descrição do brinde automaticamente
+  const inputBrinde = document.getElementById('inputBrinde');
+  if (inputBrinde) {
+    inputBrinde.value = obterDescricaoBrindePadrao(d, produto);
+  }
+
+  // 2. Adequar especificação do voucher com concordância e número por extenso
+  const modeloId = document.getElementById('selectModelo')?.value;
+  const mod = listaModelos.find(m => m.id === modeloId) || listaModelos[0] || MODELOS_PADRAO[0];
+  const inputObs = document.getElementById('inputObs');
+  if (inputObs && mod) {
+    const textoExtenso = obterTextoDiariasPorExtenso(d);
+    let espec = mod.especificacao_padrao || '';
+    espec = espec
+      .replace('{diarias} diárias anuais', textoExtenso)
+      .replace('{diarias} diária anual', textoExtenso)
+      .replace('{diarias}', textoExtenso)
+      .replace('{produto}', produto ? produto : 'Villamor Tambaba Resort');
+    inputObs.value = espec;
+  }
+
+  const inputEspecUso = document.getElementById('inputEspecUso');
+  if (inputEspecUso && mod && !inputEspecUso.value) {
+    inputEspecUso.value = mod.regras_uso || '';
+  }
+}
+window.adequarTextosPorDiarias = adequarTextosPorDiarias;
+
 // ── Modelos de Voucher ─────────────────────────────────────────
 function carregarSelectModelos() {
   const sel = document.getElementById('selectModelo');
@@ -942,11 +1047,7 @@ function carregarSelectModelos() {
   sel.addEventListener('change', () => {
     const mod = listaModelos.find(m => m.id === sel.value);
     if (!mod) return;
-    const diarias = document.getElementById('inputDiarias').value || 2;
-    const brinde = document.getElementById('inputBrinde').value || '';
-
-    let espec = mod.especificacao_padrao.replace('{diarias}', diarias).replace('{produto}', brinde);
-    document.getElementById('inputObs').value = espec;
+    adequarTextosPorDiarias();
     document.getElementById('inputEspecUso').value = mod.regras_uso;
   });
 }
@@ -1182,14 +1283,10 @@ function atualizarDicaSocioVoucher(nomeDigitado) {
     document.getElementById('inputDiarias').value = diariasCalc;
     document.getElementById('lblDicaDiarias').textContent = `(Plano ${cotaEncontrada.produto}: ${diariasCalc} diárias)`;
     document.getElementById('inputSala').value = cotaEncontrada.sala_venda || 'VILLA';
-    document.getElementById('inputBrinde').value = `0${diariasCalc} DIÁRIAS ANUAIS VILLAMOR — ${cotaEncontrada.produto}`;
 
-    const modeloId = document.getElementById('selectModelo').value;
-    const mod = listaModelos.find(m => m.id === modeloId) || listaModelos[0] || MODELOS_PADRAO[0];
-    if (mod) {
-      document.getElementById('inputObs').value = mod.especificacao_padrao.replace('{diarias}', diariasCalc).replace('{produto}', cotaEncontrada.produto);
-    }
+    adequarTextosPorDiarias();
   } else {
+    document.getElementById('cotaVinculadaId').value = '';
     const sugestoes = listaCotas.filter(c => (c.nome_socio || '').toUpperCase().includes(termo));
     if (infoEl) {
       if (sugestoes.length > 0) {
@@ -1200,6 +1297,7 @@ function atualizarDicaSocioVoucher(nomeDigitado) {
         infoEl.style.color = '#b45309';
       }
     }
+    adequarTextosPorDiarias();
   }
 }
 
@@ -1231,18 +1329,21 @@ function abrirModalEmitirParaCota(cotaId) {
   document.getElementById('inputDiarias').value = diariasCalculadas;
   document.getElementById('lblDicaDiarias').textContent = `(Calculado: ${diariasCalculadas} diárias pelo plano)`;
 
-  document.getElementById('inputBrinde').value = `0${diariasCalculadas} DIÁRIAS ANUAIS VILLAMOR — ${cota.produto}`;
-
   // Validade padrão: 1 ano
   const dataHoje = new Date();
   dataHoje.setFullYear(dataHoje.getFullYear() + 1);
-  document.getElementById('inputValidade').value = dataHoje.toISOString().split('T')[0];
+  if (document.getElementById('inputValidade')) {
+    document.getElementById('inputValidade').value = dataHoje.toISOString().split('T')[0];
+  }
+  if (document.getElementById('inputCheckin')) document.getElementById('inputCheckin').value = '';
+  if (document.getElementById('inputCheckout')) document.getElementById('inputCheckout').value = '';
 
   // Aplicar modelo selecionado
   const modeloPadrao = listaModelos[0] || MODELOS_PADRAO[0];
   document.getElementById('selectModelo').value = modeloPadrao.id;
-  document.getElementById('inputObs').value = modeloPadrao.especificacao_padrao.replace('{diarias}', diariasCalculadas).replace('{produto}', cota.produto);
   document.getElementById('inputEspecUso').value = modeloPadrao.regras_uso;
+
+  adequarTextosPorDiarias();
 
   document.getElementById('modalOverlay').classList.remove('hidden');
 }
@@ -1261,10 +1362,20 @@ function abrirModalNovo() {
   document.getElementById('lblDicaDiarias').textContent = '';
   document.getElementById('inputSala').value = 'VILLA';
 
+  // Validade padrão: 1 ano
+  const dataHoje = new Date();
+  dataHoje.setFullYear(dataHoje.getFullYear() + 1);
+  if (document.getElementById('inputValidade')) {
+    document.getElementById('inputValidade').value = dataHoje.toISOString().split('T')[0];
+  }
+  if (document.getElementById('inputCheckin')) document.getElementById('inputCheckin').value = '';
+  if (document.getElementById('inputCheckout')) document.getElementById('inputCheckout').value = '';
+
   const mod = listaModelos[0] || MODELOS_PADRAO[0];
   document.getElementById('selectModelo').value = mod.id;
-  document.getElementById('inputObs').value = mod.especificacao_padrao.replace('{diarias}', 2).replace('{produto}', '');
   document.getElementById('inputEspecUso').value = mod.regras_uso;
+
+  adequarTextosPorDiarias();
 
   document.getElementById('modalOverlay').classList.remove('hidden');
   document.getElementById('inputNome').focus();
@@ -1284,6 +1395,8 @@ async function abrirModalEditar(id) {
   document.getElementById('lblDicaDiarias').textContent = '';
   document.getElementById('inputBrinde').value = v.brinde_descricao || '';
   document.getElementById('inputValidade').value = v.validade || '';
+  if (document.getElementById('inputCheckin')) document.getElementById('inputCheckin').value = v.periodo_checkin || '';
+  if (document.getElementById('inputCheckout')) document.getElementById('inputCheckout').value = v.periodo_checkout || '';
   document.getElementById('inputObs').value = v.observacoes || '';
   document.getElementById('inputEspecUso').value = v.especificacoes_uso || '';
   if (v.modelo_id) document.getElementById('selectModelo').value = v.modelo_id;
@@ -1324,6 +1437,8 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
     diarias_totais:     diariasTotais,
     brinde_descricao:   document.getElementById('inputBrinde').value.trim() || null,
     validade:           document.getElementById('inputValidade').value || null,
+    periodo_checkin:    document.getElementById('inputCheckin')?.value || null,
+    periodo_checkout:   document.getElementById('inputCheckout')?.value || null,
     observacoes:        document.getElementById('inputObs').value.trim() || null,
     especificacoes_uso: document.getElementById('inputEspecUso').value.trim() || null,
     modelo_id:          modeloId,
@@ -1339,8 +1454,8 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
   }
 
   if (solicitacaoAtual) {
-    payload.periodo_checkin = solicitacaoAtual.periodo_checkin || null;
-    payload.periodo_checkout = solicitacaoAtual.periodo_checkout || null;
+    if (!payload.periodo_checkin) payload.periodo_checkin = solicitacaoAtual.periodo_checkin || null;
+    if (!payload.periodo_checkout) payload.periodo_checkout = solicitacaoAtual.periodo_checkout || null;
     payload.solicitante_nome = solicitacaoAtual.solicitante_nome || solicitacaoAtual.solicitante || null;
   }
 
@@ -1691,10 +1806,16 @@ async function atenderSolicitacao(idSolicitacao) {
     document.getElementById('selectModelo').value = solic.modelo_id;
   }
 
+  // Preencher período pretendido nos campos integrados
+  if (document.getElementById('inputCheckin')) document.getElementById('inputCheckin').value = solic.periodo_checkin || '';
+  if (document.getElementById('inputCheckout')) document.getElementById('inputCheckout').value = solic.periodo_checkout || '';
+
   // Pós Venda define/confere as diárias disponíveis com base nas cotas do sócio
   const diariasCalculadas = calcularDiariasSocio(solic.nome_socio);
   document.getElementById('inputDiarias').value = diariasCalculadas;
   document.getElementById('lblDicaDiarias').textContent = `(Pós Venda: ${diariasCalculadas} diárias disponíveis calculadas pelo plano)`;
+
+  adequarTextosPorDiarias();
 
   const periodoStr = (solic.periodo_checkin && solic.periodo_checkout)
     ? `Período pretendido: ${fmtDate(solic.periodo_checkin)} até ${fmtDate(solic.periodo_checkout)}.`
@@ -1761,17 +1882,20 @@ if (inpNomeVoucher) {
   inpNomeVoucher.addEventListener('change', (e) => atualizarDicaSocioVoucher(e.target.value));
 }
 
-document.getElementById('selectModelo').addEventListener('change', (e) => {
-  const m = listaModelos.find(mod => mod.id === e.target.value) || listaModelos[0] || MODELOS_PADRAO[0];
-  const cotaId = document.getElementById('cotaVinculadaId').value;
-  const cota = cotaId ? listaCotas.find(c => c.id === cotaId) : null;
-  const d = Number(document.getElementById('inputDiarias').value) || 2;
-  const prod = cota ? cota.produto : '';
-  if (m) {
-    document.getElementById('inputObs').value = m.especificacao_padrao.replace('{diarias}', d).replace('{produto}', prod);
-    document.getElementById('inputEspecUso').value = m.regras_uso || '';
-  }
-});
+const inpDiarias = document.getElementById('inputDiarias');
+if (inpDiarias) {
+  inpDiarias.addEventListener('input', adequarTextosPorDiarias);
+  inpDiarias.addEventListener('change', adequarTextosPorDiarias);
+}
+
+const selModelo = document.getElementById('selectModelo');
+if (selModelo) {
+  selModelo.addEventListener('change', () => {
+    const m = listaModelos.find(mod => mod.id === selModelo.value) || listaModelos[0] || MODELOS_PADRAO[0];
+    adequarTextosPorDiarias();
+    if (m) document.getElementById('inputEspecUso').value = m.regras_uso || '';
+  });
+}
 
 // Envio de Solicitação (Reservas ➔ Pós Venda)
 document.getElementById('formSolicitarVoucher').addEventListener('submit', async (e) => {

@@ -868,12 +868,26 @@ function renderTabelaVouchers(dados) {
       </div>
     `;
 
+    const temObs = Boolean(v.observacoes && v.observacoes.trim());
+
     return `
       <tr>
-        <td><strong>#${v.numero || '—'}</strong></td>
+        <td>
+          <strong>#${v.numero || '—'}</strong>
+          ${temObs ? `<span class="badge-obs-alerta" title="Voucher possui observação especial">⚠️ OBS</span>` : ''}
+        </td>
         <td>
           <strong>${escHtml(v.nome_socio)}</strong>
           ${v.sala_venda ? `<div style="font-size:.72rem;color:var(--text-3);">Sala: ${escHtml(v.sala_venda)}</div>` : ''}
+          ${temObs ? `
+            <div class="voucher-obs-callout" title="${escHtml(v.observacoes)}">
+              <span class="voucher-obs-icon">📝</span>
+              <div class="voucher-obs-body">
+                <span class="voucher-obs-tag">COM OBSERVAÇÃO</span>
+                <span class="voucher-obs-text">${escHtml(v.observacoes)}</span>
+              </div>
+            </div>
+          ` : ''}
         </td>
         <td>${vencimentoHtml}</td>
         <td>
@@ -1001,10 +1015,26 @@ function renderTabelaReservas() {
       `;
     }
 
+    const temObs = Boolean(v.observacoes && v.observacoes.trim());
+
     return `
       <tr>
-        <td><strong>#${v.numero || v.codigo}</strong></td>
-        <td><strong>${escHtml(v.nome_socio)}</strong></td>
+        <td>
+          <strong>#${v.numero || v.codigo}</strong>
+          ${temObs ? `<span class="badge-obs-alerta" title="Voucher possui observação especial">⚠️ OBS</span>` : ''}
+        </td>
+        <td>
+          <strong>${escHtml(v.nome_socio)}</strong>
+          ${temObs ? `
+            <div class="voucher-obs-callout" title="${escHtml(v.observacoes)}">
+              <span class="voucher-obs-icon">📝</span>
+              <div class="voucher-obs-body">
+                <span class="voucher-obs-tag">COM OBSERVAÇÃO</span>
+                <span class="voucher-obs-text">${escHtml(v.observacoes)}</span>
+              </div>
+            </div>
+          ` : ''}
+        </td>
         <td>${vencimentoHtml}</td>
         <td>${tot} diária(s)</td>
         <td><span style="color:#dc2626;font-weight:700;">${usd} diária(s)</span></td>

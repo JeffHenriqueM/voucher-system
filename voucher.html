@@ -443,7 +443,7 @@
   <!-- Libs -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-  <script src="config.js?v=20261015_17"></script>
+  <script src="config.js?v=20261015_21"></script>
   <script>
     const { createClient } = supabase;
     const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -593,9 +593,7 @@
       const disponivel = !v.usado && isAssinado && !isVencido;
       const linkAtual = window.location.href;
 
-      const espec = v.observacoes
-        ? escHtml(v.observacoes)
-        : `Voucher de ${v.diarias > 1 ? v.diarias + ' ('+numPorExtenso(v.diarias)+')' : 'uma (01)'} diária${v.diarias > 1 ? 's' : ''} anua${v.diarias > 1 ? 'is' : 'l'} para um casal no Hotel Villamor Prime.`;
+      const espec = `Voucher de ${v.diarias > 1 ? v.diarias + ' ('+numPorExtenso(v.diarias)+')' : 'uma (01)'} diária${v.diarias > 1 ? 's' : ''} anua${v.diarias > 1 ? 'is' : 'l'} para um casal no Hotel Villamor Prime.`;
 
       const brinde = v.brinde_descricao
         ? escHtml(v.brinde_descricao).toUpperCase()
@@ -717,6 +715,13 @@
           <!-- Especificação -->
           <div class="v-espec-title">ESPECIFICAÇÃO DO VOUCHER :</div>
           <div class="v-espec-texto">${espec}</div>
+
+          ${v.observacoes && v.observacoes.trim() ? `
+          <div style="background:#fffbeb;border:1px solid #f59e0b;border-left:4px solid #d97706;border-radius:4px;padding:7px 12px;margin:8px 14px 10px;font-size:10px;line-height:1.45;color:#78350f;">
+            <strong style="text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:2px;color:#92400e;">📝 Observações do Voucher:</strong>
+            ${escHtml(v.observacoes)}
+          </div>
+          ` : ''}
 
           <!-- Especificações de uso -->
           <div class="v-uso-title">ESPECIFICAÇÕES DE USO :</div>

@@ -1,8 +1,3 @@
--- ============================================================
--- TABELA DE BENEFICIÁRIOS / COTAS COM DIREITO A VOUCHER
--- Execute no SQL Editor do Supabase
--- ============================================================
-
 CREATE TABLE IF NOT EXISTS cotas_socios (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   data_aquisicao DATE,
@@ -31,7 +26,6 @@ CREATE POLICY "Acesso publico cotas update" ON cotas_socios FOR UPDATE USING (tr
 DROP POLICY IF EXISTS "Acesso publico cotas delete" ON cotas_socios;
 CREATE POLICY "Acesso publico cotas delete" ON cotas_socios FOR DELETE USING (true);
 
--- Limpar dados anteriores caso já existam para não duplicar
 TRUNCATE TABLE cotas_socios;
 
 INSERT INTO cotas_socios (data_aquisicao, nome_socio, produto, cota_ordem, total_cotas) VALUES

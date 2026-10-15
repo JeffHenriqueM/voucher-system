@@ -1,9 +1,3 @@
--- ============================================================
--- ATUALIZAÇÃO V2: HISTÓRICO DE DIÁRIAS, MODELOS E ASSINATURA
--- Execute no SQL Editor do Supabase
--- ============================================================
-
--- 1. Campos extras na tabela vouchers
 ALTER TABLE vouchers 
 ADD COLUMN IF NOT EXISTS diarias_totais INTEGER DEFAULT 2,
 ADD COLUMN IF NOT EXISTS diarias_usadas INTEGER DEFAULT 0,

@@ -408,6 +408,18 @@
       return div.innerHTML;
     }
 
+    // ── Especificações de uso ─────────────────────────────────
+    function renderEspecUso(texto) {
+      if (!texto || !texto.trim()) {
+        return '<div class="v-uso-item"><span class="v-checkbox"></span><span>Nenhuma especificação cadastrada.</span></div>';
+      }
+      return texto.split('\n')
+        .map(linha => linha.trim())
+        .filter(linha => linha.length > 0)
+        .map(linha => `<div class="v-uso-item"><span class="v-checkbox"></span><span>${escHtml(linha)}</span></div>`)
+        .join('');
+    }
+
     // ── Carregar ─────────────────────────────────────────────
     async function carregarVoucher() {
       if (!codigo) {
@@ -532,16 +544,7 @@
           <!-- Especificações de uso -->
           <div class="v-uso-title">ESPECIFICAÇÕES DE USO :</div>
           <div class="v-uso-lista">
-            <div class="v-uso-item"><span class="v-checkbox"></span><span>Para agendamento ligar 83 98834-0045, no Hotel Villamor Prime.</span></div>
-            <div class="v-uso-item"><span class="v-checkbox"></span><span>Este Voucher é intransferível.</span></div>
-            <div class="v-uso-item"><span class="v-checkbox"></span><span>Diárias com check-in Domingo e check-out até a Quinta-Feira, exceto se for Encontro de Sócios Proprietários aos finais de semana.</span></div>
-            <div class="v-uso-item"><span class="v-checkbox"></span><span>Quantidade de diária para um casal, não fracionadas.</span></div>
-            <div class="v-uso-item"><span class="v-checkbox"></span><span>Café da manhã incluso nas diárias.</span></div>
-            <div class="v-uso-item"><span class="v-checkbox"></span><span>Diárias em apartamento LUXO.</span></div>
-            <div class="v-uso-item"><span class="v-checkbox"></span><span>Reservas sujeitas à disponibilidade.</span></div>
-            <div class="v-uso-item"><span class="v-checkbox"></span><span>Uso restrito no Hotel Villamor Prime.</span></div>
-            <div class="v-uso-item"><span class="v-checkbox"></span><span>Exceto feriados, datas comemorativas e eventos terceirizado.</span></div>
-            <div class="v-uso-item"><span class="v-checkbox"></span><span>A utilização se dará após 10% do contrato integralizado.</span></div>
+            ${renderEspecUso(v.especificacoes_uso)}
           </div>
 
           <!-- Rodapé -->

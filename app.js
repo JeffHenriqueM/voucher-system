@@ -165,6 +165,7 @@ async function abrirModalEditar(id) {
   document.getElementById('inputBrinde').value = v.brinde_descricao || '';
   document.getElementById('inputValidade').value = v.validade || '';
   document.getElementById('inputObs').value = v.observacoes || '';
+  document.getElementById('inputEspecUso').value = v.especificacoes_uso || '';
   document.getElementById('modalTitulo').textContent = 'Editar Voucher';
   document.getElementById('btnSalvar').textContent = 'Atualizar Voucher';
   document.getElementById('modalOverlay').classList.remove('hidden');
@@ -188,9 +189,10 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
     sala_venda:       document.getElementById('inputSala').value.trim() || null,
     valor_hospedagem: Number(document.getElementById('inputValor').value),
     diarias:          Number(document.getElementById('inputDiarias').value),
-    brinde_descricao: document.getElementById('inputBrinde').value.trim() || null,
-    validade:         document.getElementById('inputValidade').value || null,
-    observacoes:      document.getElementById('inputObs').value.trim() || null,
+    brinde_descricao:   document.getElementById('inputBrinde').value.trim() || null,
+    validade:           document.getElementById('inputValidade').value || null,
+    observacoes:        document.getElementById('inputObs').value.trim() || null,
+    especificacoes_uso: document.getElementById('inputEspecUso').value.trim() || null,
   };
 
   try {

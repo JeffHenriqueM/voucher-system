@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistema de Gestão de Vouchers & Cotas — RSM</title>
-  <link rel="stylesheet" href="style.css?v=20261015_07" />
+  <link rel="stylesheet" href="style.css?v=20261015_08" />
 </head>
 <body>
 
@@ -438,6 +438,14 @@
           <p id="baixaInfoSaldo" style="font-size:.85rem;color:var(--text-2);">Diárias Concedidas: <strong>—</strong> | Restantes: <strong>—</strong></p>
         </div>
 
+        <!-- Orientações do Sucesso do Cliente -->
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--radius-sm);padding:.75rem;margin-bottom:1rem;font-size:.78rem;color:#166534;line-height:1.45;">
+          <strong>🎟️ Regras de Utilização (Sucesso do Cliente):</strong><br>
+          • <strong>Domingo a quinta-feira:</strong> 1 diária por dia (apto LUXO).<br>
+          • <strong>Período Especial (Sexta, Sábado ou dia de evento):</strong> contabiliza <strong>2 diárias por dia</strong> (mediante autorização prévia).<br>
+          <span style="font-size:.72rem;color:#15803d;">Ex: Sexta = 2 diárias | Sábado = 2 diárias | Dia de evento = 2 diárias.</span>
+        </div>
+
         <div class="form-row">
           <div class="form-group">
             <label for="baixaDiariasQtd">Diárias a Utilizar nesta Hospedagem *</label>
@@ -584,6 +592,12 @@
           </div>
         </div>
 
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--radius-sm);padding:.65rem .75rem;margin-bottom:1rem;font-size:.76rem;color:#166534;line-height:1.4;">
+          <strong>📅 Regra do Período (Sucesso do Cliente):</strong><br>
+          • <strong>Domingo a quinta-feira:</strong> 1 diária por dia (apto Luxo).<br>
+          • <strong>Finais de semana (sex/sáb) ou eventos:</strong> 2 diárias por dia (período especial, sob autorização prévia).
+        </div>
+
         <div class="form-group">
           <label for="solicModelo">Modelo Sugerido</label>
           <select id="solicModelo" style="width:100%;padding:.5rem;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);">
@@ -703,8 +717,8 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js?v=20261015_07"></script>
-  <script src="cotas_dados.js?v=20261015_07"></script>
-  <script src="app.js?v=20261015_07"></script>
+  <script src="config.js?v=20261015_08"></script>
+  <script src="cotas_dados.js?v=20261015_08"></script>
+  <script src="app.js?v=20261015_08"></script>
 </body>
 </html>

@@ -25,26 +25,24 @@ let idParaDeletar = null;
 const MODELOS_PADRAO = [
   {
     id: 'padrao-rsm',
-    nome: 'Padrão RSM — Hotel Villamor Prime',
-    titulo_documento: 'RSM EMPREENDIMENTO',
-    especificacao_padrao: 'Voucher de {diarias} diárias anuais para um casal no Hotel Villamor Prime ({produto}).',
-    regras_uso: `Para agendamento ligar 83 98834-0045, no Hotel Villamor Prime.
-Este Voucher é intransferível.
-Diárias com check-in Domingo e check-out até a Quinta-Feira, exceto se for Encontro de Sócios Proprietários aos finais de semana.
-Quantidade de diária para um casal, não fracionadas.
-Café da manhã incluso nas diárias.
-Diárias em apartamento LUXO.
-Reservas sujeitas à disponibilidade.
-Uso restrito no Hotel Villamor Prime.
-Exceto feriados, datas comemorativas e eventos terceirizado.
-A utilização se dará após 10% do contrato integralizado.`
+    nome: 'Diárias Anuais — Villamor Tambaba Resort',
+    titulo_documento: 'RSM EMPREENDIMENTO — VILLAMOR TAMBABA RESORT',
+    especificacao_padrao: 'Voucher de {diarias} diárias anuais para um casal no Villamor Tambaba Resort ({produto}).',
+    regras_uso: `🎟️ Utilização das Diárias Anuais — Sucesso do Cliente
+- O voucher é válido para apartamentos LUXO com check-in a partir de domingo e check-out até quinta-feira, exceto feriados, datas comemorativas e eventos terceirizados;
+- Finais de semana e dias de evento são considerados como período especial, sendo contabilizados como 2 diárias por dia;
+- A utilização em períodos especiais (sexta, sábado e dias de evento) é permitida apenas mediante autorização prévia;
+- As reservas estão sempre sujeitas à disponibilidade;
+- A utilização das diárias é permitida somente após a integralização de 10% do valor total do contrato;
+- Exemplo: Sexta-feira: utiliza 2 diárias | Sábado: utiliza 2 diárias | Dia de evento: utiliza 2 diárias.
+- Para agendamento e informações ligar (83) 98834-0045, no Villamor Tambaba Resort.`
   },
   {
     id: 'indique-ganhe',
-    nome: 'Indique e Ganhe — Hotel Villamor Prime',
+    nome: 'Indique e Ganhe — Villamor Tambaba Resort',
     titulo_documento: 'RSM EMPREENDIMENTO — INDIQUE E GANHE',
     especificacao_padrao: 'Voucher promocional de {diarias} diárias para um casal referente à campanha Indique e Ganhe.',
-    regras_uso: `Para agendamento ligar 83 98834-0045, no Hotel Villamor Prime.
+    regras_uso: `Para agendamento ligar (83) 98834-0045, no Villamor Tambaba Resort.
 Este Voucher é intransferível e nominal.
 Diárias com check-in Domingo e check-out até a Quinta-Feira.
 Café da manhã incluso nas diárias para um casal.
@@ -54,10 +52,10 @@ Válido após confirmação e validação da indicação elegível junto ao Pós
   },
   {
     id: 'promocional',
-    nome: 'Diária Promocional — Hotel Villamor Prime',
+    nome: 'Diária Promocional — Villamor Tambaba Resort',
     titulo_documento: 'RSM EMPREENDIMENTO — DIÁRIA PROMOCIONAL',
-    especificacao_padrao: 'Voucher promocional de {diarias} diárias para um casal no Hotel Villamor Prime.',
-    regras_uso: `Para agendamento ligar 83 98834-0045, no Hotel Villamor Prime.
+    especificacao_padrao: 'Voucher promocional de {diarias} diárias para um casal no Villamor Tambaba Resort.',
+    regras_uso: `Para agendamento ligar (83) 98834-0045, no Villamor Tambaba Resort.
 Este Voucher é intransferível.
 Diárias sujeitas à disponibilidade com agendamento prévio.
 Café da manhã incluso nas diárias.
@@ -66,17 +64,21 @@ Exceto feriados, datas comemorativas e alta temporada.`
   }
 ];
 
-// Carregar modelos do localStorage ou padrão (garantindo que os 3 modelos padrão existam)
+// Carregar modelos do localStorage ou padrão (garantindo atualização das regras de Sucesso do Cliente)
 let listaModelos = JSON.parse(localStorage.getItem('rsm_modelos_vouchers') || 'null');
 if (!listaModelos || !Array.isArray(listaModelos) || listaModelos.length === 0) {
   listaModelos = JSON.parse(JSON.stringify(MODELOS_PADRAO));
 } else {
   MODELOS_PADRAO.forEach(mp => {
-    if (!listaModelos.some(m => m.id === mp.id)) {
+    const idx = listaModelos.findIndex(m => m.id === mp.id);
+    if (idx === -1) {
       listaModelos.push(JSON.parse(JSON.stringify(mp)));
+    } else if (mp.id === 'padrao-rsm') {
+      listaModelos[idx] = JSON.parse(JSON.stringify(mp));
     }
   });
 }
+localStorage.setItem('rsm_modelos_vouchers', JSON.stringify(listaModelos));
 
 // Lista de cotas em memória
 let listaCotas = typeof COTAS_IMPORTADAS !== 'undefined' ? JSON.parse(JSON.stringify(COTAS_IMPORTADAS)) : [];

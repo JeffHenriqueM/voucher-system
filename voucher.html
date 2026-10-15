@@ -334,7 +334,82 @@
       color: #334155;
     }
     @media (max-width: 600px) {
-      .v-auditoria-grid { grid-template-columns: 1fr; }
+      body {
+        padding: 12px 8px 32px;
+      }
+      .actions-bar {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+        max-width: 680px;
+        gap: 8px;
+      }
+      .actions-bar > div {
+        flex-direction: column;
+        width: 100%;
+      }
+      .actions-bar button, .btn-print {
+        width: 100%;
+        justify-content: center;
+      }
+      .voucher {
+        border-radius: 6px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.08);
+      }
+      .v-header {
+        padding: 10px 12px;
+      }
+      .v-title h1 {
+        font-size: 18px;
+      }
+      .v-title h2 {
+        font-size: 11px;
+      }
+      #qrcode {
+        width: 64px;
+        height: 64px;
+      }
+      #qrcode canvas, #qrcode img {
+        width: 64px !important;
+        height: 64px !important;
+      }
+      .v-numero-val {
+        font-size: 14px;
+      }
+      .v-row {
+        grid-template-columns: 115px 1fr;
+        font-size: 10.5px;
+        line-height: 1.45;
+      }
+      .v-label {
+        font-size: 10px;
+      }
+      .v-value {
+        font-size: 10px;
+      }
+      .v-espec-texto {
+        font-size: 10px;
+        line-height: 1.5;
+        padding: 6px 12px 10px;
+      }
+      .v-uso-item {
+        font-size: 9.5px;
+      }
+      .v-auditoria-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      .v-auditoria-box {
+        padding: 10px 12px;
+      }
+      .v-rodape {
+        flex-direction: column;
+        gap: 16px;
+        padding: 12px 14px;
+      }
+      .v-assinatura-col {
+        width: 100%;
+      }
     }
 
     .v-data-impressao {
@@ -425,7 +500,7 @@
   <!-- Libs -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-  <script src="config.js?v=20261015_16"></script>
+  <script src="config.js?v=20261015_17"></script>
   <script>
     const { createClient } = supabase;
     const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

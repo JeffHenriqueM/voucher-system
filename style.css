@@ -776,14 +776,133 @@ textarea { resize: vertical; }
 }
 .voucher-back:hover { color: var(--primary); }
 
-/* ─── Responsivo ─────────────────────────────────────────────── */
-@media (max-width: 600px) {
-  .form-row { grid-template-columns: 1fr; }
-  .filters  { flex-direction: column; align-items: stretch; }
-  .filter-tabs { overflow-x: auto; }
-  .stats-bar { grid-template-columns: repeat(2, 1fr); }
-  .header-inner { flex-direction: column; align-items: stretch; }
-  .main-nav { overflow-x: auto; }
+/* ─── Responsivo Mobile & Tablet ─────────────────────────────── */
+.modal {
+  max-height: 92vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 768px) {
+  .header-inner {
+    flex-direction: column;
+    align-items: stretch;
+    padding: .75rem 1rem;
+    gap: .75rem;
+  }
+  .brand {
+    justify-content: space-between;
+    width: 100%;
+  }
+  .perfil-badge-wrap {
+    justify-content: space-between;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .main-nav {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    width: 100%;
+    padding: 4px;
+    gap: .35rem;
+    scrollbar-width: none;
+  }
+  .main-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .nav-btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: .45rem .75rem;
+    font-size: .8125rem;
+  }
+  .container {
+    padding: 1rem .75rem;
+  }
+  .stats-bar {
+    grid-template-columns: repeat(2, 1fr);
+    gap: .65rem;
+  }
+  .filters {
+    flex-direction: column;
+    align-items: stretch;
+    gap: .75rem;
+  }
+  .filter-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    width: 100%;
+    scrollbar-width: none;
+  }
+  .filter-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .filter-tabs .tab {
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: .4rem .65rem;
+    font-size: .8rem;
+  }
+  .table {
+    min-width: 680px; /* Garante que colunas não fiquem espremidas e possam ser roladas com o dedo */
+  }
+  .table-wrap {
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius-sm);
+  }
+  .table th, .table td {
+    padding: .65rem .75rem;
+    font-size: .8rem;
+  }
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: .75rem;
+  }
+  form {
+    padding: 1.15rem 1rem;
+  }
+  .modal-overlay {
+    padding: .5rem;
+  }
+  .modal {
+    max-height: 88vh;
+    border-radius: var(--radius);
+  }
+  .form-actions {
+    flex-direction: column-reverse;
+    gap: .5rem;
+  }
+  .form-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .toast {
+    left: 1rem;
+    right: 1rem;
+    bottom: 1rem;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-bar {
+    grid-template-columns: 1fr 1fr;
+    gap: .5rem;
+  }
+  .stat-card {
+    padding: .65rem .75rem;
+  }
+  .stat-value {
+    font-size: 1.25rem;
+  }
+  .stat-label {
+    font-size: .7rem;
+  }
+  .login-card {
+    padding: 1.5rem 1rem;
+  }
 }
 
 /* ─── Acessos & Perfis ───────────────────────────────────────── */

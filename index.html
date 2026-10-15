@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Villamor Vouchers — Gestão de Vouchers & Cotas</title>
-  <link rel="stylesheet" href="style.css?v=20261015_18" />
+  <link rel="stylesheet" href="style.css?v=20261015_19" />
 </head>
 <body>
 
@@ -207,12 +207,11 @@
               <th>Data Aquisição</th>
               <th>Situação da Cota</th>
               <th>Diárias Anuais Concedidas</th>
-              <th>Status Voucher</th>
               <th>Ação</th>
             </tr>
           </thead>
           <tbody id="tbodyCotas">
-            <tr><td colspan="7" class="empty">Carregando base de cotas…</td></tr>
+            <tr><td colspan="6" class="empty">Carregando base de cotas…</td></tr>
           </tbody>
         </table>
       </div>
@@ -478,38 +477,41 @@
         </div>
 
         <!-- Validade do Voucher -->
-        <div class="form-group" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:var(--radius-sm);padding:.75rem;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.35rem;flex-wrap:wrap;gap:.5rem;">
-            <label for="inputValidade" style="margin-bottom:0;font-weight:700;color:var(--text-1);font-size:.82rem;">
-              📅 Data de Validade do Voucher *
+        <div class="date-field-card">
+          <div class="date-field-header">
+            <label for="inputValidade" class="date-field-title">
+              <span>📅 Data de Validade do Voucher *</span>
             </label>
-            <div style="display:flex;gap:.35rem;">
-              <button type="button" class="btn btn-ghost" style="padding:.25rem .5rem;font-size:.72rem;height:auto;" onclick="definirValidadeMeses(12)">+ 1 Ano</button>
-              <button type="button" class="btn btn-ghost" style="padding:.25rem .5rem;font-size:.72rem;height:auto;" onclick="definirValidadeMeses(6)">+ 6 Meses</button>
+            <div class="date-field-shortcuts">
+              <button type="button" class="date-shortcut-btn" onclick="definirValidadeMeses(12)">+ 1 Ano</button>
+              <button type="button" class="date-shortcut-btn" onclick="definirValidadeMeses(6)">+ 6 Meses</button>
             </div>
           </div>
-          <input type="date" id="inputValidade" required style="width:100%;" />
-          <small style="color:var(--text-3);font-size:.72rem;display:block;margin-top:.25rem;">Prazo limite para realização da reserva e usufruto das diárias.</small>
+          <input type="date" id="inputValidade" required />
+          <small>Prazo limite para realização da reserva e usufruto das diárias.</small>
         </div>
 
-        <!-- Período da Hospedagem (Check-in e Check-out unificados em um só container) -->
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:var(--radius-sm);padding:.75rem;margin-bottom:1rem;">
-          <label style="display:block;font-weight:700;font-size:.82rem;margin-bottom:.4rem;color:var(--text-1);">
-            🏨 Período da Hospedagem <small style="color:var(--text-3);font-weight:normal;">(Check-in e Check-out integrados)</small>
-          </label>
+        <!-- Período da Hospedagem (Check-in e Check-out) -->
+        <div class="date-field-card">
+          <div class="date-field-header">
+            <span class="date-field-title">
+              <span>🏨 Período da Hospedagem</span>
+            </span>
+            <span class="badge" style="font-size:.68rem;padding:.15rem .5rem;background:var(--primary-light);color:var(--primary);font-weight:700;">
+              Check-in & Check-out
+            </span>
+          </div>
           <div class="form-row" style="margin-bottom:0;">
             <div class="form-group" style="margin-bottom:0;">
-              <label for="inputCheckin" style="font-size:.75rem;">Data de Check-in</label>
-              <input type="date" id="inputCheckin" />
+              <label for="inputCheckin" style="font-size:.75rem;font-weight:600;">Data de Check-in (Entrada)</label>
+              <input type="date" id="inputCheckin" onchange="aoMudarCheckinEmissao()" />
             </div>
             <div class="form-group" style="margin-bottom:0;">
-              <label for="inputCheckout" style="font-size:.75rem;">Data de Check-out</label>
+              <label for="inputCheckout" style="font-size:.75rem;font-weight:600;">Data de Check-out (Saída)</label>
               <input type="date" id="inputCheckout" />
             </div>
           </div>
-          <small style="color:var(--text-3);font-size:.72rem;display:block;margin-top:.35rem;">
-            Opcional na emissão prévia; se já definido, constará impresso no voucher.
-          </small>
+          <small>Opcional na emissão prévia; se já definido, constará impresso no voucher.</small>
         </div>
 
         <div class="form-group">
@@ -566,18 +568,23 @@
           </div>
         </div>
 
-        <!-- Período da Hospedagem (Check-in e Check-out unificados em um só container) -->
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:var(--radius-sm);padding:.75rem;margin-bottom:1rem;">
-          <label style="display:block;font-weight:700;font-size:.82rem;margin-bottom:.4rem;color:var(--text-1);">
-            🏨 Período Efetivo da Hospedagem *
-          </label>
+        <!-- Período da Hospedagem (Check-in e Check-out) -->
+        <div class="date-field-card">
+          <div class="date-field-header">
+            <span class="date-field-title">
+              <span>🏨 Período Efetivo da Hospedagem *</span>
+            </span>
+            <span class="badge" style="font-size:.68rem;padding:.15rem .5rem;background:#fee2e2;color:#991b1b;font-weight:700;">
+              Obrigatório
+            </span>
+          </div>
           <div class="form-row" style="margin-bottom:0;">
             <div class="form-group" style="margin-bottom:0;">
-              <label for="baixaCheckin" style="font-size:.75rem;">Data de Check-in *</label>
+              <label for="baixaCheckin" style="font-size:.75rem;font-weight:600;">Data de Check-in *</label>
               <input type="date" id="baixaCheckin" required />
             </div>
             <div class="form-group" style="margin-bottom:0;">
-              <label for="baixaCheckout" style="font-size:.75rem;">Data de Check-out *</label>
+              <label for="baixaCheckout" style="font-size:.75rem;font-weight:600;">Data de Check-out *</label>
               <input type="date" id="baixaCheckout" required />
             </div>
           </div>
@@ -696,18 +703,23 @@
           <small id="solicInfoSocio" style="color:var(--primary);font-size:.78rem;display:block;margin-top:.25rem;"></small>
         </div>
 
-        <!-- Período Pretendido da Estadia (Check-in e Check-out unificados em um só container) -->
-        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:var(--radius-sm);padding:.75rem;margin-bottom:1rem;">
-          <label style="display:block;font-weight:700;font-size:.82rem;margin-bottom:.4rem;color:var(--text-1);">
-            📅 Período Pretendido da Estadia *
-          </label>
+        <!-- Período Pretendido da Estadia (Check-in e Check-out) -->
+        <div class="date-field-card">
+          <div class="date-field-header">
+            <span class="date-field-title">
+              <span>📅 Período Pretendido da Estadia *</span>
+            </span>
+            <span class="badge" style="font-size:.68rem;padding:.15rem .5rem;background:var(--primary-light);color:var(--primary);font-weight:700;">
+              Check-in & Check-out
+            </span>
+          </div>
           <div class="form-row" style="margin-bottom:0;">
             <div class="form-group" style="margin-bottom:0;">
-              <label for="solicCheckin" style="font-size:.75rem;">Data Prevista de Check-in *</label>
+              <label for="solicCheckin" style="font-size:.75rem;font-weight:600;">Data Prevista de Check-in *</label>
               <input type="date" id="solicCheckin" required />
             </div>
             <div class="form-group" style="margin-bottom:0;">
-              <label for="solicCheckout" style="font-size:.75rem;">Data Prevista de Check-out *</label>
+              <label for="solicCheckout" style="font-size:.75rem;font-weight:600;">Data Prevista de Check-out *</label>
               <input type="date" id="solicCheckout" required />
             </div>
           </div>
@@ -860,8 +872,8 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js?v=20261015_18"></script>
-  <script src="cotas_dados.js?v=20261015_18"></script>
-  <script src="app.js?v=20261015_18"></script>
+  <script src="config.js?v=20261015_19"></script>
+  <script src="cotas_dados.js?v=20261015_19"></script>
+  <script src="app.js?v=20261015_19"></script>
 </body>
 </html>

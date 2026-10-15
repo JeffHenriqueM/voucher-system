@@ -330,10 +330,17 @@ function initControleAcesso() {
     window.selecionarPerfilLogin(userAtual, cardAtual);
   }
 
-  // Tecla ESC fecha modal se usuário já estiver autenticado
+  // Tecla ESC fecha modais com segurança
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && usuarioLogado && overlay && !overlay.classList.contains('hidden')) {
-      window.fecharModalLogin();
+    if (e.key === 'Escape') {
+      const modalVoucher = document.getElementById('modalOverlay');
+      if (modalVoucher && !modalVoucher.classList.contains('hidden')) {
+        fecharModalComConfirmacao();
+        return;
+      }
+      if (usuarioLogado && overlay && !overlay.classList.contains('hidden')) {
+        window.fecharModalLogin();
+      }
     }
   });
 
@@ -663,7 +670,7 @@ function renderTabelaCotas() {
   });
 
   if (!filtrados.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty">Nenhuma cota encontrada com os filtros selecionados.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="empty">Nenhuma cota encontrada com os filtros selecionados.</td></tr>';
     return;
   }
 
@@ -672,10 +679,6 @@ function renderTabelaCotas() {
     const badgeCota = isMulti
       ? `<span class="badge badge-cota-multi">🔥 ${c.total_cotas} Cotas (${c.cota_ordem}ª de ${c.total_cotas})</span>`
       : `<span class="badge badge-cota-single">⭐ Cota Única</span>`;
-
-    const statusBadge = c.voucher_codigo
-      ? `<span class="badge badge-emitido">✓ Emitido (Nº ${c.voucher_numero || c.voucher_codigo})</span>`
-      : `<span class="badge badge-pendente">⏳ Pendente</span>`;
 
     // Diárias calculadas para este sócio
     const diariasTotais = calcularDiariasSocio(c.nome_socio);
@@ -710,7 +713,6 @@ function renderTabelaCotas() {
             ${diariasTotais} diárias anuais
           </span>
         </td>
-        <td>${statusBadge}</td>
         <td>${acaoHtml}</td>
       </tr>
     `;
@@ -1556,6 +1558,7 @@ function abrirModalEmitirParaCota(cotaId) {
   adequarTextosPorDiarias();
 
   document.getElementById('modalOverlay').classList.remove('hidden');
+  salvarSnapshotModalVoucher();
 }
 
 function abrirModalNovo() {
@@ -1588,6 +1591,7 @@ function abrirModalNovo() {
   adequarTextosPorDiarias();
 
   document.getElementById('modalOverlay').classList.remove('hidden');
+  salvarSnapshotModalVoucher();
   document.getElementById('inputNome').focus();
 }
 
@@ -1614,10 +1618,75 @@ async function abrirModalEditar(id) {
   document.getElementById('modalTitulo').textContent = 'Editar Voucher';
   document.getElementById('btnSalvar').textContent = 'Atualizar Voucher';
   document.getElementById('modalOverlay').classList.remove('hidden');
+  salvarSnapshotModalVoucher();
   document.getElementById('inputNome').focus();
 }
 
+// ── Rastreamento de Alterações no Modal de Emissão do Voucher ──
+let snapshotModalVoucher = null;
+
+function capturarSnapshotModalVoucher() {
+  return JSON.stringify({
+    nome: document.getElementById('inputNome')?.value || '',
+    sala: document.getElementById('inputSala')?.value || '',
+    diarias: document.getElementById('inputDiarias')?.value || '',
+    valor: document.getElementById('inputValor')?.value || '',
+    brinde: document.getElementById('inputBrinde')?.value || '',
+    validade: document.getElementById('inputValidade')?.value || '',
+    checkin: document.getElementById('inputCheckin')?.value || '',
+    checkout: document.getElementById('inputCheckout')?.value || '',
+    obs: document.getElementById('inputObs')?.value || '',
+    especUso: document.getElementById('inputEspecUso')?.value || '',
+    modelo: document.getElementById('selectModelo')?.value || ''
+  });
+}
+
+function salvarSnapshotModalVoucher() {
+  snapshotModalVoucher = capturarSnapshotModalVoucher();
+}
+window.salvarSnapshotModalVoucher = salvarSnapshotModalVoucher;
+
+function modalVoucherFoiAlterado() {
+  if (!snapshotModalVoucher) return false;
+  return snapshotModalVoucher !== capturarSnapshotModalVoucher();
+}
+
+function fecharModalComConfirmacao() {
+  const overlay = document.getElementById('modalOverlay');
+  if (!overlay || overlay.classList.contains('hidden')) return;
+
+  if (modalVoucherFoiAlterado()) {
+    const querDescartar = window.confirm('Deseja descartar as alterações feitas?');
+    if (!querDescartar) return;
+  }
+  fecharModal();
+}
+window.fecharModalComConfirmacao = fecharModalComConfirmacao;
+
+// Sincronizar check-in e check-out automaticamente
+function aoMudarCheckinEmissao() {
+  const inCheckin = document.getElementById('inputCheckin');
+  const inCheckout = document.getElementById('inputCheckout');
+  const inDiarias = document.getElementById('inputDiarias');
+  if (!inCheckin || !inCheckout) return;
+
+  const dataCheckin = inCheckin.value;
+  if (!dataCheckin) return;
+
+  inCheckout.min = dataCheckin;
+
+  // Se checkout vazio ou anterior ao check-in, sugere a data de saída somando as diárias
+  const dts = new Date(dataCheckin + 'T12:00:00');
+  const qtdDiarias = parseInt(inDiarias?.value || '2', 10) || 2;
+  if (!inCheckout.value || inCheckout.value <= dataCheckin) {
+    dts.setDate(dts.getDate() + qtdDiarias);
+    inCheckout.value = dts.toISOString().split('T')[0];
+  }
+}
+window.aoMudarCheckinEmissao = aoMudarCheckinEmissao;
+
 function fecharModal() {
+  snapshotModalVoucher = null;
   document.getElementById('modalOverlay').classList.add('hidden');
 }
 
@@ -2038,6 +2107,7 @@ async function atenderSolicitacao(idSolicitacao) {
   if (mod) {
     document.getElementById('inputEspecUso').value = mod.regras_uso || '';
   }
+  salvarSnapshotModalVoucher();
 }
 
 async function cancelarSolicitacao(idSolicitacao) {
@@ -2069,8 +2139,8 @@ document.getElementById('btnNovo').addEventListener('click', () => {
   solicitacaoEmAtendimentoId = null;
   abrirModalNovo();
 });
-document.getElementById('btnFecharModal').addEventListener('click', fecharModal);
-document.getElementById('btnCancelar').addEventListener('click', fecharModal);
+document.getElementById('btnFecharModal').addEventListener('click', fecharModalComConfirmacao);
+document.getElementById('btnCancelar').addEventListener('click', fecharModalComConfirmacao);
 document.getElementById('btnFecharDelete').addEventListener('click', fecharModalDelete);
 document.getElementById('btnCancelarDelete').addEventListener('click', fecharModalDelete);
 document.getElementById('btnFecharBaixa').addEventListener('click', fecharModalBaixa);
@@ -2183,7 +2253,7 @@ document.getElementById('inputBuscaSolicitacoes').addEventListener('input', () =
 });
 
 document.getElementById('modalOverlay').addEventListener('click', e => {
-  if (e.target === document.getElementById('modalOverlay')) fecharModal();
+  if (e.target === document.getElementById('modalOverlay')) fecharModalComConfirmacao();
 });
 document.getElementById('modalDelete').addEventListener('click', e => {
   if (e.target === document.getElementById('modalDelete')) fecharModalDelete();

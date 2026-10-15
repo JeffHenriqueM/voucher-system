@@ -1150,12 +1150,66 @@ function atualizarPreviewAssinatura(url) {
   }
 }
 
+// ── Popular Datalist e Autocomplete de Sócios para Emissão de Voucher ──
+function popularDatalistSociosVoucher() {
+  const datalist = document.getElementById('datalistSociosVoucher');
+  if (!datalist) return;
+  const nomesUnicos = [...new Set(listaCotas.map(c => (c.nome_socio || '').trim()).filter(Boolean))].sort();
+  datalist.innerHTML = nomesUnicos.map(nome => `<option value="${escHtml(nome)}"></option>`).join('');
+}
+
+function atualizarDicaSocioVoucher(nomeDigitado) {
+  const infoEl = document.getElementById('inputNomeInfoSocio');
+  if (!nomeDigitado || !nomeDigitado.trim()) {
+    if (infoEl) infoEl.textContent = '';
+    return;
+  }
+
+  const termo = nomeDigitado.trim().toUpperCase();
+  const cotaEncontrada = listaCotas.find(c => (c.nome_socio || '').trim().toUpperCase() === termo);
+
+  if (cotaEncontrada) {
+    const cotasDoMesmoSocio = listaCotas.filter(c => (c.nome_socio || '').trim().toUpperCase() === termo);
+    const produtos = cotasDoMesmoSocio.map(c => c.produto).join(', ');
+    const diariasCalc = calcularDiariasSocio(cotaEncontrada.nome_socio);
+
+    if (infoEl) {
+      infoEl.textContent = `✓ Sócio na base: ${cotasDoMesmoSocio.length} cota(s) (${produtos}) — ${diariasCalc} diárias calculadas.`;
+      infoEl.style.color = '#15803d';
+    }
+
+    document.getElementById('cotaVinculadaId').value = cotaEncontrada.id;
+    document.getElementById('inputDiarias').value = diariasCalc;
+    document.getElementById('lblDicaDiarias').textContent = `(Plano ${cotaEncontrada.produto}: ${diariasCalc} diárias)`;
+    document.getElementById('inputSala').value = cotaEncontrada.sala_venda || 'VILLA';
+    document.getElementById('inputBrinde').value = `0${diariasCalc} DIÁRIAS ANUAIS VILLAMOR — ${cotaEncontrada.produto}`;
+
+    const modeloId = document.getElementById('selectModelo').value;
+    const mod = listaModelos.find(m => m.id === modeloId) || listaModelos[0] || MODELOS_PADRAO[0];
+    if (mod) {
+      document.getElementById('inputObs').value = mod.especificacao_padrao.replace('{diarias}', diariasCalc).replace('{produto}', cotaEncontrada.produto);
+    }
+  } else {
+    const sugestoes = listaCotas.filter(c => (c.nome_socio || '').toUpperCase().includes(termo));
+    if (infoEl) {
+      if (sugestoes.length > 0) {
+        infoEl.textContent = `🔍 ${sugestoes.length} sócio(s) na base com este termo. Selecione na lista.`;
+        infoEl.style.color = '#0284c7';
+      } else {
+        infoEl.textContent = 'ℹ️ Nome não cadastrado na base de cotas (será emitido como convidado avulso).';
+        infoEl.style.color = '#b45309';
+      }
+    }
+  }
+}
+
 // ── Emissão de Voucher ─────────────────────────────────────────
 function abrirModalEmitirParaCota(cotaId) {
   solicitacaoEmAtendimentoId = null;
   const cota = listaCotas.find(c => c.id === cotaId);
   if (!cota) return;
 
+  popularDatalistSociosVoucher();
   carregarSelectModelos();
 
   document.getElementById('editId').value = '';
@@ -1167,6 +1221,11 @@ function abrirModalEmitirParaCota(cotaId) {
   const diariasCalculadas = calcularDiariasSocio(cota.nome_socio);
 
   document.getElementById('inputNome').value = cota.nome_socio;
+  const infoEl = document.getElementById('inputNomeInfoSocio');
+  if (infoEl) {
+    infoEl.textContent = `✓ Sócio selecionado: ${cota.produto} — ${diariasCalculadas} diárias pelo plano.`;
+    infoEl.style.color = '#15803d';
+  }
   document.getElementById('inputSala').value = 'VILLA';
   document.getElementById('inputValor').value = '';
   document.getElementById('inputDiarias').value = diariasCalculadas;
@@ -1189,12 +1248,15 @@ function abrirModalEmitirParaCota(cotaId) {
 }
 
 function abrirModalNovo() {
+  popularDatalistSociosVoucher();
   carregarSelectModelos();
   document.getElementById('editId').value = '';
   document.getElementById('cotaVinculadaId').value = '';
   document.getElementById('modalTitulo').textContent = 'Emitir Novo Voucher';
   document.getElementById('btnSalvar').textContent = 'Salvar Voucher';
   document.getElementById('formVoucher').reset();
+  const infoEl = document.getElementById('inputNomeInfoSocio');
+  if (infoEl) infoEl.textContent = '';
   document.getElementById('inputDiarias').value = 2;
   document.getElementById('lblDicaDiarias').textContent = '';
   document.getElementById('inputSala').value = 'VILLA';
@@ -1691,6 +1753,24 @@ document.getElementById('btnCancelarSolicitacao').addEventListener('click', fech
 
 document.getElementById('solicNomeSocio').addEventListener('input', (e) => {
   atualizarDicaSocioSolicitacao(e.target.value);
+});
+
+const inpNomeVoucher = document.getElementById('inputNome');
+if (inpNomeVoucher) {
+  inpNomeVoucher.addEventListener('input', (e) => atualizarDicaSocioVoucher(e.target.value));
+  inpNomeVoucher.addEventListener('change', (e) => atualizarDicaSocioVoucher(e.target.value));
+}
+
+document.getElementById('selectModelo').addEventListener('change', (e) => {
+  const m = listaModelos.find(mod => mod.id === e.target.value) || listaModelos[0] || MODELOS_PADRAO[0];
+  const cotaId = document.getElementById('cotaVinculadaId').value;
+  const cota = cotaId ? listaCotas.find(c => c.id === cotaId) : null;
+  const d = Number(document.getElementById('inputDiarias').value) || 2;
+  const prod = cota ? cota.produto : '';
+  if (m) {
+    document.getElementById('inputObs').value = m.especificacao_padrao.replace('{diarias}', d).replace('{produto}', prod);
+    document.getElementById('inputEspecUso').value = m.regras_uso || '';
+  }
 });
 
 // Envio de Solicitação (Reservas ➔ Pós Venda)

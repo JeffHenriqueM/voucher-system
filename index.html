@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>Sistema de Gestão de Vouchers & Cotas — RSM</title>
-  <link rel="stylesheet" href="style.css?v=20261015_09" />
+  <link rel="stylesheet" href="style.css?v=20261015_12" />
 </head>
 <body>
 
@@ -377,11 +380,13 @@
         </div>
 
         <div class="form-row">
-          <div class="form-group">
-            <label for="inputNome">Nome do Convidado / Sócio *</label>
-            <input type="text" id="inputNome" required placeholder="Ex: MARIA DE FATIMA RODRIGUES" />
+          <div class="form-group" style="flex: 2;">
+            <label for="inputNome">Nome do Convidado / Sócio * <small style="color:var(--text-3);font-weight:normal;">(digite para buscar na base)</small></label>
+            <input type="text" id="inputNome" list="datalistSociosVoucher" required placeholder="Digite para buscar na base de sócios..." autocomplete="off" />
+            <datalist id="datalistSociosVoucher"></datalist>
+            <small id="inputNomeInfoSocio" style="color:var(--primary);font-size:.78rem;display:block;margin-top:.25rem;font-weight:600;"></small>
           </div>
-          <div class="form-group">
+          <div class="form-group" style="flex: 1;">
             <label for="inputSala">Sala de Venda</label>
             <input type="text" id="inputSala" placeholder="Ex: VILLA" value="VILLA" />
           </div>
@@ -745,8 +750,8 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js?v=20261015_11"></script>
-  <script src="cotas_dados.js?v=20261015_11"></script>
-  <script src="app.js?v=20261015_11"></script>
+  <script src="config.js?v=20261015_12"></script>
+  <script src="cotas_dados.js?v=20261015_12"></script>
+  <script src="app.js?v=20261015_12"></script>
 </body>
 </html>

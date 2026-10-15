@@ -1715,6 +1715,9 @@ function abrirModalNovo() {
 
   adequarTextosPorDiarias();
 
+  document.getElementById('wrapAdminAssinanteEdit')?.classList.add('hidden');
+  if (document.getElementById('inputAdminAssinanteEdit')) document.getElementById('inputAdminAssinanteEdit').value = '';
+
   document.getElementById('modalOverlay').classList.remove('hidden');
   salvarSnapshotModalVoucher();
   document.getElementById('inputNome').focus();
@@ -1739,6 +1742,18 @@ async function abrirModalEditar(id) {
   document.getElementById('inputObs').value = v.observacoes || '';
   document.getElementById('inputEspecUso').value = v.especificacoes_uso || '';
   if (v.modelo_id) document.getElementById('selectModelo').value = v.modelo_id;
+
+  const wrapAssinante = document.getElementById('wrapAdminAssinanteEdit');
+  const inAssinante = document.getElementById('inputAdminAssinanteEdit');
+  if (wrapAssinante && inAssinante) {
+    if (v.assinado_em) {
+      wrapAssinante.classList.remove('hidden');
+      inAssinante.value = v.admin_assinante_nome || '';
+    } else {
+      wrapAssinante.classList.add('hidden');
+      inAssinante.value = '';
+    }
+  }
 
   document.getElementById('modalTitulo').textContent = 'Editar Voucher';
   document.getElementById('btnSalvar').textContent = 'Atualizar Voucher';
@@ -1866,6 +1881,19 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
   try {
     let resultData;
     if (id) {
+      const vAntigo = listaVouchers.find(v => v.id === id);
+      if (vAntigo) {
+        payload.status_fluxo = vAntigo.status_fluxo || statusFluxo;
+        payload.assinado_em = vAntigo.assinado_em || null;
+        payload.admin_assinante_nome = vAntigo.admin_assinante_nome || null;
+        payload.assinatura_url = vAntigo.assinatura_url || null;
+        payload.pos_venda_nome = vAntigo.pos_venda_nome || payload.pos_venda_nome;
+      }
+      const inAssinante = document.getElementById('inputAdminAssinanteEdit');
+      if (inAssinante && inAssinante.value.trim()) {
+        payload.admin_assinante_nome = inAssinante.value.trim();
+      }
+
       try {
         const { data, error } = await db.from('vouchers').update(payload).eq('id', id).select().single();
         if (!error && data) resultData = data;

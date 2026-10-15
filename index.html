@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Villamor Vouchers — Gestão de Vouchers & Cotas</title>
-  <link rel="stylesheet" href="style.css?v=20261015_24" />
+  <link rel="stylesheet" href="style.css?v=20261015_25" />
 </head>
 <body>
 
@@ -515,6 +515,15 @@
               <textarea id="inputObs" rows="3" placeholder="Ex: Sócio solicitou check-in tardio, apartamento térreo, autorizado pela gerência..."></textarea>
               <small class="obs-field-tip">⚠️ Quando preenchido, gera alerta chamativo na listagem de vouchers e reservas.</small>
             </div>
+
+            <!-- Edição de Assinante Oficial (Exibido na edição de voucher já homologado) -->
+            <div class="form-group hidden" id="wrapAdminAssinanteEdit" style="margin-top:.5rem;background:var(--bg);border:1px solid var(--border);padding:.6rem .8rem;border-radius:8px;">
+              <label for="inputAdminAssinanteEdit" style="font-size:.75rem;font-weight:700;color:var(--text-1);display:flex;align-items:center;gap:4px;">
+                ✍️ Assinatura Oficial — Nome do Administrador / Gerente
+              </label>
+              <input type="text" id="inputAdminAssinanteEdit" placeholder="Ex: Marcio Pimenta" style="margin-top:.25rem;" />
+              <small style="color:var(--text-3);font-size:.7rem;display:block;margin-top:3px;">Nome que constará na assinatura do voucher impresso.</small>
+            </div>
           </div>
         </div>
 
@@ -877,8 +886,8 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js?v=20261015_24"></script>
-  <script src="cotas_dados.js?v=20261015_24"></script>
-  <script src="app.js?v=20261015_24"></script>
+  <script src="config.js?v=20261015_25"></script>
+  <script src="cotas_dados.js?v=20261015_25"></script>
+  <script src="app.js?v=20261015_25"></script>
 </body>
 </html>

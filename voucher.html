@@ -443,7 +443,7 @@
   <!-- Libs -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-  <script src="config.js?v=20261015_23"></script>
+  <script src="config.js?v=20261015_25"></script>
   <script>
     const { createClient } = supabase;
     const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -736,7 +736,7 @@
                 <div class="v-assinatura-linha">
                   ${assinaturaUrl ? `<img src="${assinaturaUrl}" class="v-assinatura-img" alt="Assinatura Oficial" />` : '<div style="font-size:11px;font-weight:800;color:#0f766e;">ASSINADO DIGITALMENTE</div>'}
                 </div>
-                <div class="v-assinatura-cargo">${quemAssinou ? `ADMIN / GERENTE (${escHtml(quemAssinou)})` : 'GERENTE GERAL'}</div>
+                <div class="v-assinatura-cargo">${quemAssinou ? `ADMIN / GERENTE (${escHtml(quemAssinou).toUpperCase()})` : 'GERENTE GERAL'}</div>
                 <div style="font-size:7.5px;color:#15803d;margin-top:2px;font-weight:700;">✓ Assinado oficialmente em ${fmtDateTime(quandoAssinou)}</div>
               ` : `
                 <div class="v-assinatura-linha" style="border-bottom: 2px dashed #d97706; min-height: 44px; display: flex; align-items: center; justify-content: center; background: #fffbeb; border-radius: 4px; padding: 3px 6px;">

@@ -507,7 +507,9 @@ body {
   backdrop-filter: blur(2px);
 }
 
-.modal-overlay.hidden { display: none; }
+.hidden { display: none !important; }
+.modal-overlay.hidden { display: none !important; }
+.login-overlay.hidden { display: none !important; }
 
 .modal {
   background: var(--surface);
@@ -609,7 +611,7 @@ textarea { resize: vertical; }
   font-size: .875rem;
   font-weight: 500;
   box-shadow: var(--shadow-lg);
-  z-index: 999;
+  z-index: 99999;
   animation: fadeInUp .2s ease;
 }
 

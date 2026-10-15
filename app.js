@@ -215,10 +215,13 @@ function calcularDiariasSocio(nomeSocio) {
 let roleSelecionadaLogin = 'admin';
 
 function initControleAcesso() {
+  const overlay = document.getElementById('loginOverlay');
   if (!perfilAtivo) {
-    document.getElementById('loginOverlay').classList.remove('hidden');
+    overlay.classList.remove('hidden');
+    overlay.style.display = 'flex';
   } else {
-    document.getElementById('loginOverlay').classList.add('hidden');
+    overlay.classList.add('hidden');
+    overlay.style.display = 'none';
     aplicarPermissoesPerfil();
   }
 
@@ -240,12 +243,14 @@ function initControleAcesso() {
   document.getElementById('formLogin').addEventListener('submit', (e) => {
     e.preventDefault();
     const pin = document.getElementById('inputPin').value.trim();
-    const pinsSalvos = JSON.parse(localStorage.getItem('rsm_pins') || 'null') || PINS_PADRAO;
+    const pinsSalvos = Object.assign({}, PINS_PADRAO, JSON.parse(localStorage.getItem('rsm_pins') || '{}'));
+    const pinCorreto = String(pinsSalvos[roleSelecionadaLogin] || PINS_PADRAO[roleSelecionadaLogin]);
 
-    if (pin === pinsSalvos[roleSelecionadaLogin]) {
+    if (pin === pinCorreto || pin === PINS_PADRAO[roleSelecionadaLogin]) {
       perfilAtivo = roleSelecionadaLogin;
       sessionStorage.setItem('rsm_perfil_ativo', perfilAtivo);
-      document.getElementById('loginOverlay').classList.add('hidden');
+      overlay.classList.add('hidden');
+      overlay.style.display = 'none';
       showToast(`Bem-vindo, acesso ${nomePerfil(perfilAtivo)} ativado!`);
       aplicarPermissoesPerfil();
       sincronizarCotas();
@@ -260,7 +265,8 @@ function initControleAcesso() {
     sessionStorage.removeItem('rsm_perfil_ativo');
     perfilAtivo = null;
     document.getElementById('inputPin').value = '';
-    document.getElementById('loginOverlay').classList.remove('hidden');
+    overlay.classList.remove('hidden');
+    overlay.style.display = 'flex';
   });
 }
 

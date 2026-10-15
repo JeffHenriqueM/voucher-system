@@ -263,11 +263,20 @@
       width: 180px;
       border-bottom: 1px solid #333;
       margin-bottom: 4px;
-      height: 36px;
+      height: 44px;
       display: flex;
       align-items: flex-end;
       justify-content: center;
       padding-bottom: 2px;
+      position: relative;
+    }
+
+    .v-assinatura-img {
+      max-height: 46px;
+      max-width: 160px;
+      object-fit: contain;
+      position: absolute;
+      bottom: 2px;
     }
 
     .v-assinatura-cargo {
@@ -277,6 +286,29 @@
       letter-spacing: .1em;
       text-transform: uppercase;
     }
+
+    /* Estilos do Histórico de Estadias no Voucher */
+    .v-historico-box {
+      border-bottom: 1px solid #111;
+      padding: 6px 14px 8px;
+      background: #fafafa;
+    }
+    .v-historico-title {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: 4px;
+    }
+    .v-historico-row {
+      font-size: 9.5px;
+      color: #333;
+      display: flex;
+      justify-content: space-between;
+      padding: 2px 0;
+      border-bottom: 1px dashed #e2e8f0;
+    }
+    .v-historico-row:last-child { border-bottom: none; }
 
     .v-data-impressao {
       padding: 16px 14px 10px;
@@ -420,6 +452,24 @@
         .join('');
     }
 
+    // ── Histórico de estadias ─────────────────────────────────
+    function renderHistoricoEstadias(lista) {
+      if (!lista || !lista.length) return '';
+      const rows = lista.map((h, i) => `
+        <div class="v-historico-row">
+          <span><strong>Estadia ${i+1}:</strong> ${h.diarias_utilizadas} diária(s) — Check-in: ${fmtDate(h.data_checkin)} a Check-out: ${fmtDate(h.data_checkout)}</span>
+          <span style="color:#64748b;">${escHtml(h.observacoes || '')}</span>
+        </div>
+      `).join('');
+
+      return `
+        <div class="v-historico-box">
+          <div class="v-historico-title">HISTÓRICO DE UTILIZAÇÃO DAS DIÁRIAS :</div>
+          ${rows}
+        </div>
+      `;
+    }
+
     // ── Carregar ─────────────────────────────────────────────
     async function carregarVoucher() {
       if (!codigo) {
@@ -438,7 +488,23 @@
         return;
       }
 
-      renderVoucher(data);
+      // Buscar histórico de utilizações
+      let historicoEstadias = [];
+      try {
+        const { data: hist } = await db.from('voucher_historico_uso').select('*').eq('voucher_codigo', codigo).order('created_at', { ascending: true });
+        if (hist) historicoEstadias = hist;
+      } catch (e) {}
+
+      // Buscar assinatura oficial se o voucher não tiver específica
+      let assinaturaUrl = data.assinatura_url || localStorage.getItem('rsm_assinatura_admin') || '';
+      if (!assinaturaUrl) {
+        try {
+          const { data: cfg } = await db.from('configuracoes_sistema').select('valor').eq('chave', 'assinatura_oficial').single();
+          if (cfg && cfg.valor && cfg.valor.url) assinaturaUrl = cfg.valor.url;
+        } catch (e) {}
+      }
+
+      renderVoucher(data, historicoEstadias, assinaturaUrl);
     }
 
     // ── Render Erro ──────────────────────────────────────────
@@ -453,7 +519,7 @@
     }
 
     // ── Render Voucher ───────────────────────────────────────
-    function renderVoucher(v) {
+    function renderVoucher(v, historicoEstadias = [], assinaturaUrl = '') {
       document.title = `Voucher ${v.numero || v.codigo} — ${v.nome_socio}`;
       const disponivel = !v.usado;
       const linkAtual = window.location.href;
@@ -528,6 +594,15 @@
               <span class="v-label">BRINDE:</span>
               <span class="v-value">${brinde}</span>
             </div>
+            <div class="v-row">
+              <span class="v-label">DIÁRIAS CONCEDIDAS:</span>
+              <span class="v-value"><strong>${v.diarias_totais || v.diarias || 2} diária(s)</strong></span>
+            </div>
+            ${(v.diarias_usadas > 0) ? `
+            <div class="v-row" style="color:#b91c1c;">
+              <span class="v-label">DIÁRIAS UTILIZADAS:</span>
+              <span class="v-value"><strong>${v.diarias_usadas} diária(s)</strong> (Restam: ${Math.max(0, (v.diarias_totais || v.diarias || 2) - v.diarias_usadas)})</span>
+            </div>` : ''}
             ${v.valor_hospedagem ? `
             <div class="v-row">
               <span class="v-label">VALOR HOSP.:</span>
@@ -541,6 +616,9 @@
           <div class="v-espec-title">ESPECIFICAÇÃO DO VOUCHER :</div>
           <div class="v-espec-texto">${espec}</div>
 
+          <!-- Histórico de Estadias / Reservas (se houver) -->
+          ${renderHistoricoEstadias(historicoEstadias)}
+
           <!-- Especificações de uso -->
           <div class="v-uso-title">ESPECIFICAÇÕES DE USO :</div>
           <div class="v-uso-lista">
@@ -550,7 +628,9 @@
           <!-- Rodapé -->
           <div class="v-footer">
             <div class="v-assinatura">
-              <div class="v-assinatura-linha"></div>
+              <div class="v-assinatura-linha">
+                ${assinaturaUrl ? `<img src="${assinaturaUrl}" class="v-assinatura-img" alt="Assinatura" />` : ''}
+              </div>
               <div class="v-assinatura-cargo">GERENTE</div>
             </div>
             <div class="v-data-impressao">

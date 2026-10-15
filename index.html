@@ -3,10 +3,45 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sistema de Gestão de Vouchers & Cotas</title>
+  <title>Sistema de Gestão de Vouchers & Cotas — RSM</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
+  <!-- ── Modal de Login / Seleção de Acesso ────────────────────── -->
+  <div class="login-overlay hidden" id="loginOverlay">
+    <div class="login-card">
+      <div class="login-icon">🔐</div>
+      <h2 class="login-title">Acesso ao Sistema</h2>
+      <p class="login-desc">Selecione seu perfil e digite o PIN de 4 dígitos</p>
+
+      <div class="role-picker">
+        <div class="role-option selected" data-role="admin">
+          <span class="role-option-icon">👑</span>
+          <span class="role-option-title">Admin</span>
+        </div>
+        <div class="role-option" data-role="reservas">
+          <span class="role-option-icon">🛎️</span>
+          <span class="role-option-title">Reservas</span>
+        </div>
+        <div class="role-option" data-role="pos_venda">
+          <span class="role-option-icon">💼</span>
+          <span class="role-option-title">Pós Venda</span>
+        </div>
+      </div>
+
+      <form id="formLogin">
+        <div class="form-group" style="margin-bottom:1.25rem;">
+          <label for="inputPin">PIN de Acesso</label>
+          <input type="password" id="inputPin" class="pin-input" maxlength="4" placeholder="••••" required autofocus />
+          <small id="pinDica" style="color:var(--text-3);display:block;margin-top:.4rem;font-size:.75rem;">PIN padrão: 1234</small>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" style="padding:.75rem;">
+          Entrar no Sistema
+        </button>
+      </form>
+    </div>
+  </div>
 
   <!-- ── Header ─────────────────────────────────────────────────── -->
   <header class="header">
@@ -15,32 +50,48 @@
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
           <path d="M1 9l2-2v13h18V7l2 2V4l-2-2H3L1 4v5zm2 9V9h18v9H3zm9-1a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0-2a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/>
         </svg>
-        <span>Vouchers & Cotas</span>
+        <span>RSM Vouchers</span>
       </div>
 
       <!-- Abas de Navegação -->
       <nav class="main-nav">
         <button class="nav-btn active" id="tabNavCotas">
-          <span>👥 Base de Cotas / Sócios</span>
+          <span>👥 Base de Cotas</span>
           <span class="nav-counter" id="badgeTotalCotas">433</span>
         </button>
         <button class="nav-btn" id="tabNavVouchers">
           <span>🎟️ Vouchers Emitidos</span>
           <span class="nav-counter" id="badgeTotalVouchers">0</span>
         </button>
+        <button class="nav-btn" id="tabNavReservas">
+          <span>🛎️ Baixa de Reservas</span>
+        </button>
+        <button class="nav-btn" id="tabNavModelos">
+          <span>📝 Modelos</span>
+        </button>
       </nav>
 
-      <button class="btn btn-primary" id="btnNovo">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z"/></svg>
-        Emitir Novo Voucher
-      </button>
+      <!-- Ações do Header & Perfil Ativo -->
+      <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+        <button class="btn btn-ghost" id="btnAssinaturaAdmin" title="Configurar Assinatura Oficial">
+          ✍️ Assinatura
+        </button>
+        <button class="btn btn-primary" id="btnNovo">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z"/></svg>
+          Emitir Voucher
+        </button>
+        <div class="perfil-badge-wrap">
+          <span class="perfil-badge perfil-admin" id="perfilBadge">👑 Admin</span>
+          <button class="btn-trocar-perfil" id="btnTrocarPerfil">Sair</button>
+        </div>
+      </div>
     </div>
   </header>
 
   <main class="container">
 
     <!-- ════════════════════════════════════════════════════════════ -->
-    <!-- SEÇÃO 1: BASE DE COTAS / SÓCIOS                             -->
+    <!-- ABA 1: BASE DE COTAS / SÓCIOS                             -->
     <!-- ════════════════════════════════════════════════════════════ -->
     <section id="secaoCotas">
       <!-- Resumo das Cotas -->
@@ -87,20 +138,20 @@
               <th>Produto / Cota</th>
               <th>Data Aquisição</th>
               <th>Situação da Cota</th>
+              <th>Diárias Anuais Concedidas</th>
               <th>Status Voucher</th>
               <th>Ação</th>
             </tr>
           </thead>
           <tbody id="tbodyCotas">
-            <tr><td colspan="6" class="empty">Carregando base de cotas…</td></tr>
+            <tr><td colspan="7" class="empty">Carregando base de cotas…</td></tr>
           </tbody>
         </table>
       </div>
     </section>
 
-
     <!-- ════════════════════════════════════════════════════════════ -->
-    <!-- SEÇÃO 2: VOUCHERS EMITIDOS                                  -->
+    <!-- ABA 2: VOUCHERS EMITIDOS                                    -->
     <!-- ════════════════════════════════════════════════════════════ -->
     <section id="secaoVouchers" class="hidden">
       <!-- Stats Vouchers -->
@@ -118,8 +169,8 @@
           <span class="stat-label">Utilizados</span>
         </div>
         <div class="stat-card stat-blue">
-          <span class="stat-value" id="statValor">—</span>
-          <span class="stat-label">Valor Total Informado</span>
+          <span class="stat-value" id="statDiariasRestantes">—</span>
+          <span class="stat-label">Saldo de Diárias Disponíveis</span>
         </div>
       </div>
 
@@ -132,7 +183,7 @@
         <div class="filter-tabs">
           <button class="tab active" data-status="">Todos</button>
           <button class="tab" data-status="disponivel">Disponíveis</button>
-          <button class="tab" data-status="usado">Usados</button>
+          <button class="tab" data-status="usado">Utilizados</button>
         </div>
       </div>
 
@@ -143,26 +194,78 @@
             <tr>
               <th>Número</th>
               <th>Sócio / Convidado</th>
-              <th>Diárias</th>
-              <th>Valor</th>
+              <th>Diárias (Totais / Usadas / Saldo)</th>
+              <th>Valor Hosp.</th>
               <th>Status</th>
-              <th>Data de Uso</th>
               <th>Link</th>
               <th>Ações</th>
             </tr>
           </thead>
           <tbody id="tbodyVouchers">
-            <tr><td colspan="8" class="empty">Carregando…</td></tr>
+            <tr><td colspan="7" class="empty">Carregando…</td></tr>
           </tbody>
         </table>
       </div>
     </section>
 
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- ABA 3: BAIXA DE RESERVAS & CONTROLE DE USO                  -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section id="secaoReservas" class="hidden">
+      <div class="table-wrap" style="padding:1.5rem;margin-bottom:1.5rem;">
+        <h2 style="font-size:1.1rem;margin-bottom:.5rem;">🛎️ Painel da Equipe de Reservas</h2>
+        <p style="color:var(--text-2);margin-bottom:1.25rem;">Consulte o voucher pelo número, código ou nome do sócio para registrar a hospedagem e dar baixa nas diárias.</p>
+
+        <div class="search-wrap" style="max-width:500px;margin-bottom:1rem;">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M10 2a8 8 0 1 1 0 16A8 8 0 0 1 10 2zm0 2a6 6 0 1 0 0 12A6 6 0 0 0 10 4zm8.293 12.293 3.414 3.414-1.414 1.414-3.414-3.414 1.414-1.414z"/></svg>
+          <input type="text" id="inputBuscaReservas" placeholder="Digite o número do voucher ou nome do sócio…" />
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Voucher Nº</th>
+              <th>Sócio</th>
+              <th>Diárias Totais</th>
+              <th>Já Usadas</th>
+              <th>Saldo Restante</th>
+              <th>Histórico de Estadias</th>
+              <th>Ação</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyReservas">
+            <tr><td colspan="7" class="empty">Carregando vouchers para reservas…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- ABA 4: MODELOS DE VOUCHERS                                  -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section id="secaoModelos" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
+        <div>
+          <h2 style="font-size:1.2rem;">Modelos de Vouchers Cadastrados</h2>
+          <p style="color:var(--text-2);font-size:.85rem;">Templates com especificações e regras que podem ser selecionados na emissão.</p>
+        </div>
+        <button class="btn btn-primary" id="btnNovoModelo">
+          + Criar Novo Modelo
+        </button>
+      </div>
+
+      <div class="stats-bar" id="gridModelos" style="grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));">
+        <!-- Cards de modelos renderizados dinamicamente -->
+      </div>
+    </section>
+
   </main>
 
-  <!-- ── Modal Criar / Emitir / Editar Voucher ────────────────── -->
+  <!-- ── Modal Emitir / Editar Voucher ────────────────────────── -->
   <div class="modal-overlay hidden" id="modalOverlay">
-    <div class="modal">
+    <div class="modal" style="max-width:550px;">
       <div class="modal-header">
         <h2 id="modalTitulo">Novo Voucher</h2>
         <button class="modal-close" id="btnFecharModal">✕</button>
@@ -171,6 +274,14 @@
         <input type="hidden" id="editId" />
         <input type="hidden" id="cotaVinculadaId" />
 
+        <!-- Seleção do Modelo de Voucher -->
+        <div class="form-group">
+          <label for="selectModelo">Modelo de Voucher *</label>
+          <select id="selectModelo" style="width:100%;padding:.5rem;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);">
+            <!-- Opções de modelos -->
+          </select>
+        </div>
+
         <div class="form-row">
           <div class="form-group">
             <label for="inputNome">Nome do Convidado / Sócio *</label>
@@ -178,17 +289,17 @@
           </div>
           <div class="form-group">
             <label for="inputSala">Sala de Venda</label>
-            <input type="text" id="inputSala" placeholder="Ex: VILLA" />
+            <input type="text" id="inputSala" placeholder="Ex: VILLA" value="VILLA" />
           </div>
         </div>
 
         <div class="form-row">
           <div class="form-group">
             <label for="inputValor">Valor da Hospedagem (R$)</label>
-            <input type="number" id="inputValor" min="0" step="0.01" placeholder="0,00 (ou em branco)" />
+            <input type="number" id="inputValor" min="0" step="0.01" placeholder="0,00 (deixe em branco se a definir)" />
           </div>
           <div class="form-group">
-            <label for="inputDiarias">Qtd. de Diárias *</label>
+            <label for="inputDiarias">Qtd. de Diárias * <small id="lblDicaDiarias" style="color:var(--primary);"></small></label>
             <input type="number" id="inputDiarias" required min="1" step="1" value="2" />
           </div>
         </div>
@@ -206,17 +317,154 @@
 
         <div class="form-group">
           <label for="inputObs">Especificação do Voucher</label>
-          <textarea id="inputObs" rows="2" placeholder="Ex: Voucher de 02 diárias anuais para um casal no Hotel Villamor Prime."></textarea>
+          <textarea id="inputObs" rows="2"></textarea>
         </div>
 
         <div class="form-group">
           <label for="inputEspecUso">Especificações de Uso (1 regra por linha)</label>
-          <textarea id="inputEspecUso" rows="6"></textarea>
+          <textarea id="inputEspecUso" rows="5"></textarea>
         </div>
 
         <div class="form-actions">
           <button type="button" class="btn btn-ghost" id="btnCancelar">Cancelar</button>
           <button type="submit" class="btn btn-primary" id="btnSalvar">Salvar Voucher</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Modal Baixa de Diárias (Reservas) ─────────────────────── -->
+  <div class="modal-overlay hidden" id="modalBaixaReserva">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>🛎️ Registrar Hospedagem / Baixa de Diárias</h2>
+        <button class="modal-close" id="btnFecharBaixa">✕</button>
+      </div>
+      <form id="formBaixaReserva">
+        <input type="hidden" id="baixaVoucherId" />
+        <input type="hidden" id="baixaVoucherCodigo" />
+        <input type="hidden" id="baixaSocioNome" />
+
+        <div style="background:var(--bg);padding:1rem;border-radius:var(--radius-sm);margin-bottom:1rem;">
+          <h3 id="baixaTituloSocio" style="font-size:1rem;margin-bottom:.25rem;">—</h3>
+          <p id="baixaInfoSaldo" style="font-size:.85rem;color:var(--text-2);">Diárias Concedidas: <strong>—</strong> | Restantes: <strong>—</strong></p>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="baixaDiariasQtd">Diárias a Utilizar nesta Hospedagem *</label>
+            <input type="number" id="baixaDiariasQtd" required min="1" step="1" value="1" />
+          </div>
+          <div class="form-group">
+            <label for="baixaOperador">Operador de Reservas</label>
+            <input type="text" id="baixaOperador" value="Equipe de Reservas" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="baixaCheckin">Data de Check-in *</label>
+            <input type="date" id="baixaCheckin" required />
+          </div>
+          <div class="form-group">
+            <label for="baixaCheckout">Data de Check-out *</label>
+            <input type="date" id="baixaCheckout" required />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="baixaObs">Observações da Hospedagem</label>
+          <input type="text" id="baixaObs" placeholder="Ex: Apartamento Luxo 204, casal + 1 filho" />
+        </div>
+
+        <!-- Histórico anterior do voucher -->
+        <div id="baixaHistoricoContainer" style="margin-top:1rem;">
+          <label style="font-weight:600;font-size:.78rem;color:var(--text-2);text-transform:uppercase;">Histórico de Estadias Anteriores:</label>
+          <div class="historico-timeline" id="baixaHistoricoLista">
+            <p style="color:var(--text-3);">Nenhuma estadia anterior registrada.</p>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" id="btnCancelarBaixa">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnConfirmarBaixa">Confirmar Baixa de Diárias</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Modal Configurar Assinatura Oficial (Admin) ────────────── -->
+  <div class="modal-overlay hidden" id="modalAssinatura">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>✍️ Assinatura Oficial do Gerente / Admin</h2>
+        <button class="modal-close" id="btnFecharAssinatura">✕</button>
+      </div>
+      <div style="padding:1.5rem;">
+        <p style="color:var(--text-2);font-size:.85rem;margin-bottom:1rem;">
+          Esta assinatura será impressa automaticamente no rodapé de todos os vouchers emitidos.
+        </p>
+
+        <!-- Opção 1: Desenhar no Canvas -->
+        <label style="font-weight:700;">Opção A: Desenhe a assinatura abaixo</label>
+        <div class="signature-box">
+          <canvas id="sigCanvas"></canvas>
+          <div class="sig-actions">
+            <button type="button" class="btn btn-ghost" id="btnLimparAssinatura" style="font-size:.75rem;">Limpar Desenho</button>
+            <span style="font-size:.75rem;color:var(--text-3);">Desenhe com o mouse ou o dedo</span>
+          </div>
+        </div>
+
+        <!-- Opção 2: Upload de Imagem -->
+        <div style="margin-top:1.25rem;">
+          <label style="font-weight:700;">Opção B: Ou envie imagem da assinatura (PNG/JPG)</label>
+          <input type="file" id="fileAssinatura" accept="image/*" style="margin-top:.4rem;font-size:.85rem;" />
+        </div>
+
+        <!-- Preview Atual -->
+        <div style="margin-top:1.25rem;background:var(--bg);padding:1rem;border-radius:var(--radius-sm);text-align:center;">
+          <span style="font-size:.75rem;color:var(--text-2);display:block;margin-bottom:.5rem;">Pré-visualização atual da assinatura:</span>
+          <img id="imgAssinaturaPreview" class="sig-preview-img" src="" alt="Nenhuma assinatura salva" style="display:none;" />
+          <span id="txtSemAssinatura" style="font-size:.8rem;color:var(--text-3);">Nenhuma assinatura cadastrada ainda.</span>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" id="btnCancelarAssinatura">Fechar</button>
+          <button type="button" class="btn btn-primary" id="btnSalvarAssinatura">Salvar Assinatura Oficial</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal Criar/Editar Modelo de Voucher (Admin) ──────────── -->
+  <div class="modal-overlay hidden" id="modalModelo">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalModeloTitulo">Novo Modelo de Voucher</h2>
+        <button class="modal-close" id="btnFecharModalModelo">✕</button>
+      </div>
+      <form id="formModelo">
+        <input type="hidden" id="editModeloId" />
+        <div class="form-group">
+          <label for="inputModeloNome">Nome do Modelo *</label>
+          <input type="text" id="inputModeloNome" required placeholder="Ex: Modelo Padrão RSM" />
+        </div>
+        <div class="form-group">
+          <label for="inputModeloTituloDoc">Título no Documento *</label>
+          <input type="text" id="inputModeloTituloDoc" required value="RSM EMPREENDIMENTO" />
+        </div>
+        <div class="form-group">
+          <label for="inputModeloEspec">Especificação Padrão</label>
+          <textarea id="inputModeloEspec" rows="2" placeholder="Voucher de {diarias} diárias para um casal..."></textarea>
+          <small style="color:var(--text-3);font-size:.75rem;">Use {diarias} e {produto} como variáveis automáticas.</small>
+        </div>
+        <div class="form-group">
+          <label for="inputModeloRegras">Regras de Uso (1 por linha)</label>
+          <textarea id="inputModeloRegras" rows="6"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" id="btnCancelarModelo">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnSalvarModelo">Salvar Modelo</button>
         </div>
       </form>
     </div>

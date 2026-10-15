@@ -679,4 +679,186 @@ textarea { resize: vertical; }
   .filters  { flex-direction: column; align-items: stretch; }
   .filter-tabs { overflow-x: auto; }
   .stats-bar { grid-template-columns: repeat(2, 1fr); }
+  .header-inner { flex-direction: column; align-items: stretch; }
+  .main-nav { overflow-x: auto; }
+}
+
+/* ─── Acessos & Perfis ───────────────────────────────────────── */
+.perfil-badge-wrap {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.perfil-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: .35rem .75rem;
+  border-radius: 99px;
+  font-size: .8125rem;
+  font-weight: 700;
+}
+.perfil-admin     { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+.perfil-reservas  { background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+.perfil-pos_venda { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+
+.btn-trocar-perfil {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  padding: .3rem .6rem;
+  border-radius: 6px;
+  font-size: .75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+}
+.btn-trocar-perfil:hover {
+  background: var(--bg);
+  color: var(--text-1);
+}
+
+/* ─── Modal de Login de Acesso ───────────────────────────────── */
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+  backdrop-filter: blur(4px);
+}
+.login-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  max-width: 420px;
+  width: 100%;
+  padding: 2rem;
+  text-align: center;
+}
+.login-icon {
+  font-size: 2.5rem;
+  margin-bottom: .75rem;
+}
+.login-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: .5rem;
+}
+.login-desc {
+  font-size: .85rem;
+  color: var(--text-2);
+  margin-bottom: 1.5rem;
+}
+.role-picker {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: .5rem;
+  margin-bottom: 1.25rem;
+}
+.role-option {
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: .75rem .25rem;
+  cursor: pointer;
+  transition: all .15s;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .25rem;
+}
+.role-option.selected {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary);
+}
+.role-option-icon { font-size: 1.5rem; }
+.role-option-title { font-size: .75rem; font-weight: 700; }
+
+.pin-input {
+  letter-spacing: .5em;
+  font-size: 1.5rem;
+  text-align: center;
+  font-weight: 700;
+  padding: .6rem !important;
+}
+
+/* ─── Canvas de Assinatura ───────────────────────────────────── */
+.signature-box {
+  border: 2px dashed #cbd5e1;
+  border-radius: var(--radius-sm);
+  background: #fafafa;
+  margin-top: .5rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+#sigCanvas {
+  width: 100%;
+  height: 150px;
+  display: block;
+  cursor: crosshair;
+  touch-action: none;
+}
+.sig-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: .5rem;
+  background: #f1f5f9;
+  border-top: 1px solid var(--border);
+}
+.sig-preview-img {
+  max-height: 50px;
+  display: block;
+  margin: 0 auto;
+}
+
+/* ─── Diárias & Saldo ────────────────────────────────────────── */
+.diarias-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .8rem;
+  font-weight: 700;
+  padding: .2rem .5rem;
+  border-radius: 99px;
+}
+.diarias-disponiveis { background: #dcfce7; color: #16a34a; }
+.diarias-usadas      { background: #fee2e2; color: #dc2626; }
+.diarias-saldo       { background: #e0f2fe; color: #0284c7; }
+
+/* ─── Histórico de Uso / Reservas ────────────────────────────── */
+.historico-timeline {
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  padding: .75rem;
+  margin-top: .5rem;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  font-size: .8rem;
+}
+.historico-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: .4rem .6rem;
+  background: var(--surface);
+  border-radius: 6px;
+  border-left: 3px solid var(--primary);
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+.historico-periodo {
+  font-weight: 700;
+  color: var(--text-1);
+}
+.historico-info {
+  color: var(--text-2);
+  font-size: .75rem;
 }

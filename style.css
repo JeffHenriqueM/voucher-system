@@ -509,7 +509,12 @@ body {
 
 .hidden { display: none !important; }
 .modal-overlay.hidden { display: none !important; }
-.login-overlay.hidden { display: none !important; }
+.login-overlay.hidden {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
 
 .modal {
   background: var(--surface);

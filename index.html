@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistema de Gestão de Vouchers & Cotas — RSM</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=20261015_02" />
 </head>
 <body>
 
@@ -30,13 +30,13 @@
         </div>
       </div>
 
-      <form id="formLogin">
+      <form id="formLogin" onsubmit="executarLogin(); return false;">
         <div class="form-group" style="margin-bottom:1.25rem;">
           <label for="inputPin">PIN de Acesso</label>
           <input type="password" id="inputPin" class="pin-input" maxlength="4" placeholder="••••" required autofocus />
           <small id="pinDica" style="color:var(--text-3);display:block;margin-top:.4rem;font-size:.75rem;">PIN padrão: 1234</small>
         </div>
-        <button type="submit" class="btn btn-primary btn-full" style="padding:.75rem;">
+        <button type="button" id="btnEntrarLogin" onclick="executarLogin()" class="btn btn-primary btn-full" style="padding:.75rem;">
           Entrar no Sistema
         </button>
       </form>
@@ -598,8 +598,8 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js"></script>
-  <script src="cotas_dados.js"></script>
-  <script src="app.js"></script>
+  <script src="config.js?v=20261015_02"></script>
+  <script src="cotas_dados.js?v=20261015_02"></script>
+  <script src="app.js?v=20261015_02"></script>
 </body>
 </html>

@@ -239,25 +239,34 @@ function initControleAcesso() {
     });
   });
 
-  // Submit Login
-  document.getElementById('formLogin').addEventListener('submit', (e) => {
-    e.preventDefault();
-    const pin = document.getElementById('inputPin').value.trim();
+  // Função global de Login
+  function executarLogin() {
+    const pinInput = document.getElementById('inputPin');
+    const pin = (pinInput ? pinInput.value : '').trim();
     const pinsSalvos = Object.assign({}, PINS_PADRAO, JSON.parse(localStorage.getItem('rsm_pins') || '{}'));
     const pinCorreto = String(pinsSalvos[roleSelecionadaLogin] || PINS_PADRAO[roleSelecionadaLogin]);
 
     if (pin === pinCorreto || pin === PINS_PADRAO[roleSelecionadaLogin]) {
       perfilAtivo = roleSelecionadaLogin;
       sessionStorage.setItem('rsm_perfil_ativo', perfilAtivo);
-      overlay.classList.add('hidden');
-      overlay.style.display = 'none';
+      if (overlay) {
+        overlay.classList.add('hidden');
+        overlay.style.setProperty('display', 'none', 'important');
+      }
       showToast(`Bem-vindo, acesso ${nomePerfil(perfilAtivo)} ativado!`);
       aplicarPermissoesPerfil();
       sincronizarCotas();
     } else {
       showToast('PIN incorreto para este perfil.', 'error');
-      document.getElementById('inputPin').select();
+      if (pinInput) pinInput.select();
     }
+  }
+  window.executarLogin = executarLogin;
+
+  // Submit Login
+  document.getElementById('formLogin').addEventListener('submit', (e) => {
+    e.preventDefault();
+    executarLogin();
   });
 
   // Botão Trocar Perfil / Sair

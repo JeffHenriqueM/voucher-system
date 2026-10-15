@@ -7,30 +7,97 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Villamor Vouchers — Gestão de Vouchers & Cotas</title>
-  <link rel="stylesheet" href="style.css?v=20261015_17" />
+  <link rel="stylesheet" href="style.css?v=20261015_18" />
 </head>
 <body>
 
   <!-- ── Modal de Login / Seleção de Acesso ────────────────────── -->
   <div class="login-overlay hidden" id="loginOverlay">
     <div class="login-card">
-      <div class="login-icon">🔐</div>
-      <h2 class="login-title">Acesso ao Sistema</h2>
-      <p class="login-desc">Entre com seu usuário e senha individual</p>
+      <button type="button" class="login-close-btn" id="btnFecharLogin" onclick="fecharModalLogin()" title="Fechar" style="display:none;">✕</button>
 
-      <form id="formLogin" onsubmit="executarLogin(); return false;" style="margin-top:1.25rem;">
-        <div class="form-group" style="margin-bottom:.85rem;text-align:left;">
-          <label for="inputUsuario" style="font-size:.8rem;font-weight:600;">Usuário / Login *</label>
-          <input type="text" id="inputUsuario" required placeholder="Digite seu usuário..." autocomplete="username" />
+      <div class="login-header">
+        <div class="login-icon-wrap">
+          <span class="login-icon-emoji">🛡️</span>
         </div>
-        <div class="form-group" style="margin-bottom:1.25rem;text-align:left;">
-          <label for="inputSenha" style="font-size:.8rem;font-weight:600;">Senha / PIN *</label>
-          <input type="password" id="inputSenha" required placeholder="Digite sua senha..." autocomplete="current-password" />
+        <h2 class="login-title">Villamor Vouchers</h2>
+        <p class="login-desc">Selecione seu departamento e digite sua senha</p>
+      </div>
+
+      <!-- Seletor Rápido de Perfil com 1 Toque -->
+      <div class="role-picker-label">Selecione seu departamento:</div>
+      <div class="role-picker" id="rolePickerLogin">
+        <div class="role-card active" data-user="admin" onclick="selecionarPerfilLogin('admin', this)">
+          <div class="role-card-badge">👑</div>
+          <div class="role-card-name">Admin</div>
+          <div class="role-card-desc">Gerência</div>
         </div>
-        <button type="button" id="btnEntrarLogin" onclick="executarLogin()" class="btn btn-primary btn-full" style="padding:.75rem;">
-          Entrar no Sistema
+        <div class="role-card" data-user="posvenda" onclick="selecionarPerfilLogin('posvenda', this)">
+          <div class="role-card-badge">💼</div>
+          <div class="role-card-name">Pós Venda</div>
+          <div class="role-card-desc">Emissão</div>
+        </div>
+        <div class="role-card" data-user="reservas" onclick="selecionarPerfilLogin('reservas', this)">
+          <div class="role-card-badge">🛎️</div>
+          <div class="role-card-name">Reservas</div>
+          <div class="role-card-desc">Hospedagem</div>
+        </div>
+      </div>
+
+      <form id="formLogin" onsubmit="executarLogin(); return false;" autocomplete="on">
+        <input type="hidden" id="inputUsuario" value="admin" />
+
+        <div id="wrapUsuarioCustom" class="form-group custom-user-field hidden" style="text-align:left; margin-bottom:.85rem;">
+          <label for="inputUsuarioCustom" style="font-size:.8rem; font-weight:600; display:block; margin-bottom:.3rem;">
+            Usuário / Login Cadastrado *
+          </label>
+          <div class="input-icon-wrap">
+            <span class="input-icon">👤</span>
+            <input type="text" id="inputUsuarioCustom" placeholder="Ex: nome.sobrenome" autocomplete="username" />
+          </div>
+        </div>
+
+        <div class="form-group" style="text-align:left; margin-bottom:1.25rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.35rem;">
+            <label for="inputSenha" style="font-size:.8rem; font-weight:600; margin:0;">
+              Senha de Acesso *
+            </label>
+            <button type="button" class="btn-link-custom-user" id="btnToggleCustomUser" onclick="toggleCustomUser()">
+              Outro usuário?
+            </button>
+          </div>
+
+          <div class="password-input-wrap">
+            <span class="input-icon">🔑</span>
+            <input 
+              type="password" 
+              id="inputSenha" 
+              required 
+              placeholder="Digite sua senha..." 
+              autocomplete="current-password" 
+            />
+            <button 
+              type="button" 
+              class="btn-toggle-eye" 
+              id="btnToggleEye" 
+              onclick="toggleVisibilidadeSenha()" 
+              title="Mostrar/Ocultar Senha"
+              tabindex="-1"
+            >
+              👁️
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="btnEntrarLogin" class="btn btn-primary btn-full btn-login-submit">
+          <span>Entrar no Sistema</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
         </button>
       </form>
+
+      <div class="login-footer">
+        <span class="login-help-text" onclick="ajudaEsqueciSenha()">Esqueceu sua senha? Solicite redefinição ao Administrador</span>
+      </div>
     </div>
   </div>
 
@@ -793,8 +860,8 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js?v=20261015_17"></script>
-  <script src="cotas_dados.js?v=20261015_17"></script>
-  <script src="app.js?v=20261015_17"></script>
+  <script src="config.js?v=20261015_18"></script>
+  <script src="cotas_dados.js?v=20261015_18"></script>
+  <script src="app.js?v=20261015_18"></script>
 </body>
 </html>

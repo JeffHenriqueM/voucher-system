@@ -216,33 +216,160 @@ function calcularDiariasSocio(nomeSocio) {
 }
 
 // ── Gestão de Acessos & Perfis ─────────────────────────────────
+
+// Seleção com 1 clique de perfil no login
+window.selecionarPerfilLogin = function(user, cardEl) {
+  const uInput = document.getElementById('inputUsuario');
+  if (uInput) uInput.value = user;
+
+  const cards = document.querySelectorAll('#rolePickerLogin .role-card');
+  cards.forEach(c => c.classList.remove('active'));
+  if (cardEl) {
+    cardEl.classList.add('active');
+  } else {
+    const alvo = document.querySelector(`#rolePickerLogin .role-card[data-user="${user}"]`);
+    if (alvo) alvo.classList.add('active');
+  }
+
+  const wrapCustom = document.getElementById('wrapUsuarioCustom');
+  const btnToggle = document.getElementById('btnToggleCustomUser');
+  if (wrapCustom) wrapCustom.classList.add('hidden');
+  if (btnToggle) btnToggle.textContent = 'Outro usuário?';
+
+  const sInput = document.getElementById('inputSenha');
+  if (sInput) {
+    sInput.focus();
+    sInput.select();
+  }
+};
+
+// Alternar campo de usuário customizado
+window.toggleCustomUser = function() {
+  const wrapCustom = document.getElementById('wrapUsuarioCustom');
+  const btnToggle = document.getElementById('btnToggleCustomUser');
+  const uCustom = document.getElementById('inputUsuarioCustom');
+  const cards = document.querySelectorAll('#rolePickerLogin .role-card');
+
+  if (!wrapCustom) return;
+
+  const estaOculto = wrapCustom.classList.contains('hidden');
+  if (estaOculto) {
+    wrapCustom.classList.remove('hidden');
+    if (btnToggle) btnToggle.textContent = 'Voltar aos perfis';
+    cards.forEach(c => c.classList.remove('active'));
+    if (uCustom) {
+      uCustom.focus();
+      uCustom.select();
+    }
+  } else {
+    wrapCustom.classList.add('hidden');
+    if (btnToggle) btnToggle.textContent = 'Outro usuário?';
+    const primeiro = document.querySelector('#rolePickerLogin .role-card[data-user="admin"]');
+    if (primeiro) window.selecionarPerfilLogin('admin', primeiro);
+  }
+};
+
+// Mostrar / Ocultar Senha com olhinho
+window.toggleVisibilidadeSenha = function() {
+  const sInput = document.getElementById('inputSenha');
+  const btnEye = document.getElementById('btnToggleEye');
+  if (!sInput) return;
+
+  if (sInput.type === 'password') {
+    sInput.type = 'text';
+    if (btnEye) {
+      btnEye.textContent = '🙈';
+      btnEye.title = 'Ocultar Senha';
+    }
+  } else {
+    sInput.type = 'password';
+    if (btnEye) {
+      btnEye.textContent = '👁️';
+      btnEye.title = 'Mostrar Senha';
+    }
+  }
+};
+
+// Fechar modal de login quando já houver usuário autenticado
+window.fecharModalLogin = function() {
+  const overlay = document.getElementById('loginOverlay');
+  if (usuarioLogado) {
+    if (overlay) {
+      overlay.classList.add('hidden');
+      overlay.style.setProperty('display', 'none', 'important');
+    }
+  } else {
+    showToast('Por favor, selecione seu departamento e digite a senha para entrar.', 'warning');
+  }
+};
+
+// Ajuda Esqueci a Senha
+window.ajudaEsqueciSenha = function() {
+  showToast('Para recuperar ou alterar sua senha, solicite ao Administrador no painel de Usuários.', 'info');
+};
+
 function initControleAcesso() {
   const overlay = document.getElementById('loginOverlay');
+  const btnFechar = document.getElementById('btnFecharLogin');
+
   if (!usuarioLogado) {
     overlay.classList.remove('hidden');
     overlay.style.display = 'flex';
+    if (btnFechar) btnFechar.style.display = 'none';
   } else {
     overlay.classList.add('hidden');
     overlay.style.display = 'none';
+    if (btnFechar) btnFechar.style.display = 'flex';
     aplicarPermissoesPerfil();
   }
+
+  // Pre-selecionar o card do perfil
+  const userAtual = usuarioLogado ? (usuarioLogado.usuario || 'admin').toLowerCase() : 'admin';
+  const cardAtual = document.querySelector(`#rolePickerLogin .role-card[data-user="${userAtual}"]`);
+  if (cardAtual) {
+    window.selecionarPerfilLogin(userAtual, cardAtual);
+  }
+
+  // Tecla ESC fecha modal se usuário já estiver autenticado
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && usuarioLogado && overlay && !overlay.classList.contains('hidden')) {
+      window.fecharModalLogin();
+    }
+  });
 
   // Função global de Login com Usuários Reais (autenticação em tempo real no Supabase)
   async function executarLogin() {
     const btn = document.getElementById('btnEntrarLogin');
     const uInput = document.getElementById('inputUsuario');
+    const uCustom = document.getElementById('inputUsuarioCustom');
+    const wrapCustom = document.getElementById('wrapUsuarioCustom');
+    const isCustom = wrapCustom && !wrapCustom.classList.contains('hidden');
+
+    let usuarioDigitado = '';
+    if (isCustom && uCustom && uCustom.value.trim()) {
+      usuarioDigitado = uCustom.value.trim().toLowerCase();
+    } else if (uInput && uInput.value.trim()) {
+      usuarioDigitado = uInput.value.trim().toLowerCase();
+    }
+
     const sInput = document.getElementById('inputSenha');
-    const usuarioDigitado = (uInput ? uInput.value : '').trim().toLowerCase();
     const senhaDigitada = (sInput ? sInput.value : '').trim();
 
-    if (!usuarioDigitado || !senhaDigitada) {
-      showToast('Por favor, informe seu usuário e senha.', 'error');
+    if (!usuarioDigitado) {
+      showToast('Por favor, selecione seu departamento ou digite seu usuário.', 'error');
+      if (isCustom && uCustom) uCustom.focus();
+      return;
+    }
+
+    if (!senhaDigitada) {
+      showToast('Por favor, digite sua senha de acesso.', 'error');
+      if (sInput) sInput.focus();
       return;
     }
 
     if (btn) {
       btn.disabled = true;
-      btn.textContent = 'Autenticando...';
+      btn.innerHTML = '<span>Autenticando...</span>';
     }
 
     try {
@@ -296,43 +423,50 @@ function initControleAcesso() {
         perfilAtivo = usr.perfil;
         sessionStorage.setItem('rsm_usuario_logado', JSON.stringify(usuarioLogado));
         sessionStorage.setItem('rsm_perfil_ativo', perfilAtivo);
+        if (sInput) sInput.value = '';
         if (overlay) {
           overlay.classList.add('hidden');
           overlay.style.setProperty('display', 'none', 'important');
         }
+        if (btnFechar) btnFechar.style.display = 'flex';
         showToast(`Bem-vindo(a), ${usr.nome}!`);
         aplicarPermissoesPerfil();
         sincronizarCotas();
       } else {
         showToast('Usuário ou senha incorretos.', 'error');
-        if (sInput) sInput.select();
+        if (sInput) { sInput.select(); sInput.focus(); }
       }
     } finally {
       if (btn) {
         btn.disabled = false;
-        btn.textContent = 'Entrar no Sistema';
+        btn.innerHTML = `<span>Entrar no Sistema</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`;
       }
     }
   }
   window.executarLogin = executarLogin;
 
   // Submit Login
-  document.getElementById('formLogin').addEventListener('submit', (e) => {
-    e.preventDefault();
-    executarLogin();
-  });
+  const formLogin = document.getElementById('formLogin');
+  if (formLogin) {
+    formLogin.addEventListener('submit', (e) => {
+      e.preventDefault();
+      executarLogin();
+    });
+  }
 
   // Botão Trocar Perfil / Sair
-  document.getElementById('btnTrocarPerfil').addEventListener('click', () => {
-    sessionStorage.removeItem('rsm_usuario_logado');
-    sessionStorage.removeItem('rsm_perfil_ativo');
-    usuarioLogado = null;
-    perfilAtivo = null;
-    const sIn = document.getElementById('inputSenha');
-    if (sIn) sIn.value = '';
-    overlay.classList.remove('hidden');
-    overlay.style.display = 'flex';
-  });
+  const btnTrocar = document.getElementById('btnTrocarPerfil');
+  if (btnTrocar) {
+    btnTrocar.addEventListener('click', () => {
+      const sIn = document.getElementById('inputSenha');
+      if (sIn) sIn.value = '';
+      if (btnFechar) btnFechar.style.display = usuarioLogado ? 'flex' : 'none';
+      overlay.classList.remove('hidden');
+      overlay.style.display = 'flex';
+      setTimeout(() => { if (sIn) sIn.focus(); }, 150);
+    });
+  }
 }
 
 function nomePerfil(role) {

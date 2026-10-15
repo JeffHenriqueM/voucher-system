@@ -281,58 +281,7 @@
     }
     .v-historico-row:last-child { border-bottom: none; }
 
-    /* ── Trilha de Auditoria & Ciclo de Vida do Voucher ── */
-    .v-auditoria-box {
-      border-bottom: 1px solid #111;
-      padding: 8px 14px 10px;
-      background: #f8fafc;
-    }
-    .v-auditoria-title {
-      font-size: 9.5px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-      margin-bottom: 6px;
-      color: #0f172a;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .v-auditoria-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 6px;
-    }
-    .v-auditoria-step {
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-left: 3px solid #94a3b8;
-      border-radius: 4px;
-      padding: 5px 8px;
-      font-size: 9px;
-      line-height: 1.45;
-    }
-    .v-auditoria-step.done {
-      border-left-color: #10b981;
-    }
-    .v-auditoria-step.pending {
-      border-left-color: #f59e0b;
-      background: #fffbeb;
-    }
-    .v-auditoria-step.info {
-      border-left-color: #3b82f6;
-    }
-    .v-auditoria-step .step-num {
-      font-weight: 800;
-      font-size: 8.5px;
-      text-transform: uppercase;
-      margin-bottom: 2px;
-      color: #1e293b;
-      letter-spacing: .03em;
-    }
-    .v-auditoria-step .step-desc {
-      color: #334155;
-    }
+
     @media (max-width: 600px) {
       body {
         padding: 12px 8px 32px;
@@ -395,13 +344,7 @@
       .v-uso-item {
         font-size: 9.5px;
       }
-      .v-auditoria-grid {
-        grid-template-columns: 1fr;
-        gap: 8px;
-      }
-      .v-auditoria-box {
-        padding: 10px 12px;
-      }
+
       .v-rodape {
         flex-direction: column;
         gap: 16px;
@@ -774,71 +717,6 @@
           <!-- Especificação -->
           <div class="v-espec-title">ESPECIFICAÇÃO DO VOUCHER :</div>
           <div class="v-espec-texto">${espec}</div>
-
-          <!-- Trilha de Auditoria & Ciclo de Vida Completo -->
-          <div class="v-auditoria-box">
-            <div class="v-auditoria-title">📋 Trilha de Auditoria & Ciclo de Vida do Voucher</div>
-            <div class="v-auditoria-grid">
-              <!-- 1. SOLICITAÇÃO -->
-              <div class="v-auditoria-step ${temSolicitacao ? 'done' : 'info'}">
-                <div class="step-num">1. Solicitação de Reserva</div>
-                <div class="step-desc">
-                  ${temSolicitacao ? `
-                    <div><strong>Quem solicitou:</strong> ${escHtml(quemSolicitou)}</div>
-                    <div><strong>Data/Hora:</strong> ${quandoSolicitou ? fmtDateTime(quandoSolicitou) : 'Registrado com a emissão'}</div>
-                    ${periodoPretendido ? `<div><strong>Período:</strong> ${periodoPretendido}</div>` : ''}
-                  ` : `
-                    <div><strong>Origem:</strong> Emissão Direta</div>
-                    <div><strong>Observação:</strong> Emitido sem solicitação prévia</div>
-                  `}
-                </div>
-              </div>
-
-              <!-- 2. EMISSÃO DA MINUTA -->
-              <div class="v-auditoria-step done">
-                <div class="step-num">2. Emissão da Minuta</div>
-                <div class="step-desc">
-                  <div><strong>Quem gerou:</strong> ${escHtml(quemGerou)}</div>
-                  <div><strong>Data/Hora:</strong> ${fmtDateTime(quandoGerou)}</div>
-                  <div><strong>Diárias Totais:</strong> ${v.diarias_totais || v.diarias || 2} diária(s)</div>
-                </div>
-              </div>
-
-              <!-- 3. ASSINATURA OFICIAL -->
-              <div class="v-auditoria-step ${isAssinado ? 'done' : 'pending'}">
-                <div class="step-num">3. Assinatura do Administrador</div>
-                <div class="step-desc">
-                  ${isAssinado ? `
-                    <div><strong>Quem assinou:</strong> ${escHtml(quemAssinou)}</div>
-                    <div><strong>Data/Hora:</strong> ${fmtDateTime(quandoAssinou)}</div>
-                    <div style="color:#15803d;font-weight:700;">✓ Documento Homologado e Ativo</div>
-                  ` : `
-                    <div><strong style="color:#b45309;">Status:</strong> ⏳ Aguardando Assinatura</div>
-                    <div style="color:#b45309;">Minuta enviada para aprovação do Administrador</div>
-                  `}
-                </div>
-              </div>
-
-              <!-- 4. BAIXA / ESTADIAS -->
-              <div class="v-auditoria-step ${(historicoEstadias && historicoEstadias.length > 0) ? 'done' : 'info'}">
-                <div class="step-num">4. Baixa de Reserva (Estadias)</div>
-                <div class="step-desc">
-                  ${(historicoEstadias && historicoEstadias.length > 0) ? `
-                    <div><strong>Estadias Registradas:</strong> ${historicoEstadias.length} registro(s)</div>
-                    ${historicoEstadias.map((h, i) => `
-                      <div style="font-size:8.5px;margin-top:2px;padding-top:2px;border-top:1px dashed #cbd5e1;">
-                        • #${i+1}: <strong>${h.diarias_utilizadas} d.</strong> por <em>${escHtml(h.operador || 'Reservas')}</em> em ${fmtDateTime(h.created_at)}<br>
-                        Período: ${fmtDate(h.data_checkin)} a ${fmtDate(h.data_checkout)}
-                      </div>
-                    `).join('')}
-                  ` : `
-                    <div><strong>Status:</strong> Nenhuma diária utilizada</div>
-                    <div style="color:#15803d;font-weight:600;">Saldo disponível: ${Math.max(0, (v.diarias_totais || v.diarias || 2) - (v.diarias_usadas || 0))} diária(s)</div>
-                  `}
-                </div>
-              </div>
-            </div>
-          </div>
 
           <!-- Especificações de uso -->
           <div class="v-uso-title">ESPECIFICAÇÕES DE USO :</div>

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sistema de Gestão de Vouchers & Cotas — RSM</title>
-  <link rel="stylesheet" href="style.css?v=20261015_04" />
+  <link rel="stylesheet" href="style.css?v=20261015_05" />
 </head>
 <body>
 
@@ -33,12 +33,11 @@
       <form id="formLogin" onsubmit="executarLogin(); return false;">
         <div class="form-group" style="margin-bottom:.85rem;text-align:left;">
           <label for="inputUsuario" style="font-size:.8rem;font-weight:600;">Usuário / Login *</label>
-          <input type="text" id="inputUsuario" required placeholder="Digite seu usuário..." value="admin" autocomplete="username" />
+          <input type="text" id="inputUsuario" required placeholder="Digite seu usuário..." autocomplete="username" />
         </div>
         <div class="form-group" style="margin-bottom:1.25rem;text-align:left;">
           <label for="inputSenha" style="font-size:.8rem;font-weight:600;">Senha / PIN *</label>
-          <input type="password" id="inputSenha" required placeholder="Digite sua senha..." value="1234" autocomplete="current-password" />
-          <small id="loginDica" style="color:var(--text-3);display:block;margin-top:.4rem;font-size:.72rem;">Padrão: admin (1234) | reservas (2345) | posvenda (3456)</small>
+          <input type="password" id="inputSenha" required placeholder="Digite sua senha..." autocomplete="current-password" />
         </div>
         <button type="button" id="btnEntrarLogin" onclick="executarLogin()" class="btn btn-primary btn-full" style="padding:.75rem;">
           Entrar no Sistema
@@ -719,8 +718,8 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js?v=20261015_04"></script>
-  <script src="cotas_dados.js?v=20261015_04"></script>
-  <script src="app.js?v=20261015_04"></script>
+  <script src="config.js?v=20261015_05"></script>
+  <script src="cotas_dados.js?v=20261015_05"></script>
+  <script src="app.js?v=20261015_05"></script>
 </body>
 </html>

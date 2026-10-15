@@ -31,7 +31,7 @@ body {
   line-height: 1.5;
 }
 
-/* ─── Header ────────────────────────────────────────────────── */
+/* ─── Header & Navegação Principal ─────────────────────────── */
 .header {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
@@ -47,6 +47,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .brand {
@@ -56,6 +58,112 @@ body {
   font-size: 1.1rem;
   font-weight: 700;
   color: var(--primary);
+}
+
+.main-nav {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  background: var(--bg);
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .5rem 1rem;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-2);
+  font-size: .875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.nav-btn:hover {
+  color: var(--text-1);
+}
+
+.nav-btn.active {
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+
+.nav-counter {
+  background: rgba(79, 70, 229, 0.1);
+  color: var(--primary);
+  font-size: .75rem;
+  padding: 2px 7px;
+  border-radius: 99px;
+  font-weight: 700;
+}
+
+/* Badges especiais de Cotas */
+.badge-cota-multi {
+  background: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge-cota-single {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.badge-pendente {
+  background: #fef9c3;
+  color: #854d0e;
+  border: 1px solid #fef08a;
+}
+
+.badge-emitido {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.btn-emitir {
+  background: #4f46e5;
+  color: #fff;
+  border: none;
+  padding: .35rem .75rem;
+  border-radius: 6px;
+  font-size: .8rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: background .15s;
+}
+
+.btn-emitir:hover {
+  background: #4338ca;
+}
+
+.cota-socio-name {
+  font-size: .92rem;
+  color: var(--text-1);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cota-tag-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* ─── Container ─────────────────────────────────────────────── */

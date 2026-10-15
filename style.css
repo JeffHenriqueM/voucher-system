@@ -147,9 +147,10 @@ body {
 }
 
 .header-inner {
-  max-width: 1200px;
+  max-width: 1560px;
+  width: 96%;
   margin: 0 auto;
-  padding: .875rem 1.5rem;
+  padding: .875rem 1.25rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -274,9 +275,10 @@ body {
 
 /* ─── Container ─────────────────────────────────────────────── */
 .container {
-  max-width: 1200px;
+  max-width: 1560px;
+  width: 96%;
   margin: 0 auto;
-  padding: 1.5rem;
+  padding: 1.5rem 1.25rem 3rem;
 }
 
 /* ─── Stats ─────────────────────────────────────────────────── */
@@ -793,41 +795,38 @@ body.dark-mode .regras-sucesso-box {
   50% { transform: scale(1.04); box-shadow: 0 0 0 4px rgba(245, 158, 11, 0); }
 }
 
-.voucher-obs-callout {
-  display: flex;
-  align-items: flex-start;
+/* ─── Destaque Elegante de Observação nos Vouchers (Listagem) ── */
+.voucher-obs-strip {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
   background: #fffbeb;
-  border: 1.5px solid #f59e0b;
-  border-left: 4px solid #d97706;
-  border-radius: 8px;
-  padding: .45rem .65rem;
-  margin-top: .45rem;
-  max-width: 340px;
-  font-size: .75rem;
-  line-height: 1.35;
-  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.15);
-  transition: transform .15s, box-shadow .15s;
+  border: 1px solid #fcd34d;
+  border-left: 3px solid #d97706;
+  border-radius: 6px;
+  padding: 3px 8px;
+  margin-top: 4px;
+  font-size: .74rem;
+  line-height: 1.3;
+  color: #78350f;
+  max-width: 440px;
+  box-shadow: 0 1px 3px rgba(245, 158, 11, 0.08);
+  transition: transform .15s, border-color .15s;
 }
 
-.voucher-obs-callout:hover {
+.voucher-obs-strip:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(245, 158, 11, 0.25);
+  border-color: #f59e0b;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.16);
 }
 
 .voucher-obs-icon {
-  font-size: .95rem;
+  font-size: .85rem;
   line-height: 1;
   flex-shrink: 0;
-  margin-top: 2px;
 }
 
-.voucher-obs-body {
-  flex: 1;
-  word-break: break-word;
-}
-
-.voucher-obs-tag {
+.voucher-obs-label {
   display: inline-block;
   background: #d97706;
   color: #ffffff;
@@ -836,15 +835,20 @@ body.dark-mode .regras-sucesso-box {
   padding: 1px 5px;
   border-radius: 4px;
   letter-spacing: .04em;
-  margin-bottom: 2px;
   text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .voucher-obs-text {
-  display: block;
-  font-size: .75rem;
+  display: inline-block;
+  font-size: .74rem;
   font-weight: 600;
   color: #78350f;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 320px;
 }
 
 body.dark-mode .badge-obs-alerta {
@@ -853,20 +857,125 @@ body.dark-mode .badge-obs-alerta {
   border-color: #f59e0b !important;
 }
 
-body.dark-mode .voucher-obs-callout {
-  background: rgba(245, 158, 11, 0.14) !important;
-  border-color: #d97706 !important;
+body.dark-mode .voucher-obs-strip {
+  background: rgba(245, 158, 11, 0.12) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
   border-left-color: #f59e0b !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25) !important;
 }
 
 body.dark-mode .voucher-obs-text {
   color: #fef3c7 !important;
 }
 
-body.dark-mode .voucher-obs-tag {
+body.dark-mode .voucher-obs-label {
   background: #f59e0b !important;
   color: #0f172a !important;
+}
+
+/* ─── Layout Amplo do Modal de Emissão & Card de Observações ─ */
+.modal-voucher-lg {
+  max-width: 860px !important;
+  width: 95% !important;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-voucher-lg form {
+  overflow-y: auto;
+  max-height: calc(92vh - 65px);
+  padding: 1.25rem 1.5rem 1.5rem;
+}
+
+.form-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 768px) {
+  .form-grid-2col {
+    grid-template-columns: 1fr;
+    gap: .75rem;
+  }
+}
+
+.obs-field-card {
+  background: var(--surface);
+  border: 1.5px dashed rgba(245, 158, 11, 0.45);
+  border-radius: var(--radius-sm);
+  padding: .75rem .85rem;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.obs-field-card:focus-within {
+  border-color: #f59e0b;
+  border-style: solid;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+}
+
+.obs-field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: .45rem;
+}
+
+.obs-field-title {
+  font-size: .8rem;
+  font-weight: 700;
+  color: var(--text-1);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.obs-field-badge {
+  font-size: .65rem;
+  font-weight: 700;
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+  padding: 1px 6px;
+  border-radius: 99px;
+  text-transform: uppercase;
+}
+
+.obs-field-card textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: .5rem .65rem;
+  font-size: .82rem;
+  background: var(--bg);
+  color: var(--text-1);
+  resize: vertical;
+  min-height: 60px;
+  transition: border-color .15s;
+}
+
+.obs-field-tip {
+  display: block;
+  font-size: .7rem;
+  color: var(--text-3);
+  margin-top: .35rem;
+  line-height: 1.3;
+}
+
+body.dark-mode .obs-field-card {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.04);
+}
+
+body.dark-mode .obs-field-card:focus-within {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+}
+
+body.dark-mode .obs-field-badge {
+  background: rgba(245, 158, 11, 0.25);
+  color: #fde68a;
 }
 
 .form-actions {

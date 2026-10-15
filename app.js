@@ -970,24 +970,23 @@ function renderTabelaVouchers(dados) {
       </div>
     `;
 
-    const temObs = Boolean(v.observacoes && v.observacoes.trim());
+    const obsReal = obterObservacaoReal(v);
+    const temObs = Boolean(obsReal);
 
     return `
       <tr>
-        <td>
+        <td style="white-space:nowrap;">
           <strong>#${v.numero || '—'}</strong>
           ${temObs ? `<span class="badge-obs-alerta" title="Voucher possui observação especial">⚠️ OBS</span>` : ''}
         </td>
         <td>
-          <strong>${escHtml(v.nome_socio)}</strong>
+          <div style="font-weight:700;color:var(--text-1);">${escHtml(v.nome_socio)}</div>
           ${v.sala_venda ? `<div style="font-size:.72rem;color:var(--text-3);">Sala: ${escHtml(v.sala_venda)}</div>` : ''}
           ${temObs ? `
-            <div class="voucher-obs-callout" title="${escHtml(v.observacoes)}">
+            <div class="voucher-obs-strip" title="${escHtml(obsReal)}">
               <span class="voucher-obs-icon">📝</span>
-              <div class="voucher-obs-body">
-                <span class="voucher-obs-tag">COM OBSERVAÇÃO</span>
-                <span class="voucher-obs-text">${escHtml(v.observacoes)}</span>
-              </div>
+              <span class="voucher-obs-label">OBS</span>
+              <span class="voucher-obs-text">${escHtml(obsReal)}</span>
             </div>
           ` : ''}
         </td>
@@ -1117,23 +1116,22 @@ function renderTabelaReservas() {
       `;
     }
 
-    const temObs = Boolean(v.observacoes && v.observacoes.trim());
+    const obsReal = obterObservacaoReal(v);
+    const temObs = Boolean(obsReal);
 
     return `
       <tr>
-        <td>
+        <td style="white-space:nowrap;">
           <strong>#${v.numero || v.codigo}</strong>
           ${temObs ? `<span class="badge-obs-alerta" title="Voucher possui observação especial">⚠️ OBS</span>` : ''}
         </td>
         <td>
-          <strong>${escHtml(v.nome_socio)}</strong>
+          <div style="font-weight:700;color:var(--text-1);">${escHtml(v.nome_socio)}</div>
           ${temObs ? `
-            <div class="voucher-obs-callout" title="${escHtml(v.observacoes)}">
+            <div class="voucher-obs-strip" title="${escHtml(obsReal)}">
               <span class="voucher-obs-icon">📝</span>
-              <div class="voucher-obs-body">
-                <span class="voucher-obs-tag">COM OBSERVAÇÃO</span>
-                <span class="voucher-obs-text">${escHtml(v.observacoes)}</span>
-              </div>
+              <span class="voucher-obs-label">OBS</span>
+              <span class="voucher-obs-text">${escHtml(obsReal)}</span>
             </div>
           ` : ''}
         </td>
@@ -1357,20 +1355,9 @@ function adequarTextosPorDiarias() {
     inputBrinde.value = obterDescricaoBrindePadrao(d, produto);
   }
 
-  // 2. Adequar especificação do voucher com concordância e número por extenso
+  // 2. Modelo selecionado (especificação padrão é mantida para impressão / regras de uso)
   const modeloId = document.getElementById('selectModelo')?.value;
   const mod = listaModelos.find(m => m.id === modeloId) || listaModelos[0] || MODELOS_PADRAO[0];
-  const inputObs = document.getElementById('inputObs');
-  if (inputObs && mod) {
-    const textoExtenso = obterTextoDiariasPorExtenso(d);
-    let espec = mod.especificacao_padrao || '';
-    espec = espec
-      .replace('{diarias} diárias anuais', textoExtenso)
-      .replace('{diarias} diária anual', textoExtenso)
-      .replace('{diarias}', textoExtenso)
-      .replace('{produto}', produto ? produto : 'Villamor Tambaba Resort');
-    inputObs.value = espec;
-  }
 
   const inputEspecUso = document.getElementById('inputEspecUso');
   if (inputEspecUso && mod && !inputEspecUso.value) {
@@ -1378,6 +1365,17 @@ function adequarTextosPorDiarias() {
   }
 }
 window.adequarTextosPorDiarias = adequarTextosPorDiarias;
+
+// Helper para obter observação real, filtrando textos padrão automáticos antigos
+function obterObservacaoReal(v) {
+  if (!v || !v.observacoes) return '';
+  const obs = String(v.observacoes).trim();
+  if (!obs) return '';
+  if (obs.startsWith('Voucher de ') && obs.includes('diárias') && obs.includes('casal')) {
+    return '';
+  }
+  return obs;
+}
 
 // ── Modelos de Voucher ─────────────────────────────────────────
 function carregarSelectModelos() {

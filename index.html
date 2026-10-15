@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Villamor Vouchers — Gestão de Vouchers & Cotas</title>
-  <link rel="stylesheet" href="style.css?v=20261015_22" />
+  <link rel="stylesheet" href="style.css?v=20261015_23" />
 </head>
 <body>
 
@@ -414,9 +414,9 @@
 
   </main>
 
-  <!-- ── Modal Emitir / Editar Voucher ────────────────────────── -->
+  <!-- ── Modal Emitir / Editar Voucher (Layout Amplo & Responsivo) ── -->
   <div class="modal-overlay hidden" id="modalOverlay">
-    <div class="modal" style="max-width:550px;">
+    <div class="modal modal-voucher-lg">
       <div class="modal-header">
         <h2 id="modalTitulo">Novo Voucher</h2>
         <button class="modal-close" id="btnFecharModal">✕</button>
@@ -425,94 +425,110 @@
         <input type="hidden" id="editId" />
         <input type="hidden" id="cotaVinculadaId" />
 
-        <!-- Seleção do Modelo de Voucher -->
-        <div class="form-group">
-          <label for="selectModelo">Modelo de Voucher *</label>
-          <select id="selectModelo" style="width:100%;padding:.5rem;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);">
-            <!-- Opções de modelos -->
-          </select>
-        </div>
+        <div class="form-grid-2col">
+          <!-- Coluna 1: Dados do Voucher & Sócio -->
+          <div class="form-col">
+            <div class="form-group">
+              <label for="selectModelo">Modelo de Voucher *</label>
+              <select id="selectModelo" style="width:100%;padding:.5rem;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);">
+                <!-- Opções de modelos -->
+              </select>
+            </div>
 
-        <div class="form-row">
-          <div class="form-group" style="flex: 2;">
-            <label for="inputNome">Nome do Convidado / Sócio * <small style="color:var(--text-3);font-weight:normal;">(digite para buscar na base)</small></label>
-            <input type="text" id="inputNome" list="datalistSociosVoucher" required placeholder="Digite para buscar na base de sócios..." autocomplete="off" />
-            <datalist id="datalistSociosVoucher"></datalist>
-            <small id="inputNomeInfoSocio" style="color:var(--primary);font-size:.78rem;display:block;margin-top:.25rem;font-weight:600;"></small>
-          </div>
-          <div class="form-group" style="flex: 1;">
-            <label for="inputSala">Sala de Venda</label>
-            <input type="text" id="inputSala" placeholder="Ex: VILLA" value="VILLA" />
-          </div>
-        </div>
+            <div class="form-group">
+              <label for="inputNome">Nome do Convidado / Sócio * <small style="color:var(--text-3);font-weight:normal;">(buscar na base)</small></label>
+              <input type="text" id="inputNome" list="datalistSociosVoucher" required placeholder="Digite para buscar na base de sócios..." autocomplete="off" />
+              <datalist id="datalistSociosVoucher"></datalist>
+              <small id="inputNomeInfoSocio" style="color:var(--primary);font-size:.78rem;display:block;margin-top:.25rem;font-weight:600;"></small>
+            </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label for="inputDiarias">Qtd. de Diárias * <small id="lblDicaDiarias" style="color:var(--primary);"></small></label>
-            <input type="number" id="inputDiarias" required min="1" step="1" value="2" />
-          </div>
-          <div class="form-group">
-            <label for="inputValor">Valor da Hospedagem (R$)</label>
-            <input type="number" id="inputValor" min="0" step="0.01" placeholder="0,00 (deixe em branco se a definir)" />
-          </div>
-        </div>
+            <div class="form-row">
+              <div class="form-group" style="flex: 1;">
+                <label for="inputSala">Sala de Venda</label>
+                <input type="text" id="inputSala" placeholder="Ex: VILLA" value="VILLA" />
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label for="inputDiarias">Qtd. de Diárias * <small id="lblDicaDiarias" style="color:var(--primary);"></small></label>
+                <input type="number" id="inputDiarias" required min="1" step="1" value="2" />
+              </div>
+            </div>
 
-        <div class="form-group">
-          <label for="inputBrinde">Descrição do Brinde <small style="color:var(--text-3);font-weight:normal;">(adequado automaticamente às diárias)</small></label>
-          <input type="text" id="inputBrinde" placeholder="Ex: 02 DIÁRIAS ANUAIS VILLAMOR" />
-        </div>
+            <div class="form-group">
+              <label for="inputValor">Valor da Hospedagem (R$)</label>
+              <input type="number" id="inputValor" min="0" step="0.01" placeholder="0,00 (deixe em branco se a definir)" />
+            </div>
 
-        <!-- Validade do Voucher -->
-        <div class="date-field-card">
-          <div class="date-field-header">
-            <label for="inputValidade" class="date-field-title">
-              <span>📅 Data de Validade do Voucher *</span>
-            </label>
-            <div class="date-field-shortcuts">
-              <button type="button" class="date-shortcut-btn" onclick="definirValidadeMeses(12)">+ 1 Ano</button>
-              <button type="button" class="date-shortcut-btn" onclick="definirValidadeMeses(6)">+ 6 Meses</button>
+            <div class="form-group">
+              <label for="inputBrinde">Descrição do Brinde <small style="color:var(--text-3);font-weight:normal;">(adequado automaticamente)</small></label>
+              <input type="text" id="inputBrinde" placeholder="Ex: 02 DIÁRIAS ANUAIS VILLAMOR" />
             </div>
           </div>
-          <input type="date" id="inputValidade" required />
-          <small>Prazo limite para realização da reserva e usufruto das diárias.</small>
-        </div>
 
-        <!-- Período da Hospedagem (Check-in e Check-out) -->
-        <div class="date-field-card">
-          <div class="date-field-header">
-            <span class="date-field-title">
-              <span>🏨 Período da Hospedagem</span>
-            </span>
-            <span class="badge" style="font-size:.68rem;padding:.15rem .5rem;background:var(--primary-light);color:var(--primary);font-weight:700;">
-              Check-in & Check-out
-            </span>
-          </div>
-          <div class="form-row" style="margin-bottom:0;">
-            <div class="form-group" style="margin-bottom:0;">
-              <label for="inputCheckin" style="font-size:.75rem;font-weight:600;">Data de Check-in (Entrada)</label>
-              <input type="date" id="inputCheckin" onchange="aoMudarCheckinEmissao()" />
+          <!-- Coluna 2: Prazos, Hospedagem & Observações -->
+          <div class="form-col">
+            <!-- Validade do Voucher -->
+            <div class="date-field-card" style="margin-bottom:1rem;">
+              <div class="date-field-header">
+                <label for="inputValidade" class="date-field-title">
+                  <span>📅 Data de Validade do Voucher *</span>
+                </label>
+                <div class="date-field-shortcuts">
+                  <button type="button" class="date-shortcut-btn" onclick="definirValidadeMeses(12)">+ 1 Ano</button>
+                  <button type="button" class="date-shortcut-btn" onclick="definirValidadeMeses(6)">+ 6 Meses</button>
+                </div>
+              </div>
+              <input type="date" id="inputValidade" required />
+              <small>Prazo limite para realização da reserva e usufruto das diárias.</small>
             </div>
-            <div class="form-group" style="margin-bottom:0;">
-              <label for="inputCheckout" style="font-size:.75rem;font-weight:600;">Data de Check-out (Saída)</label>
-              <input type="date" id="inputCheckout" />
+
+            <!-- Período da Hospedagem (Check-in e Check-out) -->
+            <div class="date-field-card" style="margin-bottom:1rem;">
+              <div class="date-field-header">
+                <span class="date-field-title">
+                  <span>🏨 Período da Hospedagem</span>
+                </span>
+                <span class="badge" style="font-size:.68rem;padding:.15rem .5rem;background:var(--primary-light);color:var(--primary);font-weight:700;">
+                  Check-in & Check-out
+                </span>
+              </div>
+              <div class="form-row" style="margin-bottom:0;">
+                <div class="form-group" style="margin-bottom:0;">
+                  <label for="inputCheckin" style="font-size:.75rem;font-weight:600;">Check-in (Entrada)</label>
+                  <input type="date" id="inputCheckin" onchange="aoMudarCheckinEmissao()" />
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                  <label for="inputCheckout" style="font-size:.75rem;font-weight:600;">Check-out (Saída)</label>
+                  <input type="date" id="inputCheckout" />
+                </div>
+              </div>
+              <small>Opcional na emissão prévia; se já definido, constará impresso no voucher.</small>
+            </div>
+
+            <!-- Card Elegante de Observações -->
+            <div class="obs-field-card">
+              <div class="obs-field-header">
+                <label for="inputObs" class="obs-field-title">
+                  <span>📝 Observações do Voucher</span>
+                </label>
+                <span class="obs-field-badge">Opcional</span>
+              </div>
+              <textarea id="inputObs" rows="3" placeholder="Ex: Sócio solicitou check-in tardio, apartamento térreo, autorizado pela gerência..."></textarea>
+              <small class="obs-field-tip">⚠️ Quando preenchido, gera alerta chamativo na listagem de vouchers e reservas.</small>
             </div>
           </div>
-          <small>Opcional na emissão prévia; se já definido, constará impresso no voucher.</small>
         </div>
 
-        <div class="form-group">
-          <label for="inputObs">
-            📝 Observações do Voucher <small style="color:var(--text-3);font-weight:normal;">(Opcional — destacado de forma chamativa na listagem)</small>
-          </label>
-          <textarea id="inputObs" rows="2" placeholder="Ex: Sócio solicitou check-in tardio, quarto próximo à piscina, período autorizado pela gerência..."></textarea>
+        <!-- Especificações de Uso (Regras) Organizadas em Details -->
+        <div class="form-group" style="margin-top:.85rem;border-top:1px solid var(--border);padding-top:.85rem;">
+          <details>
+            <summary style="cursor:pointer;font-weight:600;font-size:.82rem;color:var(--text-2);user-select:none;">
+              📋 Especificações de Uso & Regras (Clique para visualizar ou editar as regras)
+            </summary>
+            <textarea id="inputEspecUso" rows="4" style="margin-top:.45rem;"></textarea>
+          </details>
         </div>
 
-        <div class="form-group">
-          <label for="inputEspecUso">Especificações de Uso (1 regra por linha)</label>
-          <textarea id="inputEspecUso" rows="5"></textarea>
-        </div>
-
-        <div class="form-actions">
+        <div class="form-actions" style="margin-top:.75rem;">
           <button type="button" class="btn btn-ghost" id="btnCancelar">Cancelar</button>
           <button type="submit" class="btn btn-primary" id="btnSalvar">Salvar Voucher</button>
         </div>
@@ -861,8 +877,8 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js?v=20261015_22"></script>
-  <script src="cotas_dados.js?v=20261015_22"></script>
-  <script src="app.js?v=20261015_22"></script>
+  <script src="config.js?v=20261015_23"></script>
+  <script src="cotas_dados.js?v=20261015_23"></script>
+  <script src="app.js?v=20261015_23"></script>
 </body>
 </html>

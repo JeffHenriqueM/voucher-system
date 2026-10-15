@@ -60,3 +60,36 @@ CREATE POLICY "Acesso publico config insert" ON configuracoes_sistema FOR INSERT
 
 DROP POLICY IF EXISTS "Acesso publico config update" ON configuracoes_sistema;
 CREATE POLICY "Acesso publico config update" ON configuracoes_sistema FOR UPDATE USING (true);
+
+-- 4. Tabela de solicitações de vouchers feitas pelo setor de Reservas para o Pós Venda
+CREATE TABLE IF NOT EXISTS voucher_solicitacoes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nome_socio TEXT NOT NULL,
+  modelo_id TEXT,
+  modelo_nome TEXT,
+  diarias_solicitadas INTEGER DEFAULT 2,
+  motivo TEXT,
+  solicitante TEXT DEFAULT 'Reservas',
+  status TEXT DEFAULT 'pendente', -- pendente, gerado, cancelado
+  voucher_codigo TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  gerado_em TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_solic_status ON voucher_solicitacoes(status);
+CREATE INDEX IF NOT EXISTS idx_solic_socio ON voucher_solicitacoes(nome_socio);
+
+ALTER TABLE voucher_solicitacoes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Acesso publico solicitacoes select" ON voucher_solicitacoes;
+CREATE POLICY "Acesso publico solicitacoes select" ON voucher_solicitacoes FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Acesso publico solicitacoes insert" ON voucher_solicitacoes;
+CREATE POLICY "Acesso publico solicitacoes insert" ON voucher_solicitacoes FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Acesso publico solicitacoes update" ON voucher_solicitacoes;
+CREATE POLICY "Acesso publico solicitacoes update" ON voucher_solicitacoes FOR UPDATE USING (true);
+
+DROP POLICY IF EXISTS "Acesso publico solicitacoes delete" ON voucher_solicitacoes;
+CREATE POLICY "Acesso publico solicitacoes delete" ON voucher_solicitacoes FOR DELETE USING (true);
+

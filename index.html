@@ -63,6 +63,10 @@
           <span>🎟️ Vouchers Emitidos</span>
           <span class="nav-counter" id="badgeTotalVouchers">0</span>
         </button>
+        <button class="nav-btn" id="tabNavSolicitacoes">
+          <span>📥 Solicitações</span>
+          <span class="nav-counter" id="badgeTotalSolicitacoes" style="background:#fee2e2;color:#dc2626;">0</span>
+        </button>
         <button class="nav-btn" id="tabNavReservas">
           <span>🛎️ Baixa de Reservas</span>
         </button>
@@ -72,7 +76,10 @@
       </nav>
 
       <!-- Ações do Header & Perfil Ativo -->
-      <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
+        <button class="btn-theme-toggle" id="btnThemeToggle" title="Alternar Modo Escuro / Claro">
+          🌙
+        </button>
         <button class="btn btn-ghost" id="btnAssinaturaAdmin" title="Configurar Assinatura Oficial">
           ✍️ Assinatura
         </button>
@@ -209,12 +216,68 @@
     </section>
 
     <!-- ════════════════════════════════════════════════════════════ -->
-    <!-- ABA 3: BAIXA DE RESERVAS & CONTROLE DE USO                  -->
+    <!-- ABA 3: SOLICITAÇÕES DE VOUCHERS (RESERVAS ➔ PÓS VENDA)      -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section id="secaoSolicitacoes" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:1rem;">
+        <div>
+          <h2 style="font-size:1.2rem;">📥 Solicitações de Vouchers</h2>
+          <p style="color:var(--text-2);font-size:.85rem;">Solicitações feitas pela equipe de Reservas para emissão pelo Pós Venda.</p>
+        </div>
+        <button class="btn btn-primary" id="btnNovaSolicitacaoTop">
+          📢 Nova Solicitação de Voucher
+        </button>
+      </div>
+
+      <!-- Filtros Solicitações -->
+      <div class="filters">
+        <div class="search-wrap">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M10 2a8 8 0 1 1 0 16A8 8 0 0 1 10 2zm0 2a6 6 0 1 0 0 12A6 6 0 0 0 10 4zm8.293 12.293 3.414 3.414-1.414 1.414-3.414-3.414 1.414-1.414z"/></svg>
+          <input type="text" id="inputBuscaSolicitacoes" placeholder="Buscar por sócio, motivo..." />
+        </div>
+        <div class="filter-tabs">
+          <button class="tab active" data-solic-filtro="pendente">Pendentes</button>
+          <button class="tab" data-solic-filtro="gerado">Emitidos</button>
+          <button class="tab" data-solic-filtro="todos">Todas</button>
+        </div>
+      </div>
+
+      <!-- Tabela Solicitações -->
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Sócio Solicitado</th>
+              <th>Modelo Desejado</th>
+              <th>Diárias</th>
+              <th>Motivo / Observações</th>
+              <th>Solicitante</th>
+              <th>Status</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbodySolicitacoes">
+            <tr><td colspan="8" class="empty">Carregando solicitações...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- ABA 4: BAIXA DE RESERVAS & CONTROLE DE USO                  -->
     <!-- ════════════════════════════════════════════════════════════ -->
     <section id="secaoReservas" class="hidden">
       <div class="table-wrap" style="padding:1.5rem;margin-bottom:1.5rem;">
-        <h2 style="font-size:1.1rem;margin-bottom:.5rem;">🛎️ Painel da Equipe de Reservas</h2>
-        <p style="color:var(--text-2);margin-bottom:1.25rem;">Consulte o voucher pelo número, código ou nome do sócio para registrar a hospedagem e dar baixa nas diárias.</p>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;">
+          <div>
+            <h2 style="font-size:1.1rem;margin-bottom:.5rem;">🛎️ Painel da Equipe de Reservas</h2>
+            <p style="color:var(--text-2);margin-bottom:1.25rem;">Consulte o voucher pelo número, código ou nome do sócio para registrar a hospedagem e dar baixa nas diárias.</p>
+          </div>
+          <button class="btn btn-primary" id="btnSolicitarVoucherReservas">
+            📢 Solicitar Voucher para Sócio
+          </button>
+        </div>
 
         <div class="search-wrap" style="max-width:500px;margin-bottom:1rem;">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M10 2a8 8 0 1 1 0 16A8 8 0 0 1 10 2zm0 2a6 6 0 1 0 0 12A6 6 0 0 0 10 4zm8.293 12.293 3.414 3.414-1.414 1.414-3.414-3.414 1.414-1.414z"/></svg>
@@ -465,6 +528,52 @@
         <div class="form-actions">
           <button type="button" class="btn btn-ghost" id="btnCancelarModelo">Cancelar</button>
           <button type="submit" class="btn btn-primary" id="btnSalvarModelo">Salvar Modelo</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ── Modal Solicitar Voucher (Reservas ➔ Pós Venda) ───────── -->
+  <div class="modal-overlay hidden" id="modalSolicitarVoucher">
+    <div class="modal" style="max-width:550px;">
+      <div class="modal-header">
+        <h2>📢 Solicitar Emissão de Voucher</h2>
+        <button class="modal-close" id="btnFecharSolicitarVoucher">✕</button>
+      </div>
+      <form id="formSolicitarVoucher">
+        <div class="form-group">
+          <label for="solicNomeSocio">Nome do Sócio / Cessionário *</label>
+          <input type="text" id="solicNomeSocio" required placeholder="Digite o nome do sócio..." list="datalistSocios" />
+          <datalist id="datalistSocios"></datalist>
+          <small id="solicInfoSocio" style="color:var(--primary);font-size:.78rem;display:block;margin-top:.25rem;"></small>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="solicModelo">Modelo Pretendido *</label>
+            <select id="solicModelo" required style="width:100%;padding:.5rem;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);">
+              <!-- Opções carregadas dinamicamente -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="solicDiarias">Qtd. de Diárias Solicitadas *</label>
+            <input type="number" id="solicDiarias" required min="1" step="1" value="2" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="solicMotivo">Motivo / Detalhes da Solicitação *</label>
+          <textarea id="solicMotivo" required rows="3" placeholder="Ex: Sócio entrou em contato para reservar 2 diárias na data 10/11 a 12/11, ainda não possui voucher gerado no sistema."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="solicOperador">Solicitante (Seu Nome / Equipe)</label>
+          <input type="text" id="solicOperador" value="Equipe de Reservas" />
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" id="btnCancelarSolicitacao">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnConfirmarSolicitacao">Enviar Solicitação ao Pós Venda</button>
         </div>
       </form>
     </div>

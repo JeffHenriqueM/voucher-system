@@ -38,25 +38,54 @@ Exceto feriados, datas comemorativas e eventos terceirizado.
 A utilização se dará após 10% do contrato integralizado.`
   },
   {
+    id: 'indique-ganhe',
+    nome: 'Indique e Ganhe — Hotel Villamor Prime',
+    titulo_documento: 'RSM EMPREENDIMENTO — INDIQUE E GANHE',
+    especificacao_padrao: 'Voucher promocional de {diarias} diárias para um casal referente à campanha Indique e Ganhe.',
+    regras_uso: `Para agendamento ligar 83 98834-0045, no Hotel Villamor Prime.
+Este Voucher é intransferível e nominal.
+Diárias com check-in Domingo e check-out até a Quinta-Feira.
+Café da manhã incluso nas diárias para um casal.
+Diárias em acomodação LUXO sujeitas à disponibilidade da rede.
+Exceto feriados, datas comemorativas e alta temporada.
+Válido após confirmação e validação da indicação elegível junto ao Pós Venda RSM.`
+  },
+  {
     id: 'promocional',
-    nome: 'RSM Especial / Promocional',
-    titulo_documento: 'RSM EMPREENDIMENTO — CONDIÇÃO ESPECIAL',
+    nome: 'Diária Promocional — Hotel Villamor Prime',
+    titulo_documento: 'RSM EMPREENDIMENTO — DIÁRIA PROMOCIONAL',
     especificacao_padrao: 'Voucher promocional de {diarias} diárias para um casal no Hotel Villamor Prime.',
     regras_uso: `Para agendamento ligar 83 98834-0045, no Hotel Villamor Prime.
 Este Voucher é intransferível.
-Diárias sujeitas à disponibilidade com agendamento prévio de 30 dias.
+Diárias sujeitas à disponibilidade com agendamento prévio.
 Café da manhã incluso nas diárias.
-Exceto feriados e alta temporada.`
+Diárias em apartamento LUXO.
+Exceto feriados, datas comemorativas e alta temporada.`
   }
 ];
 
-// Carregar modelos do localStorage ou padrão
-let listaModelos = JSON.parse(localStorage.getItem('rsm_modelos_vouchers') || 'null') || MODELOS_PADRAO;
+// Carregar modelos do localStorage ou padrão (garantindo que os 3 modelos padrão existam)
+let listaModelos = JSON.parse(localStorage.getItem('rsm_modelos_vouchers') || 'null');
+if (!listaModelos || !Array.isArray(listaModelos) || listaModelos.length === 0) {
+  listaModelos = JSON.parse(JSON.stringify(MODELOS_PADRAO));
+} else {
+  MODELOS_PADRAO.forEach(mp => {
+    if (!listaModelos.some(m => m.id === mp.id)) {
+      listaModelos.push(JSON.parse(JSON.stringify(mp)));
+    }
+  });
+}
 
 // Lista de cotas em memória
 let listaCotas = typeof COTAS_IMPORTADAS !== 'undefined' ? JSON.parse(JSON.stringify(COTAS_IMPORTADAS)) : [];
 let listaVouchers = [];
 let listaHistoricoReservas = JSON.parse(localStorage.getItem('rsm_historico_reservas') || '[]');
+
+// Solicitações de Vouchers (Reservas ➔ Pós Venda)
+let listaSolicitacoes = JSON.parse(localStorage.getItem('rsm_solicitacoes') || '[]');
+let filtroSolicitacoes = 'pendente';
+let buscaSolicitacoesTimer = null;
+let solicitacaoEmAtendimentoId = null;
 
 // Assinatura oficial do Admin em memória
 let assinaturaAdminAtual = localStorage.getItem('rsm_assinatura_admin') || '';
@@ -256,6 +285,8 @@ function aplicarPermissoesPerfil() {
   const btnAssinatura = document.getElementById('btnAssinaturaAdmin');
   const btnNovo = document.getElementById('btnNovo');
   const tabCotas = document.getElementById('tabNavCotas');
+  const tabVouchers = document.getElementById('tabNavVouchers');
+  const tabSolicitacoes = document.getElementById('tabNavSolicitacoes');
   const tabReservas = document.getElementById('tabNavReservas');
   const tabModelos = document.getElementById('tabNavModelos');
 
@@ -263,12 +294,16 @@ function aplicarPermissoesPerfil() {
     btnAssinatura.style.display = 'inline-flex';
     btnNovo.style.display = 'inline-flex';
     tabCotas.style.display = 'inline-flex';
+    tabVouchers.style.display = 'inline-flex';
+    tabSolicitacoes.style.display = 'inline-flex';
     tabReservas.style.display = 'inline-flex';
     tabModelos.style.display = 'inline-flex';
   } else if (perfilAtivo === 'pos_venda') {
     btnAssinatura.style.display = 'none';
     btnNovo.style.display = 'inline-flex';
     tabCotas.style.display = 'inline-flex';
+    tabVouchers.style.display = 'inline-flex';
+    tabSolicitacoes.style.display = 'inline-flex';
     tabReservas.style.display = 'none';
     tabModelos.style.display = 'none';
     if (abaAtiva === 'reservas' || abaAtiva === 'modelos') mudarAba('cotas');
@@ -276,17 +311,21 @@ function aplicarPermissoesPerfil() {
     btnAssinatura.style.display = 'none';
     btnNovo.style.display = 'none';
     tabCotas.style.display = 'none';
+    tabVouchers.style.display = 'inline-flex';
+    tabSolicitacoes.style.display = 'inline-flex';
     tabReservas.style.display = 'inline-flex';
     tabModelos.style.display = 'none';
-    if (abaAtiva !== 'vouchers' && abaAtiva !== 'reservas') mudarAba('reservas');
+    if (abaAtiva !== 'vouchers' && abaAtiva !== 'reservas' && abaAtiva !== 'solicitacoes') mudarAba('reservas');
   }
+
+  atualizarBadgeSolicitacoes();
 }
 
 // ── Troca de Abas ──────────────────────────────────────────────
 function mudarAba(novaAba) {
   abaAtiva = novaAba;
 
-  const abas = ['cotas', 'vouchers', 'reservas', 'modelos'];
+  const abas = ['cotas', 'vouchers', 'solicitacoes', 'reservas', 'modelos'];
   abas.forEach(a => {
     const btn = document.getElementById(`tabNav${a.charAt(0).toUpperCase() + a.slice(1)}`);
     const secao = document.getElementById(`secao${a.charAt(0).toUpperCase() + a.slice(1)}`);
@@ -296,6 +335,7 @@ function mudarAba(novaAba) {
 
   if (novaAba === 'cotas') renderTabelaCotas();
   if (novaAba === 'vouchers') carregarVouchers();
+  if (novaAba === 'solicitacoes') renderTabelaSolicitacoes();
   if (novaAba === 'reservas') renderTabelaReservas();
   if (novaAba === 'modelos') renderModelos();
 }
@@ -338,6 +378,9 @@ async function sincronizarCotas() {
       }
     } catch (e) {}
   }
+
+  // 5. Buscar solicitações
+  await carregarSolicitacoes();
 
   renderStatsCotas();
   renderTabelaCotas();
@@ -1090,11 +1133,34 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
           cota.voucher_numero = resultData.numero;
         }
       }
+
+      // Se este voucher veio de uma solicitação de Reservas, marcar como gerado
+      if (solicitacaoEmAtendimentoId) {
+        const sId = solicitacaoEmAtendimentoId;
+        solicitacaoEmAtendimentoId = null;
+        try {
+          await db.from('voucher_solicitacoes').update({
+            status: 'gerado',
+            voucher_codigo: resultData.codigo,
+            gerado_em: new Date().toISOString()
+          }).eq('id', sId);
+        } catch (e) {}
+
+        const idx = listaSolicitacoes.findIndex(s => s.id === sId);
+        if (idx !== -1) {
+          listaSolicitacoes[idx].status = 'gerado';
+          listaSolicitacoes[idx].voucher_codigo = resultData.codigo;
+          listaSolicitacoes[idx].gerado_em = new Date().toISOString();
+          localStorage.setItem('rsm_solicitacoes', JSON.stringify(listaSolicitacoes));
+        }
+        atualizarBadgeSolicitacoes();
+      }
     }
 
     fecharModal();
     sincronizarCotas();
     if (abaAtiva === 'vouchers') carregarVouchers();
+    if (abaAtiva === 'solicitacoes') renderTabelaSolicitacoes();
   } catch (err) {
     showToast(err.message || 'Erro ao emitir voucher', 'error');
   } finally {
@@ -1124,9 +1190,228 @@ document.getElementById('btnConfirmarDelete').addEventListener('click', async ()
   carregarVouchers();
 });
 
+// ── Controle de Tema (Dark / Light Mode) ─────────────────────────
+function initTema() {
+  const salvo = localStorage.getItem('rsm_theme') || 'light';
+  aplicarTema(salvo);
+
+  const btnToggle = document.getElementById('btnThemeToggle');
+  if (btnToggle) {
+    btnToggle.addEventListener('click', () => {
+      const atual = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+      const novo = atual === 'dark' ? 'light' : 'dark';
+      aplicarTema(novo);
+    });
+  }
+}
+
+function aplicarTema(tema) {
+  const btnToggle = document.getElementById('btnThemeToggle');
+  if (tema === 'dark') {
+    document.body.classList.add('dark-mode');
+    localStorage.setItem('rsm_theme', 'dark');
+    if (btnToggle) btnToggle.textContent = '☀️';
+  } else {
+    document.body.classList.remove('dark-mode');
+    localStorage.setItem('rsm_theme', 'light');
+    if (btnToggle) btnToggle.textContent = '🌙';
+  }
+}
+
+// ── Gestão de Solicitações de Vouchers (Reservas ➔ Pós Venda) ───
+async function carregarSolicitacoes() {
+  try {
+    const { data, error } = await db.from('voucher_solicitacoes').select('*').order('created_at', { ascending: false });
+    if (!error && data) {
+      listaSolicitacoes = data;
+      localStorage.setItem('rsm_solicitacoes', JSON.stringify(data));
+    }
+  } catch (err) {
+    console.warn('Erro ao carregar solicitações do Supabase, usando cache local:', err);
+  }
+  atualizarBadgeSolicitacoes();
+  if (abaAtiva === 'solicitacoes') {
+    renderTabelaSolicitacoes();
+  }
+}
+
+function atualizarBadgeSolicitacoes() {
+  const badge = document.getElementById('badgeTotalSolicitacoes');
+  if (!badge) return;
+  const pendentes = listaSolicitacoes.filter(s => s.status === 'pendente').length;
+  badge.textContent = pendentes;
+  badge.style.display = pendentes > 0 ? 'inline-block' : 'none';
+}
+
+function renderTabelaSolicitacoes() {
+  const tbody = document.getElementById('tbodySolicitacoes');
+  if (!tbody) return;
+
+  const busca = (document.getElementById('inputBuscaSolicitacoes')?.value || '').trim().toLowerCase();
+
+  let dados = listaSolicitacoes.filter(s => {
+    if (filtroSolicitacoes && filtroSolicitacoes !== 'todos') {
+      if (s.status !== filtroSolicitacoes) return false;
+    }
+    if (busca) {
+      const matchNome = (s.nome_socio || '').toLowerCase().includes(busca);
+      const matchMotivo = (s.motivo || '').toLowerCase().includes(busca);
+      const matchSolicitante = (s.solicitante || '').toLowerCase().includes(busca);
+      return matchNome || matchMotivo || matchSolicitante;
+    }
+    return true;
+  });
+
+  if (!dados.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty">Nenhuma solicitação encontrada neste filtro.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = dados.map(s => {
+    let statusBadge = '<span class="badge badge-yellow">Pendente</span>';
+    if (s.status === 'gerado') {
+      statusBadge = `<span class="badge badge-green">Emitido ${s.voucher_codigo ? `(#${s.voucher_codigo})` : ''}</span>`;
+    } else if (s.status === 'cancelado') {
+      statusBadge = '<span class="badge badge-red">Cancelado</span>';
+    }
+
+    let acoesHtml = '';
+    if (s.status === 'pendente') {
+      if (perfilAtivo === 'pos_venda' || perfilAtivo === 'admin') {
+        acoesHtml += `
+          <button class="btn btn-primary" style="padding:.3rem .6rem;font-size:.78rem;" onclick="atenderSolicitacao('${s.id}')" title="Gerar Voucher para esta solicitação">
+            ⚡ Gerar Voucher
+          </button>
+        `;
+      }
+      acoesHtml += `
+        <button class="btn btn-ghost" style="padding:.3rem .5rem;font-size:.78rem;color:#dc2626;" onclick="cancelarSolicitacao('${s.id}')" title="Cancelar solicitação">
+          ✕ Cancelar
+        </button>
+      `;
+    } else if (s.status === 'gerado' && s.voucher_codigo) {
+      acoesHtml += `
+        <a href="${linkVoucher(s.voucher_codigo)}" target="_blank" class="btn btn-ghost" style="padding:.3rem .6rem;font-size:.78rem;" title="Ver Voucher">
+          👁️ Ver Voucher
+        </a>
+      `;
+    } else {
+      acoesHtml = '—';
+    }
+
+    return `
+      <tr>
+        <td style="font-size:.8rem;color:var(--text-3);">${fmtDateTime(s.created_at)}</td>
+        <td><strong>${escHtml(s.nome_socio)}</strong></td>
+        <td><span class="badge badge-blue" style="font-size:.75rem;">${escHtml(s.modelo_nome || s.modelo_id || 'Padrão')}</span></td>
+        <td><strong>${s.diarias_solicitadas || 2}</strong> diária(s)</td>
+        <td style="max-width:280px;font-size:.82rem;">${escHtml(s.motivo || '—')}</td>
+        <td style="font-size:.8rem;color:var(--text-2);">${escHtml(s.solicitante || 'Reservas')}</td>
+        <td>${statusBadge}</td>
+        <td><div class="actions">${acoesHtml}</div></td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function abrirModalSolicitarVoucher(nomeSocioPreenchido = '') {
+  // Preencher datalist de sócios com nomes únicos
+  const datalist = document.getElementById('datalistSocios');
+  if (datalist) {
+    const nomesUnicos = [...new Set(listaCotas.map(c => (c.nome_socio || '').trim()).filter(Boolean))].sort();
+    datalist.innerHTML = nomesUnicos.map(nome => `<option value="${escHtml(nome)}"></option>`).join('');
+  }
+
+  // Preencher select de modelos
+  const selectModelo = document.getElementById('solicModelo');
+  if (selectModelo) {
+    selectModelo.innerHTML = listaModelos.map(m => `<option value="${m.id}">${escHtml(m.nome)}</option>`).join('');
+  }
+
+  const inputNome = document.getElementById('solicNomeSocio');
+  inputNome.value = nomeSocioPreenchido || '';
+  document.getElementById('solicMotivo').value = '';
+  document.getElementById('solicOperador').value = perfilAtivo === 'reservas' ? 'Equipe de Reservas' : (perfilAtivo === 'admin' ? 'Administrador' : 'Pós Venda');
+
+  atualizarDicaSocioSolicitacao(nomeSocioPreenchido);
+
+  document.getElementById('modalSolicitarVoucher').classList.remove('hidden');
+  if (!nomeSocioPreenchido) inputNome.focus();
+}
+
+function fecharModalSolicitarVoucher() {
+  document.getElementById('modalSolicitarVoucher').classList.add('hidden');
+}
+
+function atualizarDicaSocioSolicitacao(nome) {
+  const lblDica = document.getElementById('solicInfoSocio');
+  const inputDiarias = document.getElementById('solicDiarias');
+  if (!nome || !nome.trim()) {
+    if (lblDica) lblDica.textContent = '';
+    return;
+  }
+
+  const nomeNorm = nome.trim().toUpperCase();
+  const cotasSocio = listaCotas.filter(c => (c.nome_socio || '').trim().toUpperCase() === nomeNorm);
+
+  if (cotasSocio.length > 0) {
+    const diariasTotais = calcularDiariasSocio(nome);
+    const produtos = cotasSocio.map(c => c.produto).filter(Boolean).join(', ');
+    if (lblDica) {
+      lblDica.innerHTML = `Sócio identificado na base RSM: <strong>${cotasSocio.length} cota(s)</strong> (${produtos || 'Cotas'}). Diárias anuais recomendadas: <strong>${diariasTotais} diárias</strong>.`;
+    }
+    if (inputDiarias) inputDiarias.value = diariasTotais;
+  } else {
+    if (lblDica) {
+      lblDica.innerHTML = `⚠️ Sócio não localizado diretamente na lista de cotas. Você pode prosseguir normalmente informando as diárias desejadas.`;
+    }
+  }
+}
+
+async function atenderSolicitacao(idSolicitacao) {
+  const solic = listaSolicitacoes.find(s => s.id === idSolicitacao);
+  if (!solic) return;
+
+  solicitacaoEmAtendimentoId = idSolicitacao;
+  abrirModalNovo();
+
+  // Preencher dados do voucher com a solicitação
+  document.getElementById('inputNome').value = solic.nome_socio;
+  if (solic.modelo_id) {
+    document.getElementById('selectModelo').value = solic.modelo_id;
+  }
+  document.getElementById('inputDiarias').value = solic.diarias_solicitadas || 2;
+  document.getElementById('inputObs').value = `Solicitado por ${solic.solicitante || 'Reservas'}: ${solic.motivo || ''}`.trim();
+  
+  // Replicar especificação de regras do modelo
+  const mod = listaModelos.find(m => m.id === solic.modelo_id) || listaModelos[0] || MODELOS_PADRAO[0];
+  if (mod) {
+    document.getElementById('inputEspecUso').value = mod.regras_uso || '';
+  }
+}
+
+async function cancelarSolicitacao(idSolicitacao) {
+  if (!confirm('Deseja realmente cancelar esta solicitação?')) return;
+  try {
+    const { error } = await db.from('voucher_solicitacoes').update({ status: 'cancelado' }).eq('id', idSolicitacao);
+    if (error) throw error;
+  } catch (err) {
+    // fallback local
+  }
+  const idx = listaSolicitacoes.findIndex(s => s.id === idSolicitacao);
+  if (idx !== -1) {
+    listaSolicitacoes[idx].status = 'cancelado';
+    localStorage.setItem('rsm_solicitacoes', JSON.stringify(listaSolicitacoes));
+  }
+  showToast('Solicitação cancelada.');
+  atualizarBadgeSolicitacoes();
+  renderTabelaSolicitacoes();
+}
+
 // ── Event Listeners Principais ─────────────────────────────────
 document.getElementById('tabNavCotas').addEventListener('click', () => mudarAba('cotas'));
 document.getElementById('tabNavVouchers').addEventListener('click', () => mudarAba('vouchers'));
+document.getElementById('tabNavSolicitacoes').addEventListener('click', () => mudarAba('solicitacoes'));
 document.getElementById('tabNavReservas').addEventListener('click', () => mudarAba('reservas'));
 document.getElementById('tabNavModelos').addEventListener('click', () => mudarAba('modelos'));
 
@@ -1138,6 +1423,76 @@ document.getElementById('btnCancelarDelete').addEventListener('click', fecharMod
 document.getElementById('btnFecharBaixa').addEventListener('click', fecharModalBaixa);
 document.getElementById('btnCancelarBaixa').addEventListener('click', fecharModalBaixa);
 
+// Solicitações Listeners
+document.getElementById('btnNovaSolicitacaoTop').addEventListener('click', () => abrirModalSolicitarVoucher());
+document.getElementById('btnSolicitarVoucherReservas').addEventListener('click', () => abrirModalSolicitarVoucher());
+document.getElementById('btnFecharSolicitarVoucher').addEventListener('click', fecharModalSolicitarVoucher);
+document.getElementById('btnCancelarSolicitacao').addEventListener('click', fecharModalSolicitarVoucher);
+
+document.getElementById('solicNomeSocio').addEventListener('input', (e) => {
+  atualizarDicaSocioSolicitacao(e.target.value);
+});
+
+// Envio de Solicitação
+document.getElementById('formSolicitarVoucher').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('btnConfirmarSolicitacao');
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  const nomeSocio = document.getElementById('solicNomeSocio').value.trim();
+  const modeloId = document.getElementById('solicModelo').value;
+  const modeloObj = listaModelos.find(m => m.id === modeloId);
+  const diarias = Number(document.getElementById('solicDiarias').value) || 2;
+  const motivo = document.getElementById('solicMotivo').value.trim();
+  const solicitante = document.getElementById('solicOperador').value.trim() || 'Equipe de Reservas';
+
+  const novaSolic = {
+    id: nanoid(16),
+    nome_socio: nomeSocio,
+    modelo_id: modeloId,
+    modelo_nome: modeloObj ? modeloObj.nome : modeloId,
+    diarias_solicitadas: diarias,
+    motivo: motivo,
+    solicitante: solicitante,
+    status: 'pendente',
+    created_at: new Date().toISOString()
+  };
+
+  try {
+    const { data, error } = await db.from('voucher_solicitacoes').insert([novaSolic]).select().single();
+    if (!error && data) {
+      novaSolic.id = data.id;
+    }
+  } catch (err) {
+    console.warn('Erro ao salvar solicitação no Supabase, mantendo no cache local:', err);
+  }
+
+  listaSolicitacoes.unshift(novaSolic);
+  localStorage.setItem('rsm_solicitacoes', JSON.stringify(listaSolicitacoes));
+  showToast('Solicitação de voucher enviada com sucesso para o Pós Venda!');
+  fecharModalSolicitarVoucher();
+  atualizarBadgeSolicitacoes();
+  if (abaAtiva === 'solicitacoes') renderTabelaSolicitacoes();
+  btn.disabled = false;
+  btn.textContent = 'Enviar Solicitação ao Pós Venda';
+});
+
+// Filtros de Solicitações
+document.querySelectorAll('[data-solic-filtro]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-solic-filtro]').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    filtroSolicitacoes = btn.dataset.solicFiltro;
+    renderTabelaSolicitacoes();
+  });
+});
+
+document.getElementById('inputBuscaSolicitacoes').addEventListener('input', () => {
+  clearTimeout(buscaSolicitacoesTimer);
+  buscaSolicitacoesTimer = setTimeout(renderTabelaSolicitacoes, 250);
+});
+
 document.getElementById('modalOverlay').addEventListener('click', e => {
   if (e.target === document.getElementById('modalOverlay')) fecharModal();
 });
@@ -1146,6 +1501,9 @@ document.getElementById('modalDelete').addEventListener('click', e => {
 });
 document.getElementById('modalBaixaReserva').addEventListener('click', e => {
   if (e.target === document.getElementById('modalBaixaReserva')) fecharModalBaixa();
+});
+document.getElementById('modalSolicitarVoucher').addEventListener('click', e => {
+  if (e.target === document.getElementById('modalSolicitarVoucher')) fecharModalSolicitarVoucher();
 });
 
 // Filtros da Base de Cotas
@@ -1185,7 +1543,9 @@ document.getElementById('inputBuscaReservas').addEventListener('input', () => {
 });
 
 // ── Inicialização do Sistema ───────────────────────────────────
+initTema();
 initControleAcesso();
 initCanvasAssinatura();
 carregarSelectModelos();
 sincronizarCotas();
+

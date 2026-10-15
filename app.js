@@ -228,11 +228,14 @@ function calcularDiariasSocio(nomeSocio) {
 
 // ── Gestão de Acessos & Perfis ─────────────────────────────────
 
-function getIconePerfil(perfil) {
-  if (perfil === 'admin') return '👑';
-  if (perfil === 'pos_venda') return '💼';
-  if (perfil === 'reservas') return '🛎️';
-  if (perfil === 'recepcao') return '🏨';
+function getIconePerfil(u) {
+  const nome = (u.nome || '').toLowerCase();
+  const perfil = (u.perfil || '').toLowerCase();
+  const usr = (u.usuario || '').toLowerCase();
+
+  if (nome.includes('recep') || perfil === 'recepcao' || usr.includes('recep')) return '🏨';
+  if (nome.includes('reserva') || perfil === 'reservas' || usr.includes('reserva')) return '🛎️';
+  if (nome.includes('pós') || nome.includes('pos') || perfil === 'pos_venda' || usr.includes('pos')) return '💼';
   return '👤';
 }
 
@@ -255,7 +258,7 @@ function atualizarLabelSenhaUsuario(userLogin) {
   }
 }
 
-// Renderização dinâmica dos usuários e departamentos no modal de Login
+// Renderização dinâmica dos usuários no modal de Login (sem expor quem é admin)
 function renderCardsUsuariosLogin() {
   const container = document.getElementById('rolePickerLogin');
   if (!container) return;
@@ -266,14 +269,8 @@ function renderCardsUsuariosLogin() {
     return;
   }
 
-  // Ordenar usuários: Admin ➔ Recepção ➔ Reservas ➔ Pós Venda e por nome
-  const ordemPerfis = { admin: 1, recepcao: 2, reservas: 3, pos_venda: 4 };
-  usuariosAtivos.sort((a, b) => {
-    const pA = ordemPerfis[a.perfil] || 99;
-    const pB = ordemPerfis[b.perfil] || 99;
-    if (pA !== pB) return pA - pB;
-    return (a.nome || '').localeCompare(b.nome || '');
-  });
+  // Ordenar usuários em ordem alfabética
+  usuariosAtivos.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
 
   const inputUsr = document.getElementById('inputUsuario');
   let userSelecionado = (inputUsr && inputUsr.value) ? inputUsr.value.toLowerCase() : '';
@@ -288,17 +285,15 @@ function renderCardsUsuariosLogin() {
   container.innerHTML = usuariosAtivos.map(u => {
     const usrLogin = (u.usuario || '').toLowerCase();
     const isAtivo = usrLogin === userSelecionado;
-    const icone = getIconePerfil(u.perfil);
-    const perfilLegivel = getNomePerfilLegivel(u.perfil);
+    const icone = getIconePerfil(u);
 
     return `
       <div class="role-card ${isAtivo ? 'active' : ''}" 
            data-user="${escHtml(usrLogin)}" 
            onclick="selecionarPerfilLogin('${escHtml(usrLogin)}', this)"
-           title="${escHtml(u.nome)} (${perfilLegivel})">
+           title="${escHtml(u.nome)}">
         <div class="role-card-badge">${icone}</div>
         <div class="role-card-name">${escHtml(u.nome)}</div>
-        <div class="role-card-desc">${perfilLegivel}</div>
       </div>
     `;
   }).join('');

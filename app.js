@@ -1233,24 +1233,24 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
       const idx = listaVouchers.findIndex(v => v.id === id);
       if (idx !== -1) listaVouchers[idx] = resultData;
       localStorage.setItem('rsm_vouchers_cache', JSON.stringify(listaVouchers));
-      showToast('Voucher atualizado com sucesso!');
     } else {
       payload.codigo = nanoid(10);
       payload.diarias_usadas = 0;
       payload.usado = false;
-      payload.created_at = new Date().toISOString();
-      payload.id = `vouch-${nanoid(8)}`;
-      payload.numero = (listaVouchers[0]?.numero || 0) + 1;
+      delete payload.id;
+      delete payload.numero;
 
       try {
         const { data, error } = await db.from('vouchers').insert([payload]).select().single();
         if (!error && data) {
           resultData = data;
         } else {
-          resultData = payload;
+          console.error('Erro insert Supabase:', error);
+          resultData = { ...payload, id: `vouch-${nanoid(8)}`, numero: (listaVouchers[0]?.numero || 0) + 1 };
         }
       } catch (e) {
-        resultData = payload;
+        console.error('Erro de rede insert Supabase:', e);
+        resultData = { ...payload, id: `vouch-${nanoid(8)}`, numero: (listaVouchers[0]?.numero || 0) + 1 };
       }
 
       listaVouchers.unshift(resultData);
@@ -1629,8 +1629,7 @@ document.getElementById('formSolicitarVoucher').addEventListener('submit', async
     return;
   }
 
-  const novaSolic = {
-    id: nanoid(16),
+  const payloadSolic = {
     nome_socio: nomeSocio,
     modelo_id: modeloId,
     modelo_nome: modeloObj ? modeloObj.nome : modeloId,
@@ -1640,16 +1639,21 @@ document.getElementById('formSolicitarVoucher').addEventListener('submit', async
     solicitante: solicitanteNome,
     solicitante_nome: solicitanteNome,
     status: 'pendente',
-    status_fluxo: 'solicitado',
-    created_at: new Date().toISOString()
+    status_fluxo: 'solicitado'
   };
 
+  let novaSolic = { ...payloadSolic, created_at: new Date().toISOString() };
+
   try {
-    const { data, error } = await db.from('voucher_solicitacoes').insert([novaSolic]).select().single();
+    const { data, error } = await db.from('voucher_solicitacoes').insert([payloadSolic]).select().single();
     if (!error && data) {
-      novaSolic.id = data.id;
+      novaSolic = data;
+    } else {
+      novaSolic.id = nanoid(16);
+      console.warn('Erro ao salvar solicitação no Supabase:', error);
     }
   } catch (err) {
+    novaSolic.id = nanoid(16);
     console.warn('Erro ao salvar solicitação no Supabase, mantendo no cache local:', err);
   }
 

@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Villamor Vouchers — Gestão de Vouchers & Cotas</title>
-  <link rel="stylesheet" href="style.css?v=20261015_19" />
+  <link rel="stylesheet" href="style.css?v=20261015_20" />
 </head>
 <body>
 
@@ -544,17 +544,17 @@
         <input type="hidden" id="baixaVoucherCodigo" />
         <input type="hidden" id="baixaSocioNome" />
 
-        <div style="background:var(--bg);padding:1rem;border-radius:var(--radius-sm);margin-bottom:1rem;">
+        <div class="modal-info-card">
           <h3 id="baixaTituloSocio" style="font-size:1rem;margin-bottom:.25rem;">—</h3>
           <p id="baixaInfoSaldo" style="font-size:.85rem;color:var(--text-2);">Diárias Concedidas: <strong>—</strong> | Restantes: <strong>—</strong></p>
         </div>
 
         <!-- Orientações do Sucesso do Cliente -->
-        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--radius-sm);padding:.75rem;margin-bottom:1rem;font-size:.78rem;color:#166534;line-height:1.45;">
+        <div class="regras-sucesso-box">
           <strong>🎟️ Regras de Utilização (Sucesso do Cliente):</strong><br>
           • <strong>Domingo a quinta-feira:</strong> 1 diária por dia (apto LUXO).<br>
           • <strong>Período Especial (Sexta, Sábado ou dia de evento):</strong> contabiliza <strong>2 diárias por dia</strong> (mediante autorização prévia).<br>
-          <span style="font-size:.72rem;color:#15803d;">Ex: Sexta = 2 diárias | Sábado = 2 diárias | Dia de evento = 2 diárias.</span>
+          <span style="font-size:.72rem;opacity:.9;">Ex: Sexta = 2 diárias | Sábado = 2 diárias | Dia de evento = 2 diárias.</span>
         </div>
 
         <div class="form-row">
@@ -725,7 +725,7 @@
           </div>
         </div>
 
-        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:var(--radius-sm);padding:.65rem .75rem;margin-bottom:1rem;font-size:.76rem;color:#166534;line-height:1.4;">
+        <div class="regras-sucesso-box">
           <strong>📅 Regra do Período (Sucesso do Cliente):</strong><br>
           • <strong>Domingo a quinta-feira:</strong> 1 diária por dia (apto Luxo).<br>
           • <strong>Finais de semana (sex/sáb) ou eventos:</strong> 2 diárias por dia (período especial, sob autorização prévia).
@@ -872,8 +872,8 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js?v=20261015_19"></script>
-  <script src="cotas_dados.js?v=20261015_19"></script>
-  <script src="app.js?v=20261015_19"></script>
+  <script src="config.js?v=20261015_20"></script>
+  <script src="cotas_dados.js?v=20261015_20"></script>
+  <script src="app.js?v=20261015_20"></script>
 </body>
 </html>

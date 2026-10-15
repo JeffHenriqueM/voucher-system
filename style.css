@@ -20,10 +20,12 @@
   --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
   --shadow-md: 0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.06);
   --shadow-lg: 0 10px 25px rgba(0,0,0,.12), 0 4px 6px rgba(0,0,0,.06);
+  --bg-card: #f8fafc;
 }
 
 body.dark-mode {
   --bg: #090d16;
+  --bg-card: #151f33;
   --surface: #121929;
   --border: #24324c;
   --text-1: #f8fafc;
@@ -41,6 +43,14 @@ body.dark-mode textarea {
   background: #182238;
   color: #f8fafc;
   border-color: #2b3a58;
+  color-scheme: dark;
+}
+
+body.dark-mode input[type="date"] {
+  background: #182238 !important;
+  color: #f8fafc !important;
+  border-color: #2b3a58 !important;
+  color-scheme: dark !important;
 }
 
 body.dark-mode .table thead {
@@ -698,25 +708,66 @@ body.dark-mode input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 body.dark-mode .date-field-card {
-  background: #141d30;
-  border-color: #2b3a58;
+  background: #141d30 !important;
+  border-color: #2b3a58 !important;
+  color: #f8fafc !important;
 }
 
 body.dark-mode .date-field-card:focus-within {
-  background: #182238;
-  border-color: #818cf8;
+  background: #182238 !important;
+  border-color: #818cf8 !important;
+}
+
+body.dark-mode .date-field-title {
+  color: #f8fafc !important;
+}
+
+body.dark-mode .date-field-card label {
+  color: #cbd5e1 !important;
+}
+
+body.dark-mode .date-field-card small {
+  color: #94a3b8 !important;
 }
 
 body.dark-mode .date-shortcut-btn {
-  background: #1e2b45;
-  border-color: #2b3a58;
-  color: #94a3b8;
+  background: #1e2b45 !important;
+  border-color: #2b3a58 !important;
+  color: #cbd5e1 !important;
 }
 
 body.dark-mode .date-shortcut-btn:hover {
-  background: var(--primary);
-  color: #fff;
-  border-color: var(--primary);
+  background: var(--primary) !important;
+  color: #fff !important;
+  border-color: var(--primary) !important;
+}
+
+.modal-info-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  padding: 1rem;
+  border-radius: var(--radius-sm);
+  margin-bottom: 1rem;
+}
+body.dark-mode .modal-info-card {
+  background: #151f33 !important;
+  border-color: #24324c !important;
+}
+
+.regras-sucesso-box {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius-sm);
+  padding: .75rem;
+  margin-bottom: 1rem;
+  font-size: .78rem;
+  color: #166534;
+  line-height: 1.45;
+}
+body.dark-mode .regras-sucesso-box {
+  background: rgba(16, 185, 129, 0.1) !important;
+  border-color: #065f46 !important;
+  color: #6ee7b7 !important;
 }
 
 .form-actions {

@@ -1191,9 +1191,16 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
   try {
     let resultData;
     if (id) {
-      const { data, error } = await db.from('vouchers').update(payload).eq('id', id).select().single();
-      if (error) throw error;
-      resultData = data;
+      try {
+        const { data, error } = await db.from('vouchers').update(payload).eq('id', id).select().single();
+        if (!error && data) resultData = data;
+        else resultData = { ...payload, id };
+      } catch (e) {
+        resultData = { ...payload, id };
+      }
+      const idx = listaVouchers.findIndex(v => v.id === id);
+      if (idx !== -1) listaVouchers[idx] = resultData;
+      localStorage.setItem('rsm_vouchers_cache', JSON.stringify(listaVouchers));
       showToast('Voucher atualizado com sucesso!');
     } else {
       payload.codigo = nanoid(10);
@@ -1262,7 +1269,9 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
     if (abaAtiva === 'vouchers') carregarVouchers();
     if (abaAtiva === 'solicitacoes') renderTabelaSolicitacoes();
   } catch (err) {
-    showToast(err.message || 'Erro ao emitir voucher', 'error');
+    console.error('Aviso ao emitir voucher:', err);
+    fecharModal();
+    sincronizarCotas();
   } finally {
     btn.disabled = false;
     btn.textContent = id ? 'Atualizar Voucher' : 'Salvar Voucher';

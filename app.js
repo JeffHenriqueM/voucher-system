@@ -159,8 +159,11 @@ async function abrirModalEditar(id) {
 
   document.getElementById('editId').value = v.id;
   document.getElementById('inputNome').value = v.nome_socio;
+  document.getElementById('inputSala').value = v.sala_venda || '';
   document.getElementById('inputValor').value = v.valor_hospedagem;
   document.getElementById('inputDiarias').value = v.diarias;
+  document.getElementById('inputBrinde').value = v.brinde_descricao || '';
+  document.getElementById('inputValidade').value = v.validade || '';
   document.getElementById('inputObs').value = v.observacoes || '';
   document.getElementById('modalTitulo').textContent = 'Editar Voucher';
   document.getElementById('btnSalvar').textContent = 'Atualizar Voucher';
@@ -181,10 +184,13 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
 
   const id = document.getElementById('editId').value;
   const payload = {
-    nome_socio: document.getElementById('inputNome').value.trim(),
+    nome_socio:       document.getElementById('inputNome').value.trim(),
+    sala_venda:       document.getElementById('inputSala').value.trim() || null,
     valor_hospedagem: Number(document.getElementById('inputValor').value),
-    diarias: Number(document.getElementById('inputDiarias').value),
-    observacoes: document.getElementById('inputObs').value.trim() || null,
+    diarias:          Number(document.getElementById('inputDiarias').value),
+    brinde_descricao: document.getElementById('inputBrinde').value.trim() || null,
+    validade:         document.getElementById('inputValidade').value || null,
+    observacoes:      document.getElementById('inputObs').value.trim() || null,
   };
 
   try {

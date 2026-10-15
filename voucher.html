@@ -3,30 +3,378 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Voucher</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body class="voucher-page">
+  <title>Voucher RSM</title>
+  <style>
+    /* ── Reset ───────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  <div class="voucher-card-wrap" id="conteudo">
-    <div class="loading-state">
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 12px;
+      background: #e5e7eb;
+      color: #111;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 48px;
+    }
+
+    /* ── Barra de ações (não imprime) ─────────── */
+    .actions-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+
+    .btn-print {
+      background: #1d4ed8;
+      color: #fff;
+      border: none;
+      padding: 10px 22px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-print:hover { background: #1e40af; }
+
+    .btn-uso {
+      padding: 10px 22px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 2px solid;
+    }
+    .btn-uso.marcar   { background: #dc2626; color:#fff; border-color:#dc2626; }
+    .btn-uso.desmarcar{ background: transparent; color:#374151; border-color:#d1d5db; }
+    .btn-uso:disabled { opacity: .6; cursor: not-allowed; }
+
+    .badge-status {
+      padding: 8px 16px;
+      border-radius: 99px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .badge-ok   { background:#dcfce7; color:#15803d; }
+    .badge-used { background:#fee2e2; color:#dc2626; }
+
+    /* ── Voucher (papel) ─────────────────────── */
+    .voucher {
+      background: #fff;
+      width: 100%;
+      max-width: 680px;
+      border: 1px solid #ccc;
+      box-shadow: 0 4px 20px rgba(0,0,0,.15);
+    }
+
+    /* ── Cabeçalho ───────────────────────────── */
+    .v-header {
+      display: grid;
+      grid-template-columns: 140px 1fr 120px;
+      align-items: center;
+      border-bottom: 2px solid #111;
+      padding: 10px 14px;
+      gap: 8px;
+    }
+
+    .v-logo {
+      display: flex;
+      align-items: center;
+    }
+
+    .v-logo-box {
+      border: 2px solid #b8860b;
+      padding: 6px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+    }
+
+    .v-logo-sigla {
+      font-size: 28px;
+      font-weight: 900;
+      color: #b8860b;
+      line-height: 1;
+      letter-spacing: -1px;
+    }
+
+    .v-logo-sigla span {
+      color: #b8860b;
+    }
+
+    .v-logo-full {
+      font-size: 6.5px;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      line-height: 1.3;
+      max-width: 90px;
+    }
+
+    .v-title {
+      text-align: center;
+    }
+
+    .v-title h1 {
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+
+    .v-title h2 {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .v-numero-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .v-numero-label {
+      font-size: 8px;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      border: 1px solid #111;
+      padding: 2px 8px;
+      font-weight: 700;
+    }
+
+    #qrcode {
+      width: 80px;
+      height: 80px;
+    }
+    #qrcode canvas, #qrcode img { width: 80px !important; height: 80px !important; }
+
+    .v-numero-val {
+      font-size: 16px;
+      font-weight: 900;
+      letter-spacing: .1em;
+    }
+
+    /* ── Corpo de dados ──────────────────────── */
+    .v-dados {
+      border-bottom: 1px solid #111;
+      padding: 10px 14px;
+    }
+
+    .v-row {
+      display: grid;
+      grid-template-columns: 130px 1fr;
+      margin-bottom: 4px;
+      line-height: 1.5;
+    }
+
+    .v-label {
+      font-weight: 700;
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+
+    .v-value {
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+
+    .v-validade {
+      font-weight: 700;
+      font-size: 11px;
+      text-transform: uppercase;
+      margin-top: 6px;
+    }
+
+    /* ── Especificação ───────────────────────── */
+    .v-espec-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 6px 14px 2px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .v-espec-texto {
+      font-size: 10.5px;
+      padding: 6px 14px 10px;
+      line-height: 1.6;
+      border-bottom: 1px solid #111;
+    }
+
+    /* ── Especificações de uso ───────────────── */
+    .v-uso-title {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 8px 14px 4px;
+    }
+
+    .v-uso-lista {
+      padding: 0 14px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .v-uso-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      font-size: 10.5px;
+      line-height: 1.5;
+    }
+
+    .v-checkbox {
+      width: 11px;
+      height: 11px;
+      border: 1px solid #333;
+      flex-shrink: 0;
+      margin-top: 2px;
+      display: inline-block;
+    }
+
+    /* ── Rodapé / Assinatura ─────────────────── */
+    .v-footer {
+      border-top: 1px solid #111;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+
+    .v-assinatura {
+      padding: 16px 14px 10px;
+      border-right: 1px solid #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .v-assinatura-linha {
+      width: 180px;
+      border-bottom: 1px solid #333;
+      margin-bottom: 4px;
+      height: 36px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 2px;
+    }
+
+    .v-assinatura-cargo {
+      font-size: 10px;
+      text-align: center;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .v-data-impressao {
+      padding: 16px 14px 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      align-items: flex-end;
+      font-size: 9px;
+      color: #555;
+    }
+
+    /* ── USADO watermark ─────────────────────── */
+    .v-usado-stamp {
+      display: none;
+    }
+
+    .voucher.is-usado .v-usado-stamp {
+      display: block;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-30deg);
+      font-size: 80px;
+      font-weight: 900;
+      color: rgba(220, 38, 38, 0.15);
+      text-transform: uppercase;
+      letter-spacing: .2em;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .voucher { position: relative; overflow: hidden; }
+
+    /* ── Loading / Erro ──────────────────────── */
+    .state-wrap {
+      background: #fff;
+      border-radius: 12px;
+      padding: 3rem 2rem;
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 0 4px 20px rgba(0,0,0,.1);
+    }
+    .state-wrap h2 { margin: 1rem 0 .5rem; font-size: 1.1rem; }
+    .state-wrap p  { color: #6b7280; font-size: .9rem; }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid #e5e7eb;
+      border-top-color: #1d4ed8;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin: 0 auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Toast ───────────────────────────────── */
+    .toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      padding: .7rem 1.2rem; border-radius: 8px;
+      background: #111; color: #fff;
+      font-size: 13px; font-weight: 500;
+      box-shadow: 0 4px 12px rgba(0,0,0,.2); z-index: 999;
+    }
+    .toast.hidden { display: none; }
+    .toast.toast-error   { background: #dc2626; }
+    .toast.toast-success { background: #16a34a; }
+
+    /* ── Print ───────────────────────────────── */
+    @media print {
+      body { background: #fff; padding: 0; }
+      .actions-bar { display: none !important; }
+      .voucher { box-shadow: none; border: 1px solid #ccc; max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="root">
+    <div class="state-wrap">
       <div class="spinner"></div>
-      <p>Carregando voucher…</p>
+      <p style="margin-top:1rem;color:#6b7280;">Carregando voucher…</p>
     </div>
   </div>
 
   <div class="toast hidden" id="toast"></div>
 
+  <!-- Libs -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script src="config.js"></script>
   <script>
     const { createClient } = supabase;
     const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Pega o código da URL: ?v=CODIGO
     const params = new URLSearchParams(window.location.search);
     const codigo = params.get('v');
 
+    // ── Helpers ──────────────────────────────────────────────
     function showToast(msg, tipo = 'success') {
       const t = document.getElementById('toast');
       t.textContent = msg;
@@ -39,22 +387,31 @@
       return Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
-    function fmtDate(iso) {
+    function fmtDateTime(iso) {
       if (!iso) return '—';
       return new Date(iso).toLocaleString('pt-BR', {
         day: '2-digit', month: '2-digit', year: 'numeric',
-        hour: '2-digit', minute: '2-digit'
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
       });
     }
 
+    function fmtDate(dateStr) {
+      if (!dateStr) return '—';
+      const [y, m, d] = dateStr.split('-');
+      return `${d}/${m}/${y}`;
+    }
+
+    function escHtml(str) {
+      if (!str) return '';
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // ── Carregar ─────────────────────────────────────────────
     async function carregarVoucher() {
       if (!codigo) {
-        document.getElementById('conteudo').innerHTML = `
-          <div class="voucher-card error-card">
-            <div class="voucher-icon">❌</div>
-            <h1>Link inválido</h1>
-            <p>Nenhum código de voucher encontrado na URL.</p>
-          </div>`;
+        renderErro('Link inválido', 'Nenhum código de voucher encontrado na URL.');
         return;
       }
 
@@ -65,81 +422,153 @@
         .single();
 
       if (error || !data) {
-        document.getElementById('conteudo').innerHTML = `
-          <div class="voucher-card error-card">
-            <div style="font-size:3rem">❌</div>
-            <h1>Voucher não encontrado</h1>
-            <p>O link pode estar incorreto ou o voucher foi removido.</p>
-          </div>`;
+        renderErro('Voucher não encontrado', 'O link pode estar incorreto ou o voucher foi removido.');
         return;
       }
 
       renderVoucher(data);
     }
 
-    function renderVoucher(v) {
-      const disponivel = !v.usado;
-      document.title = `Voucher — ${v.nome_socio}`;
-      document.getElementById('conteudo').innerHTML = `
-        <div class="voucher-card ${disponivel ? 'card-disponivel' : 'card-usado'}">
-          <div class="voucher-ribbon ${disponivel ? 'ribbon-ok' : 'ribbon-usado'}">
-            ${disponivel ? '✓ Disponível' : '✗ Utilizado'}
-          </div>
-          <div class="voucher-logo">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="48" height="48">
-              <path d="M1 9l2-2v13h18V7l2 2V4l-2-2H3L1 4v5zm2 9V9h18v9H3zm9-1a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0-2a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/>
-            </svg>
-          </div>
-          <h1 class="voucher-title">Voucher de Hospedagem</h1>
-          <div class="voucher-socio">${escHtml(v.nome_socio)}</div>
-          <div class="voucher-details">
-            <div class="detail-item">
-              <span class="detail-label">Valor da Hospedagem</span>
-              <span class="detail-value highlight">${fmt(v.valor_hospedagem)}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Diárias Disponíveis</span>
-              <span class="detail-value">${v.diarias} diária${v.diarias > 1 ? 's' : ''}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Status</span>
-              <span class="detail-value">
-                <span class="badge ${disponivel ? 'badge-green' : 'badge-red'}">
-                  ${disponivel ? 'Disponível' : 'Utilizado'}
-                </span>
-              </span>
-            </div>
-            ${v.data_uso ? `
-            <div class="detail-item">
-              <span class="detail-label">Data de Uso</span>
-              <span class="detail-value">${fmtDate(v.data_uso)}</span>
-            </div>` : ''}
-            ${v.observacoes ? `
-            <div class="detail-item detail-obs">
-              <span class="detail-label">Observações</span>
-              <span class="detail-value">${escHtml(v.observacoes)}</span>
-            </div>` : ''}
-            <div class="detail-item">
-              <span class="detail-label">Código</span>
-              <span class="detail-value code-text">${v.codigo}</span>
-            </div>
-            <div class="detail-item">
-              <span class="detail-label">Emitido em</span>
-              <span class="detail-value">${fmtDate(v.created_at)}</span>
-            </div>
-          </div>
-          ${disponivel
-            ? `<button class="btn btn-danger btn-full" id="btnAcao">Marcar como Utilizado</button>`
-            : `<button class="btn btn-ghost btn-full" id="btnAcao">Desmarcar uso</button>`
-          }
-          <a href="index.html" class="voucher-back">← Voltar ao painel</a>
+    // ── Render Erro ──────────────────────────────────────────
+    function renderErro(titulo, msg) {
+      document.getElementById('root').innerHTML = `
+        <div class="state-wrap">
+          <div style="font-size:3rem">❌</div>
+          <h2>${titulo}</h2>
+          <p>${msg}</p>
+          <a href="index.html" style="display:inline-block;margin-top:1rem;color:#1d4ed8;font-size:13px;">← Voltar ao painel</a>
         </div>`;
-
-      document.getElementById('btnAcao').addEventListener('click', () => toggleUso(v));
     }
 
+    // ── Render Voucher ───────────────────────────────────────
+    function renderVoucher(v) {
+      document.title = `Voucher ${v.numero || v.codigo} — ${v.nome_socio}`;
+      const disponivel = !v.usado;
+      const linkAtual = window.location.href;
+
+      const espec = v.observacoes
+        ? escHtml(v.observacoes)
+        : `Voucher de ${v.diarias > 1 ? v.diarias + ' ('+numPorExtenso(v.diarias)+')' : 'uma (01)'} diária${v.diarias > 1 ? 's' : ''} anua${v.diarias > 1 ? 'is' : 'l'} para um casal no Hotel Villamor Prime.`;
+
+      const brinde = v.brinde_descricao
+        ? escHtml(v.brinde_descricao).toUpperCase()
+        : `0${v.diarias} DIARIA${v.diarias > 1 ? 'S' : ''} ANUAIS`;
+
+      const agora = new Date().toLocaleString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      });
+
+      document.getElementById('root').innerHTML = `
+        <!-- Barra de ações -->
+        <div class="actions-bar no-print">
+          <span class="badge-status ${disponivel ? 'badge-ok' : 'badge-used'}">
+            ${disponivel ? '✓ Disponível' : '✗ Utilizado'}
+          </span>
+          <button class="btn-uso ${disponivel ? 'marcar' : 'desmarcar'}" id="btnUso">
+            ${disponivel ? 'Marcar como Utilizado' : 'Desmarcar uso'}
+          </button>
+          <button class="btn-print" onclick="window.print()">
+            🖨️ Imprimir
+          </button>
+        </div>
+
+        <!-- Documento Voucher -->
+        <div class="voucher ${v.usado ? 'is-usado' : ''}" id="voucherDoc">
+          <div class="v-usado-stamp">UTILIZADO</div>
+
+          <!-- Cabeçalho -->
+          <div class="v-header">
+            <div class="v-logo">
+              <div class="v-logo-box">
+                <div class="v-logo-sigla">RS<span style="color:#888;font-size:22px">M</span><span style="color:#b8860b;font-size:10px">✦</span></div>
+                <div class="v-logo-full">Empreendimentos<br>e Incorporações<br>LTDA</div>
+              </div>
+            </div>
+
+            <div class="v-title">
+              <h1>VOUCHER</h1>
+              <h2>RSM EMPREENDIMENTO</h2>
+            </div>
+
+            <div class="v-numero-wrap">
+              <div class="v-numero-label">NÚMERO</div>
+              <canvas id="qrcode"></canvas>
+              <div class="v-numero-val">${String(v.numero || v.codigo).padStart(4, '0')}</div>
+            </div>
+          </div>
+
+          <!-- Dados -->
+          <div class="v-dados">
+            <div class="v-row">
+              <span class="v-label">SALA DE VENDA:</span>
+              <span class="v-value">${escHtml(v.sala_venda || '—')}</span>
+            </div>
+            <div class="v-row">
+              <span class="v-label">DATA EMISSÃO:</span>
+              <span class="v-value">${fmtDateTime(v.created_at)}</span>
+            </div>
+            <div class="v-row">
+              <span class="v-label">CONVIDADOS:</span>
+              <span class="v-value">${escHtml(v.nome_socio)}</span>
+            </div>
+            <div class="v-row">
+              <span class="v-label">BRINDE:</span>
+              <span class="v-value">${brinde}</span>
+            </div>
+            ${v.valor_hospedagem ? `
+            <div class="v-row">
+              <span class="v-label">VALOR HOSP.:</span>
+              <span class="v-value">${fmt(v.valor_hospedagem)}</span>
+            </div>` : ''}
+            ${v.validade ? `
+            <div class="v-validade">VALIDADE BRINDE DE: ATÉ ${fmtDate(v.validade)}</div>` : ''}
+          </div>
+
+          <!-- Especificação -->
+          <div class="v-espec-title">ESPECIFICAÇÃO DO VOUCHER :</div>
+          <div class="v-espec-texto">${espec}</div>
+
+          <!-- Especificações de uso -->
+          <div class="v-uso-title">ESPECIFICAÇÕES DE USO :</div>
+          <div class="v-uso-lista">
+            <div class="v-uso-item"><span class="v-checkbox"></span><span>Para agendamento ligar 83 98834-0045, no Hotel Villamor Prime.</span></div>
+            <div class="v-uso-item"><span class="v-checkbox"></span><span>Este Voucher é intransferível.</span></div>
+            <div class="v-uso-item"><span class="v-checkbox"></span><span>Diárias com check-in Domingo e check-out até a Quinta-Feira, exceto se for Encontro de Sócios Proprietários aos finais de semana.</span></div>
+            <div class="v-uso-item"><span class="v-checkbox"></span><span>Quantidade de diária para um casal, não fracionadas.</span></div>
+            <div class="v-uso-item"><span class="v-checkbox"></span><span>Café da manhã incluso nas diárias.</span></div>
+            <div class="v-uso-item"><span class="v-checkbox"></span><span>Diárias em apartamento LUXO.</span></div>
+            <div class="v-uso-item"><span class="v-checkbox"></span><span>Reservas sujeitas à disponibilidade.</span></div>
+            <div class="v-uso-item"><span class="v-checkbox"></span><span>Uso restrito no Hotel Villamor Prime.</span></div>
+            <div class="v-uso-item"><span class="v-checkbox"></span><span>Exceto feriados, datas comemorativas e eventos terceirizado.</span></div>
+            <div class="v-uso-item"><span class="v-checkbox"></span><span>A utilização se dará após 10% do contrato integralizado.</span></div>
+          </div>
+
+          <!-- Rodapé -->
+          <div class="v-footer">
+            <div class="v-assinatura">
+              <div class="v-assinatura-linha"></div>
+              <div class="v-assinatura-cargo">GERENTE</div>
+            </div>
+            <div class="v-data-impressao">
+              <div>DATA IMPRESSÃO: ${agora}</div>
+            </div>
+          </div>
+        </div>`;
+
+      // Gera QR Code
+      QRCode.toCanvas(document.getElementById('qrcode'), linkAtual, {
+        width: 80, margin: 1,
+        color: { dark: '#000', light: '#fff' }
+      });
+
+      // Botão de uso
+      document.getElementById('btnUso').addEventListener('click', () => toggleUso(v));
+    }
+
+    // ── Toggle uso ───────────────────────────────────────────
     async function toggleUso(v) {
-      const btn = document.getElementById('btnAcao');
+      const btn = document.getElementById('btnUso');
       btn.disabled = true;
       btn.textContent = 'Atualizando…';
 
@@ -160,14 +589,14 @@
         return;
       }
 
-      renderVoucher(data);
       showToast(data.usado ? 'Voucher marcado como utilizado!' : 'Voucher desmarcado!');
+      renderVoucher(data);
     }
 
-    function escHtml(str) {
-      const d = document.createElement('div');
-      d.textContent = str;
-      return d.innerHTML;
+    // ── Helper número por extenso (simplificado) ─────────────
+    function numPorExtenso(n) {
+      const ext = ['','um','duas','três','quatro','cinco','seis','sete','oito','nove','dez'];
+      return n <= 10 ? ext[n] : n;
     }
 
     carregarVoucher();

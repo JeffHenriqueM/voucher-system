@@ -84,9 +84,15 @@
       </div>
       <form id="formVoucher">
         <input type="hidden" id="editId" />
-        <div class="form-group">
-          <label for="inputNome">Nome do Sócio *</label>
-          <input type="text" id="inputNome" required placeholder="Ex: João Silva" />
+        <div class="form-row">
+          <div class="form-group">
+            <label for="inputNome">Nome do Convidado / Sócio *</label>
+            <input type="text" id="inputNome" required placeholder="Ex: MARIA DE FATIMA RODRIGUES" />
+          </div>
+          <div class="form-group">
+            <label for="inputSala">Sala de Venda</label>
+            <input type="text" id="inputSala" placeholder="Ex: VILLA" />
+          </div>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -98,9 +104,19 @@
             <input type="number" id="inputDiarias" required min="1" step="1" placeholder="1" />
           </div>
         </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="inputBrinde">Descrição do Brinde</label>
+            <input type="text" id="inputBrinde" placeholder="Ex: 02 DIARIAS ANUAIS VILLAMOR" />
+          </div>
+          <div class="form-group">
+            <label for="inputValidade">Validade</label>
+            <input type="date" id="inputValidade" />
+          </div>
+        </div>
         <div class="form-group">
-          <label for="inputObs">Observações</label>
-          <textarea id="inputObs" rows="3" placeholder="Informações adicionais…"></textarea>
+          <label for="inputObs">Especificação do Voucher</label>
+          <textarea id="inputObs" rows="3" placeholder="Ex: Voucher de 02 diárias anuais para um casal no Hotel Villamor Prime."></textarea>
         </div>
         <div class="form-actions">
           <button type="button" class="btn btn-ghost" id="btnCancelar">Cancelar</button>

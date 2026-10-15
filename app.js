@@ -6,11 +6,22 @@ const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // Usuários Reais do Sistema (padrões caso não haja no banco/localStorage)
 const USUARIOS_PADRAO = [
   { id: 'usr-admin', nome: 'Administrador Geral', usuario: 'admin', senha: '1234', perfil: 'admin', ativo: true, created_at: '2026-10-15T12:00:00Z' },
+  { id: 'usr-recepcao', nome: 'Recepção', usuario: 'recepcao', senha: '1234567', perfil: 'recepcao', ativo: true, created_at: '2026-10-15T12:00:00Z' },
   { id: 'usr-reservas', nome: 'Equipe de Reservas', usuario: 'reservas', senha: '2345', perfil: 'reservas', ativo: true, created_at: '2026-10-15T12:00:00Z' },
   { id: 'usr-posvenda', nome: 'Equipe de Pós Venda', usuario: 'posvenda', senha: '3456', perfil: 'pos_venda', ativo: true, created_at: '2026-10-15T12:00:00Z' }
 ];
 
-let listaUsuarios = JSON.parse(localStorage.getItem('rsm_usuarios') || 'null') || USUARIOS_PADRAO;
+let listaUsuarios = JSON.parse(localStorage.getItem('rsm_usuarios') || 'null');
+if (!listaUsuarios || !Array.isArray(listaUsuarios) || !listaUsuarios.length) {
+  listaUsuarios = JSON.parse(JSON.stringify(USUARIOS_PADRAO));
+} else {
+  USUARIOS_PADRAO.forEach(up => {
+    const existe = listaUsuarios.some(u => (u.usuario || '').toLowerCase() === (up.usuario || '').toLowerCase());
+    if (!existe) {
+      listaUsuarios.push(JSON.parse(JSON.stringify(up)));
+    }
+  });
+}
 let usuarioLogado = JSON.parse(sessionStorage.getItem('rsm_usuario_logado') || 'null');
 let perfilAtivo = usuarioLogado ? usuarioLogado.perfil : (sessionStorage.getItem('rsm_perfil_ativo') || null);
 let abaAtiva = 'cotas'; // 'cotas', 'vouchers', 'solicitacoes', 'reservas', 'modelos', 'usuarios'
@@ -217,7 +228,86 @@ function calcularDiariasSocio(nomeSocio) {
 
 // ── Gestão de Acessos & Perfis ─────────────────────────────────
 
-// Seleção com 1 clique de perfil no login
+function getIconePerfil(perfil) {
+  if (perfil === 'admin') return '👑';
+  if (perfil === 'pos_venda') return '💼';
+  if (perfil === 'reservas') return '🛎️';
+  if (perfil === 'recepcao') return '🏨';
+  return '👤';
+}
+
+function getNomePerfilLegivel(perfil) {
+  if (perfil === 'admin') return 'Admin';
+  if (perfil === 'pos_venda') return 'Pós Venda';
+  if (perfil === 'reservas') return 'Reservas';
+  if (perfil === 'recepcao') return 'Recepção';
+  return perfil || 'Operador';
+}
+
+function atualizarLabelSenhaUsuario(userLogin) {
+  const lbl = document.getElementById('labelSenhaUsuario');
+  if (!lbl) return;
+  const usr = listaUsuarios.find(u => (u.usuario || '').toLowerCase() === (userLogin || '').toLowerCase());
+  if (usr && usr.nome) {
+    lbl.innerHTML = `Senha de <strong>${escHtml(usr.nome)}</strong> *`;
+  } else {
+    lbl.innerHTML = `Senha de Acesso *`;
+  }
+}
+
+// Renderização dinâmica dos usuários e departamentos no modal de Login
+function renderCardsUsuariosLogin() {
+  const container = document.getElementById('rolePickerLogin');
+  if (!container) return;
+
+  const usuariosAtivos = listaUsuarios.filter(u => u.ativo !== false);
+  if (!usuariosAtivos.length) {
+    container.innerHTML = '<div style="grid-column:1/-1;font-size:.8rem;color:var(--text-3);padding:.5rem;">Nenhum usuário cadastrado.</div>';
+    return;
+  }
+
+  // Ordenar usuários: Admin ➔ Recepção ➔ Reservas ➔ Pós Venda e por nome
+  const ordemPerfis = { admin: 1, recepcao: 2, reservas: 3, pos_venda: 4 };
+  usuariosAtivos.sort((a, b) => {
+    const pA = ordemPerfis[a.perfil] || 99;
+    const pB = ordemPerfis[b.perfil] || 99;
+    if (pA !== pB) return pA - pB;
+    return (a.nome || '').localeCompare(b.nome || '');
+  });
+
+  const inputUsr = document.getElementById('inputUsuario');
+  let userSelecionado = (inputUsr && inputUsr.value) ? inputUsr.value.toLowerCase() : '';
+  if (!userSelecionado && usuarioLogado) {
+    userSelecionado = (usuarioLogado.usuario || '').toLowerCase();
+  }
+  if (!userSelecionado || !usuariosAtivos.some(u => (u.usuario || '').toLowerCase() === userSelecionado)) {
+    userSelecionado = (usuariosAtivos[0].usuario || '').toLowerCase();
+  }
+  if (inputUsr) inputUsr.value = userSelecionado;
+
+  container.innerHTML = usuariosAtivos.map(u => {
+    const usrLogin = (u.usuario || '').toLowerCase();
+    const isAtivo = usrLogin === userSelecionado;
+    const icone = getIconePerfil(u.perfil);
+    const perfilLegivel = getNomePerfilLegivel(u.perfil);
+
+    return `
+      <div class="role-card ${isAtivo ? 'active' : ''}" 
+           data-user="${escHtml(usrLogin)}" 
+           onclick="selecionarPerfilLogin('${escHtml(usrLogin)}', this)"
+           title="${escHtml(u.nome)} (${perfilLegivel})">
+        <div class="role-card-badge">${icone}</div>
+        <div class="role-card-name">${escHtml(u.nome)}</div>
+        <div class="role-card-desc">${perfilLegivel}</div>
+      </div>
+    `;
+  }).join('');
+
+  atualizarLabelSenhaUsuario(userSelecionado);
+}
+window.renderCardsUsuariosLogin = renderCardsUsuariosLogin;
+
+// Seleção com 1 clique de usuário no login
 window.selecionarPerfilLogin = function(user, cardEl) {
   const uInput = document.getElementById('inputUsuario');
   if (uInput) uInput.value = user;
@@ -227,7 +317,7 @@ window.selecionarPerfilLogin = function(user, cardEl) {
   if (cardEl) {
     cardEl.classList.add('active');
   } else {
-    const alvo = document.querySelector(`#rolePickerLogin .role-card[data-user="${user}"]`);
+    const alvo = document.querySelector(`#rolePickerLogin .role-card[data-user="${(user || '').toLowerCase()}"]`);
     if (alvo) alvo.classList.add('active');
   }
 
@@ -235,6 +325,8 @@ window.selecionarPerfilLogin = function(user, cardEl) {
   const btnToggle = document.getElementById('btnToggleCustomUser');
   if (wrapCustom) wrapCustom.classList.add('hidden');
   if (btnToggle) btnToggle.textContent = 'Outro usuário?';
+
+  atualizarLabelSenhaUsuario(user);
 
   const sInput = document.getElementById('inputSenha');
   if (sInput) {
@@ -249,14 +341,16 @@ window.toggleCustomUser = function() {
   const btnToggle = document.getElementById('btnToggleCustomUser');
   const uCustom = document.getElementById('inputUsuarioCustom');
   const cards = document.querySelectorAll('#rolePickerLogin .role-card');
+  const lbl = document.getElementById('labelSenhaUsuario');
 
   if (!wrapCustom) return;
 
   const estaOculto = wrapCustom.classList.contains('hidden');
   if (estaOculto) {
     wrapCustom.classList.remove('hidden');
-    if (btnToggle) btnToggle.textContent = 'Voltar aos perfis';
+    if (btnToggle) btnToggle.textContent = 'Voltar aos usuários';
     cards.forEach(c => c.classList.remove('active'));
+    if (lbl) lbl.innerHTML = 'Senha de Acesso *';
     if (uCustom) {
       uCustom.focus();
       uCustom.select();
@@ -264,8 +358,11 @@ window.toggleCustomUser = function() {
   } else {
     wrapCustom.classList.add('hidden');
     if (btnToggle) btnToggle.textContent = 'Outro usuário?';
-    const primeiro = document.querySelector('#rolePickerLogin .role-card[data-user="admin"]');
-    if (primeiro) window.selecionarPerfilLogin('admin', primeiro);
+    const primeiro = document.querySelector('#rolePickerLogin .role-card');
+    if (primeiro) {
+      const u = primeiro.getAttribute('data-user');
+      window.selecionarPerfilLogin(u, primeiro);
+    }
   }
 };
 
@@ -311,6 +408,8 @@ window.ajudaEsqueciSenha = function() {
 function initControleAcesso() {
   const overlay = document.getElementById('loginOverlay');
   const btnFechar = document.getElementById('btnFecharLogin');
+
+  renderCardsUsuariosLogin();
 
   if (!usuarioLogado) {
     overlay.classList.remove('hidden');
@@ -469,6 +568,7 @@ function initControleAcesso() {
       const sIn = document.getElementById('inputSenha');
       if (sIn) sIn.value = '';
       if (btnFechar) btnFechar.style.display = usuarioLogado ? 'flex' : 'none';
+      renderCardsUsuariosLogin();
       overlay.classList.remove('hidden');
       overlay.style.display = 'flex';
       setTimeout(() => { if (sIn) sIn.focus(); }, 150);
@@ -480,6 +580,7 @@ function nomePerfil(role) {
   if (role === 'admin') return 'Admin';
   if (role === 'reservas') return 'Reservas';
   if (role === 'pos_venda') return 'Pós Venda';
+  if (role === 'recepcao') return 'Recepção';
   return role;
 }
 
@@ -490,7 +591,8 @@ function aplicarPermissoesPerfil() {
   const labels = {
     admin: '👑 Admin',
     reservas: '🛎️ Reservas',
-    pos_venda: '💼 Pós Venda'
+    pos_venda: '💼 Pós Venda',
+    recepcao: '🏨 Recepção'
   };
   const primeiroNome = usuarioLogado ? usuarioLogado.nome.split(' ')[0] : '';
   badge.textContent = primeiroNome ? `${labels[perfilAtivo]} (${primeiroNome})` : (labels[perfilAtivo] || perfilAtivo);
@@ -523,7 +625,7 @@ function aplicarPermissoesPerfil() {
     tabModelos.style.display = 'inline-flex'; // Pós Venda pode acessar os modelos de voucher
     if (tabUsuarios) tabUsuarios.style.display = 'none';
     if (abaAtiva === 'reservas' || abaAtiva === 'usuarios') mudarAba('cotas');
-  } else if (perfilAtivo === 'reservas') {
+  } else if (perfilAtivo === 'reservas' || perfilAtivo === 'recepcao') {
     btnAssinatura.style.display = 'none';
     btnNovo.style.display = 'none';
     tabCotas.style.display = 'none';
@@ -2064,7 +2166,7 @@ function abrirModalSolicitarVoucher(nomeSocioPreenchido = '') {
   if (inputCheckin) inputCheckin.value = hoje;
   if (inputCheckout) inputCheckout.value = '';
 
-  const opNome = usuarioLogado ? usuarioLogado.nome : (perfilAtivo === 'reservas' ? 'Equipe de Reservas' : (perfilAtivo === 'admin' ? 'Administrador' : 'Pós Venda'));
+  const opNome = usuarioLogado ? usuarioLogado.nome : (perfilAtivo === 'recepcao' ? 'Recepção' : (perfilAtivo === 'reservas' ? 'Equipe de Reservas' : (perfilAtivo === 'admin' ? 'Administrador' : 'Pós Venda')));
   document.getElementById('solicOperador').value = opNome;
 
   atualizarDicaSocioSolicitacao(nomeSocioPreenchido);
@@ -2342,6 +2444,7 @@ async function carregarUsuarios() {
   } catch (err) {
     console.warn('Erro ao carregar usuários do Supabase, usando local:', err);
   }
+  renderCardsUsuariosLogin();
   if (abaAtiva === 'usuarios') {
     renderTabelaUsuarios();
   }
@@ -2354,7 +2457,8 @@ function renderTabelaUsuarios() {
   const labels = {
     admin: '👑 Administrador',
     reservas: '🛎️ Reservas',
-    pos_venda: '💼 Pós Venda'
+    pos_venda: '💼 Pós Venda',
+    recepcao: '🏨 Recepção'
   };
 
   tbody.innerHTML = listaUsuarios.map(u => {
@@ -2423,6 +2527,7 @@ async function alternarStatusUsuario(id) {
   localStorage.setItem('rsm_usuarios', JSON.stringify(listaUsuarios));
   showToast(`Usuário ${u.nome} foi ${novoStatus ? 'ativado' : 'desativado'} com sucesso!`);
   renderTabelaUsuarios();
+  renderCardsUsuariosLogin();
 }
 
 async function excluirUsuario(id) {
@@ -2440,6 +2545,7 @@ async function excluirUsuario(id) {
   localStorage.setItem('rsm_usuarios', JSON.stringify(listaUsuarios));
   showToast('Usuário excluído!');
   renderTabelaUsuarios();
+  renderCardsUsuariosLogin();
 }
 
 window.abrirModalNovoUsuario = abrirModalNovoUsuario;
@@ -2523,6 +2629,7 @@ document.getElementById('formUsuario').addEventListener('submit', async (e) => {
   localStorage.setItem('rsm_usuarios', JSON.stringify(listaUsuarios));
   fecharModalUsuario();
   renderTabelaUsuarios();
+  renderCardsUsuariosLogin();
 });
 
 // Usuários Listeners

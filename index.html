@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Villamor Vouchers — Gestão de Vouchers & Cotas</title>
-  <link rel="stylesheet" href="style.css?v=20261015_21" />
+  <link rel="stylesheet" href="style.css?v=20261015_22" />
 </head>
 <body>
 
@@ -21,27 +21,13 @@
           <span class="login-icon-emoji">🛡️</span>
         </div>
         <h2 class="login-title">Villamor Vouchers</h2>
-        <p class="login-desc">Selecione seu departamento e digite sua senha</p>
+        <p class="login-desc">Selecione seu usuário e digite sua senha de acesso</p>
       </div>
 
-      <!-- Seletor Rápido de Perfil com 1 Toque -->
-      <div class="role-picker-label">Selecione seu departamento:</div>
+      <!-- Seletor Rápido de Usuário com 1 Toque -->
+      <div class="role-picker-label" id="rolePickerLabel">Selecione seu usuário ou departamento:</div>
       <div class="role-picker" id="rolePickerLogin">
-        <div class="role-card active" data-user="admin" onclick="selecionarPerfilLogin('admin', this)">
-          <div class="role-card-badge">👑</div>
-          <div class="role-card-name">Admin</div>
-          <div class="role-card-desc">Gerência</div>
-        </div>
-        <div class="role-card" data-user="posvenda" onclick="selecionarPerfilLogin('posvenda', this)">
-          <div class="role-card-badge">💼</div>
-          <div class="role-card-name">Pós Venda</div>
-          <div class="role-card-desc">Emissão</div>
-        </div>
-        <div class="role-card" data-user="reservas" onclick="selecionarPerfilLogin('reservas', this)">
-          <div class="role-card-badge">🛎️</div>
-          <div class="role-card-name">Reservas</div>
-          <div class="role-card-desc">Hospedagem</div>
-        </div>
+        <!-- Renderizado dinamicamente via renderCardsUsuariosLogin() com os usuários e departamentos cadastrados -->
       </div>
 
       <form id="formLogin" onsubmit="executarLogin(); return false;" autocomplete="on">
@@ -59,7 +45,7 @@
 
         <div class="form-group" style="text-align:left; margin-bottom:1.25rem;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.35rem;">
-            <label for="inputSenha" style="font-size:.8rem; font-weight:600; margin:0;">
+            <label for="inputSenha" id="labelSenhaUsuario" style="font-size:.8rem; font-weight:600; margin:0;">
               Senha de Acesso *
             </label>
             <button type="button" class="btn-link-custom-user" id="btnToggleCustomUser" onclick="toggleCustomUser()">
@@ -784,6 +770,7 @@
           <div class="form-group">
             <label for="selectUsuarioPerfil">Perfil de Acesso *</label>
             <select id="selectUsuarioPerfil" required style="width:100%;padding:.5rem;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);">
+              <option value="recepcao">🏨 Recepção</option>
               <option value="reservas">🛎️ Reservas</option>
               <option value="pos_venda">💼 Pós Venda</option>
               <option value="admin">👑 Admin</option>
@@ -874,8 +861,8 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js?v=20261015_21"></script>
-  <script src="cotas_dados.js?v=20261015_21"></script>
-  <script src="app.js?v=20261015_21"></script>
+  <script src="config.js?v=20261015_22"></script>
+  <script src="cotas_dados.js?v=20261015_22"></script>
+  <script src="app.js?v=20261015_22"></script>
 </body>
 </html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gerenciamento de Vouchers</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-inner">
+      <div class="brand">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+          <path d="M1 9l2-2v13h18V7l2 2V4l-2-2H3L1 4v5zm2 9V9h18v9H3zm9-1a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0-2a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/>
+        </svg>
+        <span>Vouchers</span>
+      </div>
+      <button class="btn btn-primary" id="btnNovo">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z"/></svg>
+        Novo Voucher
+      </button>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="stats-bar">
+      <div class="stat-card">
+        <span class="stat-value" id="statTotal">—</span>
+        <span class="stat-label">Total</span>
+      </div>
+      <div class="stat-card stat-green">
+        <span class="stat-value" id="statDisponiveis">—</span>
+        <span class="stat-label">Disponíveis</span>
+      </div>
+      <div class="stat-card stat-red">
+        <span class="stat-value" id="statUsados">—</span>
+        <span class="stat-label">Usados</span>
+      </div>
+      <div class="stat-card stat-blue">
+        <span class="stat-value" id="statValor">—</span>
+        <span class="stat-label">Valor Total</span>
+      </div>
+    </div>
+
+    <div class="filters">
+      <div class="search-wrap">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M10 2a8 8 0 1 1 0 16A8 8 0 0 1 10 2zm0 2a6 6 0 1 0 0 12A6 6 0 0 0 10 4zm8.293 12.293 3.414 3.414-1.414 1.414-3.414-3.414 1.414-1.414z"/></svg>
+        <input type="text" id="inputBusca" placeholder="Buscar por nome do sócio…" />
+      </div>
+      <div class="filter-tabs">
+        <button class="tab active" data-status="">Todos</button>
+        <button class="tab" data-status="disponivel">Disponíveis</button>
+        <button class="tab" data-status="usado">Usados</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Sócio</th>
+            <th>Diárias</th>
+            <th>Valor</th>
+            <th>Status</th>
+            <th>Data de Uso</th>
+            <th>Link</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyVouchers">
+          <tr><td colspan="7" class="empty">Carregando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- Modal Criar/Editar -->
+  <div class="modal-overlay hidden" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalTitulo">Novo Voucher</h2>
+        <button class="modal-close" id="btnFecharModal">✕</button>
+      </div>
+      <form id="formVoucher">
+        <input type="hidden" id="editId" />
+        <div class="form-group">
+          <label for="inputNome">Nome do Sócio *</label>
+          <input type="text" id="inputNome" required placeholder="Ex: João Silva" />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="inputValor">Valor da Hospedagem (R$) *</label>
+            <input type="number" id="inputValor" required min="0.01" step="0.01" placeholder="0,00" />
+          </div>
+          <div class="form-group">
+            <label for="inputDiarias">Qtd. de Diárias *</label>
+            <input type="number" id="inputDiarias" required min="1" step="1" placeholder="1" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="inputObs">Observações</label>
+          <textarea id="inputObs" rows="3" placeholder="Informações adicionais…"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-ghost" id="btnCancelar">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnSalvar">Salvar Voucher</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Deletar -->
+  <div class="modal-overlay hidden" id="modalDelete">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h2>Confirmar exclusão</h2>
+        <button class="modal-close" id="btnFecharDelete">✕</button>
+      </div>
+      <p style="margin:1rem 0 1.5rem;color:var(--text-2)">Tem certeza que deseja excluir este voucher? Esta ação não pode ser desfeita.</p>
+      <div class="form-actions">
+        <button class="btn btn-ghost" id="btnCancelarDelete">Cancelar</button>
+        <button class="btn btn-danger" id="btnConfirmarDelete">Excluir</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast hidden" id="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

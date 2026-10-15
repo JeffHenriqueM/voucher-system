@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voucher</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="voucher-page">
+
+  <div class="voucher-card-wrap" id="conteudo">
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Carregando voucher…</p>
+    </div>
+  </div>
+
+  <div class="toast hidden" id="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="config.js"></script>
+  <script>
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Pega o código da URL: ?v=CODIGO
+    const params = new URLSearchParams(window.location.search);
+    const codigo = params.get('v');
+
+    function showToast(msg, tipo = 'success') {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = `toast toast-${tipo}`;
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => t.classList.add('hidden'), 3500);
+    }
+
+    function fmt(val) {
+      return Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function fmtDate(iso) {
+      if (!iso) return '—';
+      return new Date(iso).toLocaleString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+    }
+
+    async function carregarVoucher() {
+      if (!codigo) {
+        document.getElementById('conteudo').innerHTML = `
+          <div class="voucher-card error-card">
+            <div class="voucher-icon">❌</div>
+            <h1>Link inválido</h1>
+            <p>Nenhum código de voucher encontrado na URL.</p>
+          </div>`;
+        return;
+      }
+
+      const { data, error } = await db
+        .from('vouchers')
+        .select('*')
+        .eq('codigo', codigo)
+        .single();
+
+      if (error || !data) {
+        document.getElementById('conteudo').innerHTML = `
+          <div class="voucher-card error-card">
+            <div style="font-size:3rem">❌</div>
+            <h1>Voucher não encontrado</h1>
+            <p>O link pode estar incorreto ou o voucher foi removido.</p>
+          </div>`;
+        return;
+      }
+
+      renderVoucher(data);
+    }
+
+    function renderVoucher(v) {
+      const disponivel = !v.usado;
+      document.title = `Voucher — ${v.nome_socio}`;
+      document.getElementById('conteudo').innerHTML = `
+        <div class="voucher-card ${disponivel ? 'card-disponivel' : 'card-usado'}">
+          <div class="voucher-ribbon ${disponivel ? 'ribbon-ok' : 'ribbon-usado'}">
+            ${disponivel ? '✓ Disponível' : '✗ Utilizado'}
+          </div>
+          <div class="voucher-logo">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="48" height="48">
+              <path d="M1 9l2-2v13h18V7l2 2V4l-2-2H3L1 4v5zm2 9V9h18v9H3zm9-1a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0-2a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/>
+            </svg>
+          </div>
+          <h1 class="voucher-title">Voucher de Hospedagem</h1>
+          <div class="voucher-socio">${escHtml(v.nome_socio)}</div>
+          <div class="voucher-details">
+            <div class="detail-item">
+              <span class="detail-label">Valor da Hospedagem</span>
+              <span class="detail-value highlight">${fmt(v.valor_hospedagem)}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Diárias Disponíveis</span>
+              <span class="detail-value">${v.diarias} diária${v.diarias > 1 ? 's' : ''}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Status</span>
+              <span class="detail-value">
+                <span class="badge ${disponivel ? 'badge-green' : 'badge-red'}">
+                  ${disponivel ? 'Disponível' : 'Utilizado'}
+                </span>
+              </span>
+            </div>
+            ${v.data_uso ? `
+            <div class="detail-item">
+              <span class="detail-label">Data de Uso</span>
+              <span class="detail-value">${fmtDate(v.data_uso)}</span>
+            </div>` : ''}
+            ${v.observacoes ? `
+            <div class="detail-item detail-obs">
+              <span class="detail-label">Observações</span>
+              <span class="detail-value">${escHtml(v.observacoes)}</span>
+            </div>` : ''}
+            <div class="detail-item">
+              <span class="detail-label">Código</span>
+              <span class="detail-value code-text">${v.codigo}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-label">Emitido em</span>
+              <span class="detail-value">${fmtDate(v.created_at)}</span>
+            </div>
+          </div>
+          ${disponivel
+            ? `<button class="btn btn-danger btn-full" id="btnAcao">Marcar como Utilizado</button>`
+            : `<button class="btn btn-ghost btn-full" id="btnAcao">Desmarcar uso</button>`
+          }
+          <a href="index.html" class="voucher-back">← Voltar ao painel</a>
+        </div>`;
+
+      document.getElementById('btnAcao').addEventListener('click', () => toggleUso(v));
+    }
+
+    async function toggleUso(v) {
+      const btn = document.getElementById('btnAcao');
+      btn.disabled = true;
+      btn.textContent = 'Atualizando…';
+
+      const novoEstado = !v.usado;
+      const { data, error } = await db
+        .from('vouchers')
+        .update({
+          usado: novoEstado,
+          data_uso: novoEstado ? new Date().toISOString() : null
+        })
+        .eq('id', v.id)
+        .select()
+        .single();
+
+      if (error) {
+        showToast('Erro ao atualizar status', 'error');
+        btn.disabled = false;
+        return;
+      }
+
+      renderVoucher(data);
+      showToast(data.usado ? 'Voucher marcado como utilizado!' : 'Voucher desmarcado!');
+    }
+
+    function escHtml(str) {
+      const d = document.createElement('div');
+      d.textContent = str;
+      return d.innerHTML;
+    }
+
+    carregarVoucher();
+  </script>
+</body>
+</html>

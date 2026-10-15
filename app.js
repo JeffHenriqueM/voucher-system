@@ -584,17 +584,21 @@ function renderTabelaCotas() {
 }
 
 // ── Renderização dos Vouchers Emitidos ──────────────────────────
+function filtrarVouchersStatusRapido(status) {
+  filtroStatusVouchers = status;
+  document.querySelectorAll('#secaoVouchers .tab').forEach(t => {
+    t.classList.toggle('active', (t.dataset.status || '') === status);
+  });
+  if (abaAtiva !== 'vouchers') mudarAba('vouchers');
+  carregarVouchers();
+}
+window.filtrarVouchersStatusRapido = filtrarVouchersStatusRapido;
+
 async function carregarVouchers() {
-  const busca = (document.getElementById('inputBusca')?.value || '').trim();
+  const busca = (document.getElementById('inputBusca')?.value || '').trim().toLowerCase();
 
   try {
-    let query = db.from('vouchers').select('*').order('created_at', { ascending: false });
-
-    if (busca) query = query.ilike('nome_socio', `%${busca}%`);
-    if (filtroStatusVouchers === 'usado') query = query.eq('usado', true);
-    if (filtroStatusVouchers === 'disponivel') query = query.eq('usado', false);
-
-    const { data, error } = await query;
+    const { data, error } = await db.from('vouchers').select('*').order('created_at', { ascending: false });
     if (!error && data) {
       listaVouchers = data;
       localStorage.setItem('rsm_vouchers_cache', JSON.stringify(data));
@@ -607,32 +611,74 @@ async function carregarVouchers() {
 
   atualizarStatusCotasComVouchers();
   renderStatsVouchers(listaVouchers);
-  renderTabelaVouchers(listaVouchers);
+
+  // Filtragem dos dados para exibição na tabela
+  let dadosFiltrados = listaVouchers.filter(v => {
+    if (busca) {
+      const matchNome = (v.nome_socio || '').toLowerCase().includes(busca);
+      const matchNum = String(v.numero || '').includes(busca);
+      const matchCod = (v.codigo || '').toLowerCase().includes(busca);
+      if (!matchNome && !matchNum && !matchCod) return false;
+    }
+
+    if (filtroStatusVouchers === 'aguardando_assinatura') {
+      return v.status_fluxo === 'aguardando_assinatura';
+    } else if (filtroStatusVouchers === 'disponivel') {
+      return !v.usado && v.status_fluxo !== 'aguardando_assinatura';
+    } else if (filtroStatusVouchers === 'usado') {
+      return v.usado;
+    }
+    return true; // 'todos'
+  });
+
+  renderTabelaVouchers(dadosFiltrados);
 }
 
 function renderStatsVouchers(dados) {
   const total = dados.length;
+  const aguardando = dados.filter(v => v.status_fluxo === 'aguardando_assinatura').length;
   const usados = dados.filter(v => v.usado).length;
-  const disponiveis = total - usados;
+  const disponiveis = dados.filter(v => !v.usado && v.status_fluxo !== 'aguardando_assinatura').length;
 
   let totalDiariasDisponiveis = 0;
-  dados.forEach(v => {
+  dados.filter(v => !v.usado && v.status_fluxo !== 'aguardando_assinatura').forEach(v => {
     const tot = v.diarias_totais || v.diarias || 2;
-    const usd = v.diarias_usadas || (v.usado ? tot : 0);
+    const usd = v.diarias_usadas || 0;
     totalDiariasDisponiveis += Math.max(0, tot - usd);
   });
 
-  document.getElementById('statTotal').textContent = total;
-  document.getElementById('statDisponiveis').textContent = disponiveis;
-  document.getElementById('statUsados').textContent = usados;
-  document.getElementById('statDiariasRestantes').textContent = `${totalDiariasDisponiveis} diárias`;
+  const elTot = document.getElementById('statTotal');
+  if (elTot) elTot.textContent = total;
+  const elAgu = document.getElementById('statAguardandoAssinatura');
+  if (elAgu) elAgu.textContent = aguardando;
+  const elDisp = document.getElementById('statDisponiveis');
+  if (elDisp) elDisp.textContent = disponiveis;
+  const elUsd = document.getElementById('statUsados');
+  if (elUsd) elUsd.textContent = usados;
+  const elDiar = document.getElementById('statDiariasRestantes');
+  if (elDiar) elDiar.textContent = `${totalDiariasDisponiveis} diárias`;
+
+  // Atualizar badge no menu superior
+  const badgeV = document.getElementById('badgeTotalVouchers');
+  if (badgeV) {
+    if (aguardando > 0) {
+      badgeV.textContent = `${total} (${aguardando} ✍️)`;
+      badgeV.style.background = '#fef3c7';
+      badgeV.style.color = '#b45309';
+      badgeV.style.fontWeight = 'bold';
+    } else {
+      badgeV.textContent = total;
+      badgeV.style.background = '';
+      badgeV.style.color = '';
+    }
+  }
 }
 
 function renderTabelaVouchers(dados) {
   const tbody = document.getElementById('tbodyVouchers');
 
   if (!dados.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty">Nenhum voucher emitido até o momento.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="empty">Nenhum voucher encontrado para o filtro selecionado.</td></tr>';
     return;
   }
 
@@ -644,23 +690,35 @@ function renderTabelaVouchers(dados) {
 
     let statusBadge = '';
     if (isPendenteAssinatura) {
-      statusBadge = '<span class="badge badge-yellow" style="background:#fef3c7;color:#b45309;">✍️ Aguarda Assinatura</span>';
+      statusBadge = '<span class="badge badge-yellow" style="background:#fef3c7;color:#b45309;font-weight:700;">✍️ Aguarda Assinatura</span>';
     } else {
       statusBadge = v.usado || saldo === 0
         ? '<span class="badge badge-red">Utilizado</span>'
-        : (usd > 0 ? `<span class="badge badge-yellow" style="background:#fef9c3;color:#854d0e;">Parcial (${saldo} restam)</span>` : '<span class="badge badge-green">Disponível</span>');
+        : (usd > 0 ? `<span class="badge badge-yellow" style="background:#fef9c3;color:#854d0e;">Parcial (${saldo} restam)</span>` : '<span class="badge badge-green">✓ Ativo & Disponível</span>');
     }
+
+    // Snippet da Trilha de Auditoria
+    const trilhaHtml = `
+      <div style="font-size:.76rem;line-height:1.45;color:var(--text-2);">
+        <div>💼 <strong>Gerado por:</strong> ${escHtml(v.pos_venda_nome || 'Pós Venda')} <span style="color:var(--text-3);font-size:.7rem;">(${fmtDateTime(v.created_at)})</span></div>
+        <div>✍️ <strong>Assinatura:</strong> ${v.assinado_em ? `<span style="color:#15803d;font-weight:600;">✓ ${escHtml(v.admin_assinante_nome || 'Admin')} (${fmtDateTime(v.assinado_em)})</span>` : '<span style="color:#b45309;font-weight:700;">⏳ Minuta Aguardando Admin</span>'}</div>
+        ${v.solicitante_nome ? `<div style="color:var(--text-3);font-size:.72rem;">🛎️ Solicitado por: <strong>${escHtml(v.solicitante_nome)}</strong></div>` : '<div style="color:var(--text-3);font-size:.72rem;font-style:italic;">🛎️ Emissão Direta</div>'}
+      </div>
+    `;
 
     return `
       <tr>
         <td><strong>#${v.numero || '—'}</strong></td>
-        <td><strong>${escHtml(v.nome_socio)}</strong></td>
+        <td>
+          <strong>${escHtml(v.nome_socio)}</strong>
+          ${v.sala_venda ? `<div style="font-size:.72rem;color:var(--text-3);">Sala: ${escHtml(v.sala_venda)}</div>` : ''}
+        </td>
         <td>
           <span class="diarias-pill diarias-disponiveis" title="Concedidas">${tot} tot</span> /
           <span class="diarias-pill diarias-usadas" title="Utilizadas">${usd} usd</span> /
           <span class="diarias-pill diarias-saldo" title="Saldo">${saldo} saldo</span>
         </td>
-        <td>${v.valor_hospedagem ? fmt(v.valor_hospedagem) : '<span style="color:#94a3b8">A definir</span>'}</td>
+        <td>${trilhaHtml}</td>
         <td>${statusBadge}</td>
         <td>
           <button class="link-copy" onclick="copiarLink('${v.codigo}')">
@@ -671,12 +729,15 @@ function renderTabelaVouchers(dados) {
         <td>
           <div class="actions">
             ${isPendenteAssinatura && perfilAtivo === 'admin' ? `
-            <button class="btn btn-primary" style="padding:.25rem .55rem;font-size:.75rem;" onclick="abrirModalAssinarVoucher('${v.id}')" title="Conferir e assinar voucher">
+            <button class="btn btn-primary" style="padding:.25rem .55rem;font-size:.75rem;background:#0f766e;border-color:#0f766e;" onclick="abrirModalAssinarVoucher('${v.id}')" title="Conferir e assinar voucher">
               ✍️ Assinar
             </button>` : ''}
-            <a href="${linkVoucher(v.codigo)}" target="_blank" class="btn-icon" title="Visualizar / Imprimir">
+            <a href="${linkVoucher(v.codigo)}" target="_blank" class="btn-icon" title="Visualizar / Imprimir Voucher">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
             </a>
+            <button class="btn-icon" title="Ver Trilha de Auditoria Completa" onclick="abrirModalTrilhaAuditoria('${v.id}')">
+              📋
+            </button>
             ${perfilAtivo !== 'pos_venda' && !isPendenteAssinatura ? `
             <button class="btn-icon" title="Registrar Hospedagem / Baixa" onclick="abrirModalBaixa('${v.id}')">
               🛎️
@@ -1091,6 +1152,7 @@ function atualizarPreviewAssinatura(url) {
 
 // ── Emissão de Voucher ─────────────────────────────────────────
 function abrirModalEmitirParaCota(cotaId) {
+  solicitacaoEmAtendimentoId = null;
   const cota = listaCotas.find(c => c.id === cotaId);
   if (!cota) return;
 
@@ -1298,8 +1360,14 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
 
     fecharModal();
     sincronizarCotas();
-    if (abaAtiva === 'vouchers') carregarVouchers();
-    if (abaAtiva === 'solicitacoes') renderTabelaSolicitacoes();
+    solicitacaoEmAtendimentoId = null;
+    mudarAba('vouchers');
+    if (!isFluxoAdmin) {
+      filtrarVouchersStatusRapido('aguardando_assinatura');
+    } else {
+      carregarVouchers();
+    }
+    renderTabelaSolicitacoes();
   } catch (err) {
     console.error('Aviso ao emitir voucher:', err);
     fecharModal();
@@ -1379,9 +1447,24 @@ async function carregarSolicitacoes() {
 function atualizarBadgeSolicitacoes() {
   const badge = document.getElementById('badgeTotalSolicitacoes');
   if (!badge) return;
-  const pendentes = listaSolicitacoes.filter(s => s.status === 'pendente').length;
-  badge.textContent = pendentes;
-  badge.style.display = pendentes > 0 ? 'inline-block' : 'none';
+  const pendentesPosVenda = listaSolicitacoes.filter(s => s.status === 'pendente').length;
+  const aguardaAdmin = listaSolicitacoes.filter(s => s.status === 'aguardando_assinatura').length;
+
+  if (perfilAtivo === 'admin') {
+    if (aguardaAdmin > 0) {
+      badge.textContent = `${aguardaAdmin} ✍️`;
+      badge.style.background = '#fef3c7';
+      badge.style.color = '#b45309';
+      badge.style.display = 'inline-block';
+    } else {
+      badge.style.display = 'none';
+    }
+  } else {
+    badge.textContent = pendentesPosVenda;
+    badge.style.background = '#fee2e2';
+    badge.style.color = '#dc2626';
+    badge.style.display = pendentesPosVenda > 0 ? 'inline-block' : 'none';
+  }
 }
 
 function renderTabelaSolicitacoes() {
@@ -1589,7 +1672,10 @@ document.getElementById('tabNavSolicitacoes').addEventListener('click', () => mu
 document.getElementById('tabNavReservas').addEventListener('click', () => mudarAba('reservas'));
 document.getElementById('tabNavModelos').addEventListener('click', () => mudarAba('modelos'));
 
-document.getElementById('btnNovo').addEventListener('click', abrirModalNovo);
+document.getElementById('btnNovo').addEventListener('click', () => {
+  solicitacaoEmAtendimentoId = null;
+  abrirModalNovo();
+});
 document.getElementById('btnFecharModal').addEventListener('click', fecharModal);
 document.getElementById('btnCancelar').addEventListener('click', fecharModal);
 document.getElementById('btnFecharDelete').addEventListener('click', fecharModalDelete);
@@ -2045,13 +2131,160 @@ document.getElementById('btnCancelarAssinarAdmin').addEventListener('click', () 
   document.getElementById('modalAssinarAdmin').classList.add('hidden');
 });
 
-// Fechar com clique fora
-document.getElementById('modalUsuario').addEventListener('click', e => {
-  if (e.target === document.getElementById('modalUsuario')) fecharModalUsuario();
-});
-document.getElementById('modalAssinarAdmin').addEventListener('click', e => {
-  if (e.target === document.getElementById('modalAssinarAdmin')) document.getElementById('modalAssinarAdmin').classList.add('hidden');
-});
+// ── Modal de Trilha de Auditoria e Ciclo de Vida ────────────────
+async function abrirModalTrilhaAuditoria(voucherId) {
+  const v = listaVouchers.find(item => item.id === voucherId || item.codigo === voucherId);
+  if (!v) {
+    showToast('Voucher não localizado', 'error');
+    return;
+  }
+
+  document.getElementById('modalTrilhaTitulo').textContent = `📋 Trilha de Auditoria — Voucher #${v.numero || v.codigo}`;
+  document.getElementById('modalTrilhaSub').textContent = `Beneficiário: ${v.nome_socio} | Código: ${v.codigo}`;
+
+  const linkBtn = document.getElementById('btnTrilhaAbrirVoucher');
+  if (linkBtn) linkBtn.href = linkVoucher(v.codigo);
+
+  const container = document.getElementById('modalTrilhaConteudo');
+  container.innerHTML = '<div style="text-align:center;padding:2rem;"><div class="spinner"></div><p style="margin-top:1rem;color:var(--text-3);">Carregando dados da trilha...</p></div>';
+  document.getElementById('modalTrilhaAuditoria').classList.remove('hidden');
+
+  // Buscar solicitação vinculada
+  let solicOrigem = null;
+  try {
+    const { data: s } = await db.from('voucher_solicitacoes').select('*').eq('voucher_codigo', v.codigo).maybeSingle();
+    if (s) solicOrigem = s;
+  } catch (e) {}
+
+  // Buscar histórico de estadias / baixas
+  let historicoBaixas = [];
+  try {
+    const { data: h } = await db.from('voucher_historico_uso').select('*').eq('voucher_codigo', v.codigo).order('created_at', { ascending: true });
+    if (h) historicoBaixas = h;
+  } catch (e) {}
+
+  const isAssinado = (v.status_fluxo === 'ativo' || v.status_fluxo === 'usado') && Boolean(v.assinado_em);
+  const temSolicitacao = Boolean(solicOrigem || v.solicitante_nome);
+  const quemSolicitou = v.solicitante_nome || (solicOrigem ? (solicOrigem.solicitante_nome || solicOrigem.solicitante) : 'Reservas');
+  const quandoSolicitou = (solicOrigem && solicOrigem.created_at) || v.solicitado_em || null;
+  const periodoPretendido = (v.periodo_checkin && v.periodo_checkout)
+    ? `${fmtDate(v.periodo_checkin)} até ${fmtDate(v.periodo_checkout)}`
+    : (solicOrigem && solicOrigem.periodo_checkin && solicOrigem.periodo_checkout ? `${fmtDate(solicOrigem.periodo_checkin)} até ${fmtDate(solicOrigem.periodo_checkout)}` : null);
+
+  const tot = v.diarias_totais || v.diarias || 2;
+  const usd = v.diarias_usadas || (v.usado ? tot : 0);
+  const saldo = Math.max(0, tot - usd);
+
+  let baixasHtml = '';
+  if (historicoBaixas && historicoBaixas.length > 0) {
+    baixasHtml = historicoBaixas.map((h, i) => `
+      <div style="background:var(--bg-main);border:1px solid var(--border);border-radius:6px;padding:.6rem .8rem;margin-top:.4rem;font-size:.8rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-weight:700;">
+          <span>🛎️ Estadia #${i+1}: ${h.diarias_utilizadas} diária(s) baixada(s)</span>
+          <span style="color:var(--text-3);font-size:.72rem;">${fmtDateTime(h.created_at)}</span>
+        </div>
+        <div style="color:var(--text-2);font-size:.75rem;margin-top:2px;">
+          <strong>Período:</strong> ${fmtDate(h.data_checkin)} a ${fmtDate(h.data_checkout)} | <strong>Operador:</strong> ${escHtml(h.operador || 'Reservas')}
+        </div>
+        ${h.observacoes ? `<div style="color:var(--text-3);font-size:.72rem;margin-top:2px;"><strong>Obs:</strong> ${escHtml(h.observacoes)}</div>` : ''}
+      </div>
+    `).join('');
+  } else {
+    baixasHtml = '<p style="color:var(--text-3);font-size:.8rem;margin-top:.4rem;">Nenhuma estadia ou baixa de reserva registrada até o momento.</p>';
+  }
+
+  container.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:1rem;">
+      <!-- Resumo do Voucher -->
+      <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:.85rem;display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:.6rem;font-size:.8rem;">
+        <div><span style="color:var(--text-3);display:block;font-size:.72rem;">VOUCHER</span><strong>#${v.numero || '—'} (${v.codigo})</strong></div>
+        <div><span style="color:var(--text-3);display:block;font-size:.72rem;">STATUS</span><strong>${v.status_fluxo === 'aguardando_assinatura' ? '<span style="color:#b45309;">✍️ Aguarda Assinatura</span>' : (v.usado ? '<span style="color:#dc2626;">Utilizado</span>' : '<span style="color:#16a34a;">✓ Ativo & Válido</span>')}</strong></div>
+        <div><span style="color:var(--text-3);display:block;font-size:.72rem;">DIÁRIAS</span><strong>${tot} tot / ${usd} usd / ${saldo} saldo</strong></div>
+        <div><span style="color:var(--text-3);display:block;font-size:.72rem;">SALA DE VENDA</span><strong>${escHtml(v.sala_venda || 'VILLA')}</strong></div>
+      </div>
+
+      <!-- Timeline dos 4 Marcos -->
+      <div style="display:flex;flex-direction:column;gap:.75rem;">
+        <!-- MARCO 1: SOLICITAÇÃO -->
+        <div style="border-left:3px solid ${temSolicitacao ? '#10b981' : '#3b82f6'};background:var(--bg-card);padding:.75rem 1rem;border-radius:0 8px 8px 0;border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <strong style="font-size:.85rem;color:var(--text-1);">1. Solicitação de Reserva (Equipe de Reservas)</strong>
+            <span style="font-size:.72rem;color:var(--text-3);">${quandoSolicitou ? fmtDateTime(quandoSolicitou) : '—'}</span>
+          </div>
+          <div style="margin-top:.35rem;font-size:.8rem;color:var(--text-2);line-height:1.5;">
+            ${temSolicitacao ? `
+              <div>• <strong>Solicitante:</strong> ${escHtml(quemSolicitou)}</div>
+              ${quandoSolicitou ? `<div>• <strong>Data e Horário:</strong> ${fmtDateTime(quandoSolicitou)}</div>` : ''}
+              ${periodoPretendido ? `<div>• <strong>Período Solicitado:</strong> ${periodoPretendido}</div>` : ''}
+              ${solicOrigem && solicOrigem.motivo ? `<div>• <strong>Motivo/Obs:</strong> ${escHtml(solicOrigem.motivo)}</div>` : ''}
+            ` : `
+              <div style="color:var(--text-3);font-style:italic;">• Emissão direta pelo Pós Venda / Diretoria (sem solicitação prévia de Reservas).</div>
+            `}
+          </div>
+        </div>
+
+        <!-- MARCO 2: EMISSÃO DA MINUTA -->
+        <div style="border-left:3px solid #10b981;background:var(--bg-card);padding:.75rem 1rem;border-radius:0 8px 8px 0;border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <strong style="font-size:.85rem;color:var(--text-1);">2. Emissão da Minuta (Equipe de Pós Venda)</strong>
+            <span style="font-size:.72rem;color:var(--text-3);">${fmtDateTime(v.created_at)}</span>
+          </div>
+          <div style="margin-top:.35rem;font-size:.8rem;color:var(--text-2);line-height:1.5;">
+            <div>• <strong>Responsável pela Geração:</strong> ${escHtml(v.pos_venda_nome || 'Equipe de Pós Venda')}</div>
+            <div>• <strong>Data e Horário de Geração:</strong> ${fmtDateTime(v.created_at)}</div>
+            <div>• <strong>Diárias Concedidas:</strong> ${tot} diária(s) anuais</div>
+            <div>• <strong>Modelo de Voucher:</strong> ${escHtml(v.modelo_nome || 'Padrão RSM')}</div>
+          </div>
+        </div>
+
+        <!-- MARCO 3: ASSINATURA OFICIAL -->
+        <div style="border-left:3px solid ${isAssinado ? '#10b981' : '#f59e0b'};background:${isAssinado ? 'var(--bg-card)' : '#fffbeb'};padding:.75rem 1rem;border-radius:0 8px 8px 0;border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <strong style="font-size:.85rem;color:${isAssinado ? 'var(--text-1)' : '#92400e'};">3. Assinatura Oficial (Administrador Geral)</strong>
+            <span style="font-size:.72rem;color:${isAssinado ? 'var(--text-3)' : '#b45309'};">${v.assinado_em ? fmtDateTime(v.assinado_em) : '⏳ Pendente'}</span>
+          </div>
+          <div style="margin-top:.35rem;font-size:.8rem;color:${isAssinado ? 'var(--text-2)' : '#92400e'};line-height:1.5;">
+            ${isAssinado ? `
+              <div>• <strong>Assinado por:</strong> ${escHtml(v.admin_assinante_nome || 'Administrador Geral')}</div>
+              <div>• <strong>Data e Horário da Assinatura:</strong> ${fmtDateTime(v.assinado_em)}</div>
+              <div style="color:#15803d;font-weight:700;">• Status: ✓ Voucher homologado e válido para hospedagem</div>
+            ` : `
+              <div>• <strong>Status:</strong> ⏳ Aguardando Assinatura do Administrador</div>
+              <div>• <strong>Observação:</strong> O documento encontra-se em formato de minuta sem efeito jurídico até homologação.</div>
+            `}
+          </div>
+        </div>
+
+        <!-- MARCO 4: BAIXAS DE RESERVA -->
+        <div style="border-left:3px solid ${usd > 0 ? '#10b981' : '#64748b'};background:var(--bg-card);padding:.75rem 1rem;border-radius:0 8px 8px 0;border-top:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border);">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <strong style="font-size:.85rem;color:var(--text-1);">4. Baixa de Reserva & Utilização (Equipe de Reservas)</strong>
+            <span style="font-size:.72rem;color:var(--text-3);">${saldo} diárias restantes</span>
+          </div>
+          <div style="margin-top:.35rem;font-size:.8rem;color:var(--text-2);line-height:1.5;">
+            <div>• <strong>Total de Diárias Utilizadas:</strong> ${usd} de ${tot} diárias</div>
+            ${baixasHtml}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+window.abrirModalTrilhaAuditoria = abrirModalTrilhaAuditoria;
+
+function fecharModalTrilha() {
+  document.getElementById('modalTrilhaAuditoria').classList.add('hidden');
+}
+const btnFecTrilha = document.getElementById('btnFecharModalTrilha');
+if (btnFecTrilha) btnFecTrilha.addEventListener('click', fecharModalTrilha);
+const btnFecTrilhaBtn = document.getElementById('btnFecharModalTrilhaBtn');
+if (btnFecTrilhaBtn) btnFecTrilhaBtn.addEventListener('click', fecharModalTrilha);
+const modalTrilhaEl = document.getElementById('modalTrilhaAuditoria');
+if (modalTrilhaEl) {
+  modalTrilhaEl.addEventListener('click', e => {
+    if (e.target === modalTrilhaEl) fecharModalTrilha();
+  });
+}
 
 // ── Inicialização do Sistema ───────────────────────────────────
 initTema();

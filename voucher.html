@@ -310,6 +310,62 @@
     }
     .v-historico-row:last-child { border-bottom: none; }
 
+    /* ── Trilha de Auditoria & Ciclo de Vida do Voucher ── */
+    .v-auditoria-box {
+      border-bottom: 1px solid #111;
+      padding: 8px 14px 10px;
+      background: #f8fafc;
+    }
+    .v-auditoria-title {
+      font-size: 9.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 6px;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .v-auditoria-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+    .v-auditoria-step {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-left: 3px solid #94a3b8;
+      border-radius: 4px;
+      padding: 5px 8px;
+      font-size: 9px;
+      line-height: 1.45;
+    }
+    .v-auditoria-step.done {
+      border-left-color: #10b981;
+    }
+    .v-auditoria-step.pending {
+      border-left-color: #f59e0b;
+      background: #fffbeb;
+    }
+    .v-auditoria-step.info {
+      border-left-color: #3b82f6;
+    }
+    .v-auditoria-step .step-num {
+      font-weight: 800;
+      font-size: 8.5px;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+      color: #1e293b;
+      letter-spacing: .03em;
+    }
+    .v-auditoria-step .step-desc {
+      color: #334155;
+    }
+    @media (max-width: 600px) {
+      .v-auditoria-grid { grid-template-columns: 1fr; }
+    }
+
     .v-data-impressao {
       padding: 16px 14px 10px;
       display: flex;
@@ -398,7 +454,7 @@
   <!-- Libs -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-  <script src="config.js"></script>
+  <script src="config.js?v=20261015_11"></script>
   <script>
     const { createClient } = supabase;
     const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -488,23 +544,43 @@
         return;
       }
 
-      // Buscar histórico de utilizações
+      // Buscar solicitação de origem (se houver sido solicitado por Reservas)
+      let solicitacaoOrigem = null;
+      try {
+        const { data: sol } = await db
+          .from('voucher_solicitacoes')
+          .select('*')
+          .eq('voucher_codigo', codigo)
+          .maybeSingle();
+        if (sol) solicitacaoOrigem = sol;
+      } catch (e) {}
+
+      // Buscar histórico de utilizações / estadias
       let historicoEstadias = [];
       try {
-        const { data: hist } = await db.from('voucher_historico_uso').select('*').eq('voucher_codigo', codigo).order('created_at', { ascending: true });
+        const { data: hist } = await db
+          .from('voucher_historico_uso')
+          .select('*')
+          .eq('voucher_codigo', codigo)
+          .order('created_at', { ascending: true });
         if (hist) historicoEstadias = hist;
       } catch (e) {}
 
-      // Buscar assinatura oficial se o voucher não tiver específica
-      let assinaturaUrl = data.assinatura_url || localStorage.getItem('rsm_assinatura_admin') || '';
-      if (!assinaturaUrl) {
-        try {
-          const { data: cfg } = await db.from('configuracoes_sistema').select('valor').eq('chave', 'assinatura_oficial').single();
-          if (cfg && cfg.valor && cfg.valor.url) assinaturaUrl = cfg.valor.url;
-        } catch (e) {}
+      // Assinatura oficial SOMENTE se já estiver assinado pelo Administrador
+      let assinaturaUrl = '';
+      const isAssinado = (data.status_fluxo === 'ativo' || data.status_fluxo === 'usado') && Boolean(data.assinado_em);
+
+      if (isAssinado) {
+        assinaturaUrl = data.assinatura_url || '';
+        if (!assinaturaUrl) {
+          try {
+            const { data: cfg } = await db.from('configuracoes_sistema').select('valor').eq('chave', 'assinatura_oficial').single();
+            if (cfg && cfg.valor && cfg.valor.url) assinaturaUrl = cfg.valor.url;
+          } catch (e) {}
+        }
       }
 
-      renderVoucher(data, historicoEstadias, assinaturaUrl);
+      renderVoucher(data, historicoEstadias, assinaturaUrl, solicitacaoOrigem);
     }
 
     // ── Render Erro ──────────────────────────────────────────
@@ -519,9 +595,11 @@
     }
 
     // ── Render Voucher ───────────────────────────────────────
-    function renderVoucher(v, historicoEstadias = [], assinaturaUrl = '') {
+    function renderVoucher(v, historicoEstadias = [], assinaturaUrl = '', solicitacaoOrigem = null) {
       document.title = `Voucher ${v.numero || v.codigo} — ${v.nome_socio}`;
-      const disponivel = !v.usado;
+      const isAssinado = (v.status_fluxo === 'ativo' || v.status_fluxo === 'usado') && Boolean(v.assinado_em);
+      const isMinuta = v.status_fluxo === 'aguardando_assinatura' || !isAssinado;
+      const disponivel = !v.usado && isAssinado;
       const linkAtual = window.location.href;
 
       const espec = v.observacoes
@@ -537,15 +615,33 @@
         hour: '2-digit', minute: '2-digit', second: '2-digit'
       });
 
+      // Dados de Solicitação
+      const temSolicitacao = Boolean(solicitacaoOrigem || v.solicitante_nome);
+      const quemSolicitou = v.solicitante_nome || (solicitacaoOrigem ? (solicitacaoOrigem.solicitante_nome || solicitacaoOrigem.solicitante) : 'Equipe de Reservas');
+      const quandoSolicitou = (solicitacaoOrigem && solicitacaoOrigem.created_at) || v.solicitado_em || null;
+      const periodoPretendido = (v.periodo_checkin && v.periodo_checkout)
+        ? `${fmtDate(v.periodo_checkin)} até ${fmtDate(v.periodo_checkout)}`
+        : (solicitacaoOrigem && solicitacaoOrigem.periodo_checkin && solicitacaoOrigem.periodo_checkout
+            ? `${fmtDate(solicitacaoOrigem.periodo_checkin)} até ${fmtDate(solicitacaoOrigem.periodo_checkout)}`
+            : null);
+
+      // Dados de Emissão / Minuta
+      const quemGerou = v.pos_venda_nome || 'Equipe de Pós Venda';
+      const quandoGerou = v.created_at;
+
+      // Dados de Assinatura
+      const quemAssinou = v.admin_assinante_nome || 'Administrador Geral';
+      const quandoAssinou = v.assinado_em;
+
       document.getElementById('root').innerHTML = `
         <!-- Barra de ações -->
         <div class="actions-bar no-print">
-          ${v.status_fluxo === 'aguardando_assinatura' ? `
+          ${isMinuta ? `
           <span class="badge-status" style="background:#fef3c7;color:#b45309;">
-            ✍️ Aguardando Assinatura Admin
+            ✍️ Minuta — Aguardando Assinatura do Administrador
           </span>` : `
           <span class="badge-status ${disponivel ? 'badge-ok' : 'badge-used'}">
-            ${disponivel ? '✓ Disponível' : '✗ Utilizado'}
+            ${disponivel ? '✓ Disponível para Reserva' : '✗ Diárias Esgotadas / Utilizado'}
           </span>
           <button class="btn-uso ${disponivel ? 'marcar' : 'desmarcar'}" id="btnUso">
             ${disponivel ? 'Marcar como Utilizado' : 'Desmarcar uso'}
@@ -558,9 +654,9 @@
         <!-- Documento Voucher -->
         <div class="voucher ${v.usado ? 'is-usado' : ''}" id="voucherDoc">
           <div class="v-usado-stamp">UTILIZADO</div>
-          ${v.status_fluxo === 'aguardando_assinatura' ? `
-          <div style="background:#fef3c7;color:#92400e;padding:6px 12px;font-weight:bold;text-align:center;font-size:11px;border-bottom:1px solid #fde68a;">
-            ⚠️ MINUTA DE VOUCHER — AGUARDA ASSINATURA OFICIAL DO ADMINISTRADOR PARA ATIVAÇÃO
+          ${isMinuta ? `
+          <div style="background:#fffbeb;color:#92400e;padding:7px 12px;font-weight:bold;text-align:center;font-size:11px;border-bottom:2px dashed #f59e0b;">
+            ⚠️ MINUTA DE VOUCHER — AGUARDA ASSINATURA OFICIAL DO ADMINISTRADOR (SEM VALIDADE PARA CHECK-IN ANTES DA ASSINATURA)
           </div>` : ''}
 
           <!-- Cabeçalho -->
@@ -584,7 +680,7 @@
             </div>
           </div>
 
-          <!-- Dados -->
+          <!-- Dados Principais -->
           <div class="v-dados">
             <div class="v-row">
               <span class="v-label">SALA DE VENDA:</span>
@@ -592,7 +688,7 @@
             </div>
             <div class="v-row">
               <span class="v-label">DATA EMISSÃO:</span>
-              <span class="v-value">${fmtDateTime(v.created_at)}</span>
+              <span class="v-value">${fmtDateTime(quandoGerou)}</span>
             </div>
             <div class="v-row">
               <span class="v-label">CONVIDADOS:</span>
@@ -624,8 +720,70 @@
           <div class="v-espec-title">ESPECIFICAÇÃO DO VOUCHER :</div>
           <div class="v-espec-texto">${espec}</div>
 
-          <!-- Histórico de Estadias / Reservas (se houver) -->
-          ${renderHistoricoEstadias(historicoEstadias)}
+          <!-- Trilha de Auditoria & Ciclo de Vida Completo -->
+          <div class="v-auditoria-box">
+            <div class="v-auditoria-title">📋 Trilha de Auditoria & Ciclo de Vida do Voucher</div>
+            <div class="v-auditoria-grid">
+              <!-- 1. SOLICITAÇÃO -->
+              <div class="v-auditoria-step ${temSolicitacao ? 'done' : 'info'}">
+                <div class="step-num">1. Solicitação de Reserva</div>
+                <div class="step-desc">
+                  ${temSolicitacao ? `
+                    <div><strong>Quem solicitou:</strong> ${escHtml(quemSolicitou)}</div>
+                    <div><strong>Data/Hora:</strong> ${quandoSolicitou ? fmtDateTime(quandoSolicitou) : 'Registrado com a emissão'}</div>
+                    ${periodoPretendido ? `<div><strong>Período:</strong> ${periodoPretendido}</div>` : ''}
+                  ` : `
+                    <div><strong>Origem:</strong> Emissão Direta</div>
+                    <div><strong>Observação:</strong> Emitido sem solicitação prévia</div>
+                  `}
+                </div>
+              </div>
+
+              <!-- 2. EMISSÃO DA MINUTA -->
+              <div class="v-auditoria-step done">
+                <div class="step-num">2. Emissão da Minuta</div>
+                <div class="step-desc">
+                  <div><strong>Quem gerou:</strong> ${escHtml(quemGerou)}</div>
+                  <div><strong>Data/Hora:</strong> ${fmtDateTime(quandoGerou)}</div>
+                  <div><strong>Diárias Totais:</strong> ${v.diarias_totais || v.diarias || 2} diária(s)</div>
+                </div>
+              </div>
+
+              <!-- 3. ASSINATURA OFICIAL -->
+              <div class="v-auditoria-step ${isAssinado ? 'done' : 'pending'}">
+                <div class="step-num">3. Assinatura do Administrador</div>
+                <div class="step-desc">
+                  ${isAssinado ? `
+                    <div><strong>Quem assinou:</strong> ${escHtml(quemAssinou)}</div>
+                    <div><strong>Data/Hora:</strong> ${fmtDateTime(quandoAssinou)}</div>
+                    <div style="color:#15803d;font-weight:700;">✓ Documento Homologado e Ativo</div>
+                  ` : `
+                    <div><strong style="color:#b45309;">Status:</strong> ⏳ Aguardando Assinatura</div>
+                    <div style="color:#b45309;">Minuta enviada para aprovação do Administrador</div>
+                  `}
+                </div>
+              </div>
+
+              <!-- 4. BAIXA / ESTADIAS -->
+              <div class="v-auditoria-step ${(historicoEstadias && historicoEstadias.length > 0) ? 'done' : 'info'}">
+                <div class="step-num">4. Baixa de Reserva (Estadias)</div>
+                <div class="step-desc">
+                  ${(historicoEstadias && historicoEstadias.length > 0) ? `
+                    <div><strong>Estadias Registradas:</strong> ${historicoEstadias.length} registro(s)</div>
+                    ${historicoEstadias.map((h, i) => `
+                      <div style="font-size:8.5px;margin-top:2px;padding-top:2px;border-top:1px dashed #cbd5e1;">
+                        • #${i+1}: <strong>${h.diarias_utilizadas} d.</strong> por <em>${escHtml(h.operador || 'Reservas')}</em> em ${fmtDateTime(h.created_at)}<br>
+                        Período: ${fmtDate(h.data_checkin)} a ${fmtDate(h.data_checkout)}
+                      </div>
+                    `).join('')}
+                  ` : `
+                    <div><strong>Status:</strong> Nenhuma diária utilizada</div>
+                    <div style="color:#15803d;font-weight:600;">Saldo disponível: ${Math.max(0, (v.diarias_totais || v.diarias || 2) - (v.diarias_usadas || 0))} diária(s)</div>
+                  `}
+                </div>
+              </div>
+            </div>
+          </div>
 
           <!-- Especificações de uso -->
           <div class="v-uso-title">ESPECIFICAÇÕES DE USO :</div>
@@ -633,14 +791,24 @@
             ${renderEspecUso(v.especificacoes_uso)}
           </div>
 
-          <!-- Rodapé -->
+          <!-- Rodapé de Assinatura -->
           <div class="v-footer">
             <div class="v-assinatura">
-              <div class="v-assinatura-linha">
-                ${assinaturaUrl ? `<img src="${assinaturaUrl}" class="v-assinatura-img" alt="Assinatura" />` : ''}
-              </div>
-              <div class="v-assinatura-cargo">${v.admin_assinante_nome ? `ADMIN / GERENTE (${escHtml(v.admin_assinante_nome)})` : 'GERENTE'}</div>
-              ${v.assinado_em ? `<div style="font-size:7px;color:#666;margin-top:2px;">Assinado em ${fmtDateTime(v.assinado_em)}</div>` : ''}
+              ${isAssinado ? `
+                <div class="v-assinatura-linha">
+                  ${assinaturaUrl ? `<img src="${assinaturaUrl}" class="v-assinatura-img" alt="Assinatura Oficial" />` : '<div style="font-size:11px;font-weight:800;color:#0f766e;">ASSINADO DIGITALMENTE</div>'}
+                </div>
+                <div class="v-assinatura-cargo">${quemAssinou ? `ADMIN / GERENTE (${escHtml(quemAssinou)})` : 'GERENTE GERAL'}</div>
+                <div style="font-size:7.5px;color:#15803d;margin-top:2px;font-weight:700;">✓ Assinado oficialmente em ${fmtDateTime(quandoAssinou)}</div>
+              ` : `
+                <div class="v-assinatura-linha" style="border-bottom: 2px dashed #d97706; min-height: 44px; display: flex; align-items: center; justify-content: center; background: #fffbeb; border-radius: 4px; padding: 3px 6px;">
+                  <span style="font-size: 9.5px; color: #b45309; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; text-align: center;">
+                    ⏳ MINUTA — AGUARDA ASSINATURA ADMIN
+                  </span>
+                </div>
+                <div class="v-assinatura-cargo" style="color: #b45309;">GERENTE / ADMINISTRADOR (NÃO ASSINADO)</div>
+                <div style="font-size: 7.5px; color: #dc2626; margin-top: 2px; font-weight: 600;">⚠️ Sem validade para reserva até assinatura oficial</div>
+              `}
             </div>
             <div class="v-data-impressao">
               <div>DATA IMPRESSÃO: ${agora}</div>
@@ -655,7 +823,10 @@
       });
 
       // Botão de uso
-      document.getElementById('btnUso').addEventListener('click', () => toggleUso(v));
+      const btnUso = document.getElementById('btnUso');
+      if (btnUso) {
+        btnUso.addEventListener('click', () => toggleUso(v));
+      }
     }
 
     // ── Toggle uso ───────────────────────────────────────────
@@ -682,7 +853,7 @@
       }
 
       showToast(data.usado ? 'Voucher marcado como utilizado!' : 'Voucher desmarcado!');
-      renderVoucher(data);
+      carregarVoucher();
     }
 
     // ── Helper número por extenso (simplificado) ─────────────

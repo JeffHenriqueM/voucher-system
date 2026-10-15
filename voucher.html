@@ -425,7 +425,7 @@
   <!-- Libs -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-  <script src="config.js?v=20261015_14"></script>
+  <script src="config.js?v=20261015_15"></script>
   <script>
     const { createClient } = supabase;
     const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -570,7 +570,9 @@
       document.title = `Voucher ${v.numero || v.codigo} — ${v.nome_socio}`;
       const isAssinado = (v.status_fluxo === 'ativo' || v.status_fluxo === 'usado') && Boolean(v.assinado_em);
       const isMinuta = v.status_fluxo === 'aguardando_assinatura' || !isAssinado;
-      const disponivel = !v.usado && isAssinado;
+      const hojeStr = new Date().toISOString().split('T')[0];
+      const isVencido = v.validade ? (v.validade < hojeStr) : false;
+      const disponivel = !v.usado && isAssinado && !isVencido;
       const linkAtual = window.location.href;
 
       const espec = v.observacoes
@@ -610,10 +612,13 @@
           ${isMinuta ? `
           <span class="badge-status" style="background:#fef3c7;color:#b45309;">
             ✍️ Minuta — Aguardando Assinatura do Administrador
+          </span>` : (isVencido ? `
+          <span class="badge-status" style="background:#fee2e2;color:#991b1b;font-weight:bold;">
+            ⚠️ VOUCHER VENCIDO (EXPIRADO EM ${fmtDate(v.validade)})
           </span>` : `
           <span class="badge-status ${disponivel ? 'badge-ok' : 'badge-used'}">
             ${disponivel ? '✓ Disponível para Reserva' : '✗ Diárias Esgotadas / Utilizado'}
-          </span>`}
+          </span>`)}
           <button class="btn-print" onclick="window.print()">
             🖨️ Imprimir
           </button>
@@ -621,10 +626,14 @@
 
         <!-- Documento Voucher -->
         <div class="voucher ${v.usado ? 'is-usado' : ''}" id="voucherDoc">
-          <div class="v-usado-stamp">UTILIZADO</div>
+          <div class="v-usado-stamp">${isVencido ? 'EXPIRADO' : 'UTILIZADO'}</div>
           ${isMinuta ? `
           <div style="background:#fffbeb;color:#92400e;padding:7px 12px;font-weight:bold;text-align:center;font-size:11px;border-bottom:2px dashed #f59e0b;">
             ⚠️ MINUTA DE VOUCHER — AGUARDA ASSINATURA OFICIAL DO ADMINISTRADOR (SEM VALIDADE PARA CHECK-IN ANTES DA ASSINATURA)
+          </div>` : ''}
+          ${isVencido ? `
+          <div style="background:#fee2e2;color:#991b1b;padding:7px 12px;font-weight:bold;text-align:center;font-size:11px;border-bottom:2px dashed #ef4444;">
+            ⚠️ VOUCHER VENCIDO / EXPIRADO — A DATA LIMITE DE VALIDADE (${fmtDate(v.validade)}) FOI ULTRAPASSADA
           </div>` : ''}
 
           <!-- Cabeçalho -->
@@ -679,7 +688,12 @@
               <span class="v-value"><strong>${fmtDate(v.periodo_checkin)} até ${fmtDate(v.periodo_checkout)}</strong></span>
             </div>` : ''}
             ${v.validade ? `
-            <div class="v-validade">VALIDADE DO VOUCHER: ATÉ ${fmtDate(v.validade)}</div>` : ''}
+            <div class="v-row" style="background:${isVencido ? '#fee2e2' : '#f0fdf4'};padding:5px 8px;border-radius:4px;border:1px solid ${isVencido ? '#fca5a5' : '#bbf7d0'};margin-top:6px;">
+              <span class="v-label" style="color:${isVencido ? '#991b1b' : '#166534'};font-weight:800;">DATA DE VENCIMENTO:</span>
+              <span class="v-value" style="color:${isVencido ? '#991b1b' : '#166534'};font-weight:800;">
+                VÁLIDO ATÉ ${fmtDate(v.validade)} ${isVencido ? '⚠️ (EXPIRADO)' : '✓ (NO PRAZO)'}
+              </span>
+            </div>` : ''}
           </div>
 
           <!-- Especificação -->

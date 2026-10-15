@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Sistema de Gestão de Vouchers & Cotas — RSM</title>
-  <link rel="stylesheet" href="style.css?v=20261015_14" />
+  <link rel="stylesheet" href="style.css?v=20261015_15" />
 </head>
 <body>
 
@@ -200,6 +200,7 @@
             <tr>
               <th>Número</th>
               <th>Sócio / Convidado</th>
+              <th>Vencimento</th>
               <th>Diárias (Totais / Usadas / Saldo)</th>
               <th>Trilha & Auditoria</th>
               <th>Status</th>
@@ -208,7 +209,7 @@
             </tr>
           </thead>
           <tbody id="tbodyVouchers">
-            <tr><td colspan="7" class="empty">Carregando…</td></tr>
+            <tr><td colspan="8" class="empty">Carregando…</td></tr>
           </tbody>
         </table>
       </div>
@@ -291,6 +292,7 @@
             <tr>
               <th>Voucher Nº</th>
               <th>Sócio</th>
+              <th>Vencimento</th>
               <th>Diárias Totais</th>
               <th>Já Usadas</th>
               <th>Saldo Restante</th>
@@ -299,7 +301,7 @@
             </tr>
           </thead>
           <tbody id="tbodyReservas">
-            <tr><td colspan="7" class="empty">Carregando vouchers para reservas…</td></tr>
+            <tr><td colspan="8" class="empty">Carregando vouchers para reservas…</td></tr>
           </tbody>
         </table>
       </div>
@@ -791,8 +793,8 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js?v=20261015_14"></script>
-  <script src="cotas_dados.js?v=20261015_14"></script>
-  <script src="app.js?v=20261015_14"></script>
+  <script src="config.js?v=20261015_15"></script>
+  <script src="cotas_dados.js?v=20261015_15"></script>
+  <script src="app.js?v=20261015_15"></script>
 </body>
 </html>

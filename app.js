@@ -379,9 +379,9 @@ function aplicarPermissoesPerfil() {
     tabVouchers.style.display = 'inline-flex';
     tabSolicitacoes.style.display = 'inline-flex';
     tabReservas.style.display = 'none';
-    tabModelos.style.display = 'none';
+    tabModelos.style.display = 'inline-flex'; // Pós Venda pode acessar os modelos de voucher
     if (tabUsuarios) tabUsuarios.style.display = 'none';
-    if (abaAtiva === 'reservas' || abaAtiva === 'modelos' || abaAtiva === 'usuarios') mudarAba('cotas');
+    if (abaAtiva === 'reservas' || abaAtiva === 'usuarios') mudarAba('cotas');
   } else if (perfilAtivo === 'reservas') {
     btnAssinatura.style.display = 'none';
     btnNovo.style.display = 'none';
@@ -678,23 +678,49 @@ function renderTabelaVouchers(dados) {
   const tbody = document.getElementById('tbodyVouchers');
 
   if (!dados.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty">Nenhum voucher encontrado para o filtro selecionado.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="empty">Nenhum voucher encontrado para o filtro selecionado.</td></tr>';
     return;
   }
+
+  const hojeStr = new Date().toISOString().split('T')[0];
 
   tbody.innerHTML = dados.map(v => {
     const tot = v.diarias_totais || v.diarias || 2;
     const usd = v.diarias_usadas || (v.usado ? tot : 0);
     const saldo = Math.max(0, tot - usd);
     const isPendenteAssinatura = v.status_fluxo === 'aguardando_assinatura';
+    const isVencido = v.validade ? (v.validade < hojeStr) : false;
 
     let statusBadge = '';
     if (isPendenteAssinatura) {
       statusBadge = '<span class="badge badge-yellow" style="background:#fef3c7;color:#b45309;font-weight:700;">✍️ Aguarda Assinatura</span>';
+    } else if (isVencido) {
+      statusBadge = '<span class="badge badge-red" style="background:#fee2e2;color:#dc2626;font-weight:700;">⚠️ Vencido / Expirado</span>';
     } else {
       statusBadge = v.usado || saldo === 0
         ? '<span class="badge badge-red">Utilizado</span>'
         : (usd > 0 ? `<span class="badge badge-yellow" style="background:#fef9c3;color:#854d0e;">Parcial (${saldo} restam)</span>` : '<span class="badge badge-green">✓ Ativo & Disponível</span>');
+    }
+
+    // Exibição da Data de Vencimento
+    let vencimentoHtml = '';
+    if (!v.validade) {
+      vencimentoHtml = '<span style="color:var(--text-3);font-size:.78rem;">A definir</span>';
+    } else if (isVencido) {
+      vencimentoHtml = `
+        <div style="line-height:1.25;">
+          <strong style="color:#dc2626;font-size:.82rem;">${fmtDate(v.validade)}</strong>
+          <div><span class="badge badge-red" style="font-size:.65rem;padding:1px 5px;display:inline-block;margin-top:2px;">⚠️ Vencido</span></div>
+        </div>
+      `;
+    } else {
+      const diffDias = Math.ceil((new Date(v.validade + 'T23:59:59') - new Date()) / (1000 * 60 * 60 * 24));
+      vencimentoHtml = `
+        <div style="line-height:1.25;">
+          <strong style="font-size:.82rem;color:var(--text-1);">${fmtDate(v.validade)}</strong>
+          ${diffDias <= 30 ? `<div><span class="badge badge-yellow" style="font-size:.65rem;padding:1px 5px;display:inline-block;margin-top:2px;">⏳ ${diffDias}d restam</span></div>` : `<div style="font-size:.7rem;color:var(--text-3);">${diffDias} dias restam</div>`}
+        </div>
+      `;
     }
 
     // Snippet da Trilha de Auditoria
@@ -713,6 +739,7 @@ function renderTabelaVouchers(dados) {
           <strong>${escHtml(v.nome_socio)}</strong>
           ${v.sala_venda ? `<div style="font-size:.72rem;color:var(--text-3);">Sala: ${escHtml(v.sala_venda)}</div>` : ''}
         </td>
+        <td>${vencimentoHtml}</td>
         <td>
           <span class="diarias-pill diarias-disponiveis" title="Concedidas">${tot} tot</span> /
           <span class="diarias-pill diarias-usadas" title="Utilizadas">${usd} usd</span> /
@@ -738,7 +765,7 @@ function renderTabelaVouchers(dados) {
             <button class="btn-icon" title="Ver Trilha de Auditoria Completa" onclick="abrirModalTrilhaAuditoria('${v.id}')">
               📋
             </button>
-            ${perfilAtivo !== 'pos_venda' && !isPendenteAssinatura ? `
+            ${perfilAtivo !== 'pos_venda' && !isPendenteAssinatura && !isVencido ? `
             <button class="btn-icon" title="Registrar Hospedagem / Baixa" onclick="abrirModalBaixa('${v.id}')">
               🛎️
             </button>` : ''}
@@ -762,6 +789,7 @@ function renderTabelaReservas() {
   if (!tbody) return;
 
   const busca = (document.getElementById('inputBuscaReservas')?.value || '').trim().toLowerCase();
+  const hojeStr = new Date().toISOString().split('T')[0];
 
   let filtrados = listaVouchers.filter(v => {
     if (!busca) return true;
@@ -772,7 +800,7 @@ function renderTabelaReservas() {
   });
 
   if (!filtrados.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty">Nenhum voucher encontrado para baixa de reservas.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="empty">Nenhum voucher encontrado para baixa de reservas.</td></tr>';
     return;
   }
 
@@ -781,6 +809,28 @@ function renderTabelaReservas() {
     const usd = v.diarias_usadas || (v.usado ? tot : 0);
     const saldo = Math.max(0, tot - usd);
     const isSemAssinatura = v.status_fluxo === 'aguardando_assinatura' || !v.assinado_em;
+    const isVencido = v.validade ? (v.validade < hojeStr) : false;
+
+    // Coluna Vencimento
+    let vencimentoHtml = '';
+    if (!v.validade) {
+      vencimentoHtml = '<span style="color:var(--text-3);font-size:.78rem;">A definir</span>';
+    } else if (isVencido) {
+      vencimentoHtml = `
+        <div style="line-height:1.25;">
+          <strong style="color:#dc2626;font-size:.82rem;">${fmtDate(v.validade)}</strong>
+          <div><span class="badge badge-red" style="font-size:.65rem;padding:1px 5px;display:inline-block;margin-top:2px;">⚠️ Vencido</span></div>
+        </div>
+      `;
+    } else {
+      const diffDias = Math.ceil((new Date(v.validade + 'T23:59:59') - new Date()) / (1000 * 60 * 60 * 24));
+      vencimentoHtml = `
+        <div style="line-height:1.25;">
+          <strong style="font-size:.82rem;color:var(--text-1);">${fmtDate(v.validade)}</strong>
+          ${diffDias <= 30 ? `<div><span class="badge badge-yellow" style="font-size:.65rem;padding:1px 5px;display:inline-block;margin-top:2px;">⏳ ${diffDias}d restam</span></div>` : `<div style="font-size:.7rem;color:var(--text-3);">${diffDias} dias</div>`}
+        </div>
+      `;
+    }
 
     // Buscar histórico deste voucher
     const historico = listaHistoricoReservas.filter(h => h.voucher_codigo === v.codigo);
@@ -793,6 +843,12 @@ function renderTabelaReservas() {
       botaoAcao = `
         <button class="btn btn-ghost" disabled style="padding:.35rem .65rem;font-size:.76rem;color:#b45309;background:#fef3c7;border:1px dashed #f59e0b;cursor:not-allowed;font-weight:600;" title="Voucher aguarda assinatura oficial do Gerente/Admin. Bloqueado para uso.">
           ✍️ Bloqueado (Sem Assinatura)
+        </button>
+      `;
+    } else if (isVencido) {
+      botaoAcao = `
+        <button class="btn btn-ghost" disabled style="padding:.35rem .65rem;font-size:.76rem;color:#dc2626;background:#fee2e2;border:1px dashed #ef4444;cursor:not-allowed;font-weight:600;" title="Voucher expirou a validade em ${fmtDate(v.validade)}.">
+          ⚠️ Vencido
         </button>
       `;
     } else if (saldo === 0) {
@@ -813,11 +869,13 @@ function renderTabelaReservas() {
       <tr>
         <td><strong>#${v.numero || v.codigo}</strong></td>
         <td><strong>${escHtml(v.nome_socio)}</strong></td>
+        <td>${vencimentoHtml}</td>
         <td>${tot} diária(s)</td>
         <td><span style="color:#dc2626;font-weight:700;">${usd} diária(s)</span></td>
         <td>
           <span class="diarias-pill ${saldo > 0 ? 'diarias-disponiveis' : 'diarias-usadas'}">${saldo} restante(s)</span>
           ${isSemAssinatura ? '<div style="font-size:.7rem;color:#b45309;font-weight:600;margin-top:3px;">✍️ Aguarda Assinatura</div>' : ''}
+          ${isVencido ? '<div style="font-size:.7rem;color:#dc2626;font-weight:600;margin-top:3px;">⚠️ Vencido</div>' : ''}
         </td>
         <td>${histResumo}</td>
         <td>${botaoAcao}</td>
@@ -837,9 +895,17 @@ function abrirModalBaixa(voucherId) {
     return;
   }
 
+  // Requisito: voucher vencido não pode ser utilizado
+  const hojeStr = new Date().toISOString().split('T')[0];
+  if (v.validade && v.validade < hojeStr) {
+    showToast(`⚠️ Este voucher expirou a validade em ${fmtDate(v.validade)} e não pode ser utilizado!`, 'error');
+    return;
+  }
+
   const tot = v.diarias_totais || v.diarias || 2;
   const usd = v.diarias_usadas || (v.usado ? tot : 0);
   const saldo = Math.max(0, tot - usd);
+  const isVencido = v.validade && (v.validade < hojeStr);
 
   document.getElementById('baixaVoucherId').value = v.id;
   document.getElementById('baixaVoucherCodigo').value = v.codigo;
@@ -849,7 +915,8 @@ function abrirModalBaixa(voucherId) {
   document.getElementById('baixaInfoSaldo').innerHTML = `
     Diárias Concedidas: <strong>${tot}</strong> | 
     Já Utilizadas: <strong style="color:#dc2626;">${usd}</strong> | 
-    Saldo Restante: <strong style="color:#16a34a;">${saldo} diárias</strong>
+    Saldo Restante: <strong style="color:#16a34a;">${saldo} diárias</strong> | 
+    Vencimento: <strong style="color:${isVencido ? '#dc2626' : 'var(--text-1)'};">${v.validade ? fmtDate(v.validade) : 'A definir'}</strong>
   `;
 
   document.getElementById('baixaDiariasQtd').max = saldo > 0 ? saldo : 1;
@@ -912,6 +979,15 @@ document.getElementById('formBaixaReserva').addEventListener('submit', async (e)
   // Validação rígida: voucher sem assinatura não pode ser utilizado
   if (voucher.status_fluxo === 'aguardando_assinatura' || !voucher.assinado_em) {
     showToast('Operação bloqueada: vouchers sem assinatura oficial não podem ser utilizados.', 'error');
+    btn.disabled = false;
+    btn.textContent = 'Confirmar Baixa de Diárias';
+    return;
+  }
+
+  // Validação rígida: voucher vencido não pode ter diárias baixadas
+  const hojeSubmit = new Date().toISOString().split('T')[0];
+  if (voucher.validade && voucher.validade < hojeSubmit) {
+    showToast(`Operação bloqueada: este voucher expirou a validade em ${fmtDate(voucher.validade)}.`, 'error');
     btn.disabled = false;
     btn.textContent = 'Confirmar Baixa de Diárias';
     return;

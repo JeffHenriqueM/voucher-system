@@ -350,6 +350,75 @@ function renderBannerAlertaInconsistencias() {
 }
 window.renderBannerAlertaInconsistencias = renderBannerAlertaInconsistencias;
 
+// Renderiza banner superior dinâmico do Pós Venda (Vouchers aguardando emissão)
+function renderBannerPosVenda() {
+  const container = document.getElementById('bannerPosVendaFila');
+  if (!container) return;
+
+  // Visível primordialmente para Pós Venda e Administradores
+  const isPosVendaOuAdmin = perfilAtivo === 'pos_venda' || perfilAtivo === 'admin';
+  if (!isPosVendaOuAdmin) {
+    container.classList.add('hidden');
+    container.innerHTML = '';
+    return;
+  }
+
+  const pendentes = (listaSolicitacoes || []).filter(s => s.status === 'pendente');
+
+  if (pendentes.length === 0) {
+    container.classList.add('hidden');
+    container.innerHTML = '';
+    return;
+  }
+
+  const total = pendentes.length;
+  const pluralVoucher = total === 1 ? 'voucher aguardando emissão' : 'vouchers aguardando emissão';
+  const pluralSolic = total === 1 ? 'solicitação de voucher' : 'solicitações de voucher';
+
+  // Chips dos primeiros sócios aguardando
+  const chipsHtml = pendentes.slice(0, 4).map(s => {
+    const d = Number(s.diarias_solicitadas || s.diarias) || 2;
+    const quem = (s.solicitante_nome || s.solicitante || 'Reservas').split(' ')[0];
+    return `
+      <span class="banner-posvenda-chip" title="Solicitado por ${quem}">
+        👤 <strong>${s.nome_socio}</strong> (${d}d)
+      </span>
+    `;
+  }).join('');
+
+  const maisQtd = total > 4 ? `<span class="banner-posvenda-chip">+${total - 4} outro(s)</span>` : '';
+  const primeiro = pendentes[0];
+  const primeiroNome = (primeiro.nome_socio || 'Sócio').split(' ')[0];
+
+  container.classList.remove('hidden');
+  container.innerHTML = `
+    <div class="banner-posvenda-fila">
+      <div style="flex:1;min-width:280px;">
+        <div class="banner-posvenda-title">
+          <span>💼 FILA DO PÓS VENDA: VOUCHERS AGUARDANDO EMISSÃO</span>
+          <span class="banner-posvenda-badge">⏳ ${total} ${pluralVoucher}</span>
+        </div>
+        <div class="banner-posvenda-desc">
+          A equipe de Reservas enviou <strong>${total} ${pluralSolic}</strong> que necessita(m) de conferência de diárias e emissão pelo Pós Venda.
+        </div>
+        <div class="banner-posvenda-chips">
+          ${chipsHtml}
+          ${maisQtd}
+        </div>
+      </div>
+      <div class="banner-posvenda-actions">
+        <button class="btn btn-primary" onclick="atenderSolicitacao('${primeiro.id}')" title="Emitir voucher para ${primeiro.nome_socio}" style="font-size:.82rem;padding:.45rem .95rem;font-weight:700;">
+          ⚡ Atender Agora (${primeiroNome})
+        </button>
+        <button class="btn btn-ghost" onclick="mudarAba('solicitacoes')" style="font-size:.82rem;padding:.45rem .85rem;background:rgba(255,255,255,0.7);border:1px solid #c7d2fe;font-weight:600;">
+          📋 Ver Fila Completa (${total})
+        </button>
+      </div>
+    </div>
+  `;
+}
+window.renderBannerPosVenda = renderBannerPosVenda;
+
 // Renderização da tabela de inconsistências
 function renderTabelaInconsistencias() {
   const incs = auditarInconsistenciasVouchers();
@@ -1021,6 +1090,7 @@ function aplicarPermissoesPerfil() {
 
   atualizarBadgeSolicitacoes();
   renderBannerAlertaInconsistencias();
+  renderBannerPosVenda();
 }
 
 // ── Troca de Abas ──────────────────────────────────────────────
@@ -1094,6 +1164,7 @@ async function sincronizarCotas() {
   renderTabelaReservas();
   renderStatsVouchers(listaVouchers);
   renderBannerAlertaInconsistencias();
+  renderBannerPosVenda();
 }
 
 function atualizarStatusCotasComVouchers() {
@@ -2520,6 +2591,7 @@ async function carregarSolicitacoes() {
 }
 
 function atualizarBadgeSolicitacoes() {
+  renderBannerPosVenda();
   const badge = document.getElementById('badgeTotalSolicitacoes');
   if (!badge) return;
   const pendentesPosVenda = listaSolicitacoes.filter(s => s.status === 'pendente').length;

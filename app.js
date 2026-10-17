@@ -226,6 +226,389 @@ function calcularDiariasSocio(nomeSocio) {
   return totalDiarias;
 }
 
+// ── Auditoria & Inconsistências de Vouchers vs Cotas ───────────
+function auditarInconsistenciasVouchers() {
+  const inconsistencias = [];
+  const mapVouchersPorSocio = {};
+
+  listaVouchers.forEach(v => {
+    const nomeNorm = (v.nome_socio || '').trim().toUpperCase();
+    if (!mapVouchersPorSocio[nomeNorm]) mapVouchersPorSocio[nomeNorm] = [];
+    mapVouchersPorSocio[nomeNorm].push(v);
+  });
+
+  Object.keys(mapVouchersPorSocio).forEach(nomeNorm => {
+    const vouchers = mapVouchersPorSocio[nomeNorm];
+    const cotasSocio = listaCotas.filter(c => (c.nome_socio || '').trim().toUpperCase() === nomeNorm);
+    const nomeExibicao = vouchers[0]?.nome_socio || nomeNorm;
+
+    const temCota = cotasSocio.length > 0;
+    const diariasPermitidas = temCota ? calcularDiariasSocio(nomeExibicao) : 2;
+    const descCotas = temCota 
+      ? cotasSocio.map(c => c.produto).join(' + ') 
+      : 'Cliente sem cota cadastrada (Convidado)';
+
+    const totalDiariasEmitidas = vouchers.reduce((acc, v) => acc + (Number(v.diarias_totais || v.diarias) || 0), 0);
+
+    // Caso 1: Excesso de diárias somadas acima do plano do sócio
+    if (totalDiariasEmitidas > diariasPermitidas) {
+      const excesso = totalDiariasEmitidas - diariasPermitidas;
+      const motivo = `O cliente possui ${temCota ? `cota (${descCotas}) com direito a ${diariasPermitidas} diárias anuais` : 'cadastro avulso (limite 2 diárias)'}, mas possui ${vouchers.length} voucher(s) emitido(s) totalizando ${totalDiariasEmitidas} diárias (+${excesso} diárias acima da regra).`;
+      
+      vouchers.forEach(v => {
+        inconsistencias.push({
+          voucher: v,
+          nome_socio: nomeExibicao,
+          cotas_descricao: descCotas,
+          diarias_permitidas: diariasPermitidas,
+          diarias_emitidas_total: totalDiariasEmitidas,
+          diarias_voucher: v.diarias_totais || v.diarias || 2,
+          tipo: 'excesso_diarias',
+          tipo_titulo: 'Excesso de Diárias no Plano',
+          excesso_diarias: excesso,
+          qtd_vouchers_socio: vouchers.length,
+          motivo: motivo
+        });
+      });
+      return;
+    }
+
+    // Caso 2: Voucher individual superior ao limite unitário da cota
+    if (cotasSocio.length === 1) {
+      const prod = (cotasSocio[0].produto || '').toUpperCase();
+      const limiteUnitario = (prod.includes('PRATA') || prod.includes('BRONZE')) ? 2 : (prod.includes('OURO') ? 4 : 6);
+      
+      vouchers.forEach(v => {
+        const vDiarias = Number(v.diarias_totais || v.diarias) || 0;
+        if (vDiarias > limiteUnitario) {
+          const excessoUnit = vDiarias - limiteUnitario;
+          inconsistencias.push({
+            voucher: v,
+            nome_socio: nomeExibicao,
+            cotas_descricao: descCotas,
+            diarias_permitidas: diariasPermitidas,
+            diarias_emitidas_total: totalDiariasEmitidas,
+            diarias_voucher: vDiarias,
+            tipo: 'voucher_acima_limite_unitario',
+            tipo_titulo: 'Diárias Acima do Tipo de Cota',
+            excesso_diarias: excessoUnit,
+            qtd_vouchers_socio: vouchers.length,
+            motivo: `Voucher emitido com ${vDiarias} diárias para cota ${cotasSocio[0].produto} cujo limite unitário por voucher é de ${limiteUnitario} diárias (+${excessoUnit} acima da regra).`
+          });
+        }
+      });
+    }
+  });
+
+  return inconsistencias;
+}
+window.auditarInconsistenciasVouchers = auditarInconsistenciasVouchers;
+
+// Renderiza banner superior dinâmico (alerta Márcio e equipe)
+function renderBannerAlertaInconsistencias() {
+  const container = document.getElementById('bannerAlertaInconsistencias');
+  if (!container) return;
+
+  const incs = auditarInconsistenciasVouchers();
+  if (!incs.length) {
+    container.classList.add('hidden');
+    container.innerHTML = '';
+    return;
+  }
+
+  const isMarcio = usuarioLogado && (
+    (usuarioLogado.usuario || '').toLowerCase() === 'marcio' ||
+    (usuarioLogado.nome || '').toLowerCase().includes('marcio')
+  );
+
+  const totalSocios = new Set(incs.map(i => i.nome_socio.toUpperCase())).size;
+
+  container.classList.remove('hidden');
+  container.innerHTML = `
+    <div class="banner-alerta-marcio">
+      <div>
+        <div class="banner-alerta-title">
+          <span>🚨 ALERTA DE AUDITORIA: VOUCHERS FORA DA REGRA</span>
+          <span class="badge badge-red" style="font-size:.7rem;">${incs.length} voucher(s) / ${totalSocios} sócio(s)</span>
+        </div>
+        <div class="banner-alerta-desc">
+          ${isMarcio 
+            ? `<strong>Atenção Márcio Pimenta</strong>: Foram identificadas emissões excedendo o limite de diárias das cotas ou vouchers em duplicidade. Por favor, revise as inconsistências abaixo.` 
+            : `Foram detectados <strong>${incs.length} voucher(s)</strong> cujas diárias concedidas excedem o contrato da cota. A gerência (Márcio Pimenta) deve ser notificada.`}
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-danger" onclick="mudarAba('inconsistencias')" style="font-size:.8rem;padding:.4rem .85rem;font-weight:700;">
+          🔍 Auditar Inconsistências
+        </button>
+        <button class="btn-notif-whatsapp" onclick="notificarMarcioWhatsAppGeral()" style="font-size:.8rem;">
+          📲 Notificar Márcio (WhatsApp)
+        </button>
+      </div>
+    </div>
+  `;
+}
+window.renderBannerAlertaInconsistencias = renderBannerAlertaInconsistencias;
+
+// Renderização da tabela de inconsistências
+function renderTabelaInconsistencias() {
+  const incs = auditarInconsistenciasVouchers();
+  const tbody = document.getElementById('tbodyInconsistencias');
+  if (!tbody) return;
+
+  const badgeHeader = document.getElementById('badgeHeaderInconsistencias');
+  if (badgeHeader) badgeHeader.textContent = `${incs.length} detectados`;
+
+  const statTot = document.getElementById('statTotalInconsistentes');
+  if (statTot) statTot.textContent = incs.length;
+
+  const sociosUnicos = new Set(incs.map(i => i.nome_socio.toUpperCase())).size;
+  const statSoc = document.getElementById('statSociosInconsistentes');
+  if (statSoc) statSoc.textContent = sociosUnicos;
+
+  const totalExcesso = incs.reduce((acc, i) => acc + (i.excesso_diarias || 0), 0);
+  const statExc = document.getElementById('statDiariasExcedentes');
+  if (statExc) statExc.textContent = `+${totalExcesso} diárias`;
+
+  if (!incs.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty">✅ Nenhuma inconsistência detectada! Todos os vouchers estão 100% em conformidade com as cotas.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = incs.map(item => {
+    const v = item.voucher;
+    return `
+      <tr>
+        <td>
+          <div style="font-weight:700;color:var(--text-1);">#${v.numero || '—'}</div>
+          <div style="font-size:.7rem;color:var(--text-3);font-family:monospace;">${escHtml(v.codigo)}</div>
+        </td>
+        <td>
+          <div style="font-weight:700;color:var(--text-1);">${escHtml(item.nome_socio)}</div>
+          <div style="font-size:.72rem;color:var(--text-3);">${item.qtd_vouchers_socio} voucher(s) deste sócio</div>
+        </td>
+        <td>
+          <code style="font-size:.78rem;">${escHtml(item.cotas_descricao)}</code>
+        </td>
+        <td>
+          <span class="diarias-pill diarias-saldo" style="font-size:.75rem;">
+            ${item.diarias_permitidas} diárias anuais
+          </span>
+        </td>
+        <td>
+          <div style="line-height:1.25;">
+            <strong style="color:#dc2626;font-size:.85rem;">${item.diarias_voucher}d neste voucher</strong>
+            <div style="font-size:.7rem;color:var(--text-3);">${item.diarias_emitidas_total}d total cliente</div>
+          </div>
+        </td>
+        <td>
+          <div class="inconsistencia-motivo-box" title="${escHtml(item.motivo)}">
+            <span style="font-weight:700;color:#991b1b;display:block;margin-bottom:2px;">⚠️ ${escHtml(item.tipo_titulo)}:</span>
+            ${escHtml(item.motivo)}
+          </div>
+        </td>
+        <td>
+          <div style="font-size:.75rem;line-height:1.35;color:var(--text-2);">
+            <div>💼 ${escHtml(v.pos_venda_nome || 'Pós Venda')}</div>
+            ${v.admin_assinante_nome ? `<div style="color:#15803d;font-size:.7rem;">✍️ ${escHtml(v.admin_assinante_nome)}</div>` : ''}
+          </div>
+        </td>
+        <td>
+          <div class="actions" style="flex-wrap:wrap;gap:4px;">
+            <a href="${linkVoucher(v.codigo)}" target="_blank" class="btn btn-ghost" style="padding:.25rem .5rem;font-size:.75rem;" title="Visualizar Voucher">
+              👁️ Ver
+            </a>
+            <button class="btn btn-sm btn-notif-whatsapp" onclick="notificarMarcioInconsistencia('${escHtml(v.codigo)}')" title="Enviar alerta detalhado para o Márcio Pimenta no WhatsApp">
+              📲 Márcio
+            </button>
+            ${perfilAtivo === 'admin' ? `
+            <button class="btn-icon" title="Editar Voucher" onclick="abrirModalEditar('${v.id}')">
+              ✏️
+            </button>` : ''}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+window.renderTabelaInconsistencias = renderTabelaInconsistencias;
+
+// Notificações via WhatsApp para o Márcio Pimenta
+function notificarMarcioInconsistencia(voucherCodigo) {
+  const incs = auditarInconsistenciasVouchers();
+  const inc = incs.find(i => i.voucher.codigo === voucherCodigo);
+  if (!inc) {
+    showToast('Inconsistência não localizada', 'error');
+    return;
+  }
+
+  const v = inc.voucher;
+  const link = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}voucher.html?v=${v.codigo}`;
+
+  const texto = [
+    `🚨 *ALERTA DE VOUCHER INCONSISTENTE — VILLAMOR* 🚨`,
+    ``,
+    `Prezado Márcio Pimenta,`,
+    ``,
+    `Foi identificado um voucher emitido fora das regras contratuais:`,
+    `• *Sócio:* ${inc.nome_socio}`,
+    `• *Voucher:* #${v.numero || v.codigo}`,
+    `• *Cota Cadastrada:* ${inc.cotas_descricao}`,
+    `• *Direito por Regra:* ${inc.diarias_permitidas} diárias anuais`,
+    `• *Diárias Emitidas:* ${inc.diarias_voucher} diárias neste voucher (${inc.diarias_emitidas_total} diárias totais do cliente)`,
+    `• *Divergência / Motivo:* ${inc.motivo}`,
+    `• *Operador Emissor:* ${v.pos_venda_nome || 'Pós Venda'}`,
+    `• *Assinatura Oficial:* ${v.admin_assinante_nome || 'Pendente'}`,
+    ``,
+    `🔗 *Acesse o Voucher:* ${link}`,
+    ``,
+    `Favor verificar e homologar a liberação no painel do sistema.`
+  ].join('\n');
+
+  const urlWhats = `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
+  window.open(urlWhats, '_blank');
+}
+window.notificarMarcioInconsistencia = notificarMarcioInconsistencia;
+
+function notificarMarcioWhatsAppGeral() {
+  const incs = auditarInconsistenciasVouchers();
+  if (!incs.length) {
+    showToast('Nenhuma inconsistência detectada no momento!');
+    return;
+  }
+
+  const linhas = incs.map((inc, idx) => 
+    `${idx + 1}. *#${inc.voucher.numero || inc.voucher.codigo}* — ${inc.nome_socio} (${inc.diarias_voucher}d / Cota: ${inc.cotas_descricao} — Regra: ${inc.diarias_permitidas}d)`
+  ).join('\n');
+
+  const texto = [
+    `🚨 *RELATÓRIO DE AUDITORIA DE VOUCHERS — VILLAMOR* 🚨`,
+    ``,
+    `Prezado Márcio Pimenta,`,
+    ``,
+    `Foram identificados *${incs.length} voucher(s)* com divergência de regras contra a base de cotas:`,
+    ``,
+    linhas,
+    ``,
+    `Painel de Gestão: ${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}index.html`,
+    ``,
+    `Aguardamos suas instruções para homologação ou retificação.`
+  ].join('\n');
+
+  const urlWhats = `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
+  window.open(urlWhats, '_blank');
+}
+window.notificarMarcioWhatsAppGeral = notificarMarcioWhatsAppGeral;
+
+function copiarRelatorioInconsistencias() {
+  const incs = auditarInconsistenciasVouchers();
+  if (!incs.length) {
+    showToast('Nenhuma inconsistência detectada no momento!');
+    return;
+  }
+
+  const linhas = incs.map((inc, idx) => 
+    `[${idx + 1}] Voucher #${inc.voucher.numero || inc.voucher.codigo} | Sócio: ${inc.nome_socio} | Cota: ${inc.cotas_descricao} | Limite Regra: ${inc.diarias_permitidas}d | Concedido: ${inc.diarias_voucher}d (Total Cliente: ${inc.diarias_emitidas_total}d) | Motivo: ${inc.motivo}`
+  ).join('\n');
+
+  const relatorio = `=== RELATÓRIO DE AUDITORIA DE VOUCHERS FORA DA REGRA ===\nData: ${new Date().toLocaleString('pt-BR')}\nTotal: ${incs.length} vouchers inconsistentes\n\n${linhas}`;
+
+  navigator.clipboard.writeText(relatorio).then(() => {
+    showToast('Relatório de inconsistências copiado com sucesso!');
+  }).catch(() => {
+    showToast('Erro ao copiar relatório', 'error');
+  });
+}
+window.copiarRelatorioInconsistencias = copiarRelatorioInconsistencias;
+
+function notificarMarcioWhatsAppModal() {
+  const nome = (document.getElementById('inputNome')?.value || '').trim();
+  const diarias = document.getElementById('inputDiarias')?.value || '2';
+  const sala = document.getElementById('inputSala')?.value || 'VILLA';
+
+  const texto = [
+    `⚠️ *SOLICITAÇÃO DE AUTORIZAÇÃO / EXCEÇÃO DE VOUCHER — VILLAMOR* ⚠️`,
+    ``,
+    `Prezado Márcio Pimenta,`,
+    ``,
+    `Solicitamos autorização para emissão de voucher fora da regra de cotas:`,
+    `• *Sócio:* ${nome}`,
+    `• *Diárias Solicitadas:* ${diarias} diárias`,
+    `• *Sala de Venda:* ${sala}`,
+    `• *Operador:* ${usuarioLogado ? usuarioLogado.nome : 'Pós Venda'}`,
+    ``,
+    `Por favor, confirme se a liberação excepcional está autorizada.`
+  ].join('\n');
+
+  const urlWhats = `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
+  window.open(urlWhats, '_blank');
+}
+window.notificarMarcioWhatsAppModal = notificarMarcioWhatsAppModal;
+
+// Verificação em tempo real no modal de emissão do voucher
+function verificarInconsistenciaModalEmissao() {
+  const nome = (document.getElementById('inputNome')?.value || '').trim();
+  const diariasNovas = Number(document.getElementById('inputDiarias')?.value) || 0;
+  const boxAlerta = document.getElementById('boxAlertaInconsistenciaModal');
+  const txtAlerta = document.getElementById('txtAlertaInconsistenciaModal');
+  const boxInfo = document.getElementById('boxInfoVouchersAnterioresModal');
+  const txtInfo = document.getElementById('txtInfoVouchersAnterioresModal');
+
+  if (!boxAlerta || !boxInfo) return;
+
+  if (!nome) {
+    boxAlerta.classList.add('hidden');
+    boxInfo.classList.add('hidden');
+    return;
+  }
+
+  const nomeNorm = nome.toUpperCase();
+  const cotasSocio = listaCotas.filter(c => (c.nome_socio || '').trim().toUpperCase() === nomeNorm);
+  const diariasPermitidas = cotasSocio.length ? calcularDiariasSocio(nome) : 2;
+  const descCota = cotasSocio.length ? cotasSocio.map(c => c.produto).join(' + ') : 'Não cadastrado na base (limite padrão 2 diárias)';
+
+  // Vouchers anteriores deste sócio (excluindo o que está sendo editado, se for edição)
+  const editId = document.getElementById('editId')?.value || '';
+  const vouchersAnteriores = listaVouchers.filter(v => (v.nome_socio || '').trim().toUpperCase() === nomeNorm && v.id !== editId);
+  const qtdVouchers = vouchersAnteriores.length;
+  const diariasJaEmitidas = vouchersAnteriores.reduce((acc, v) => acc + (Number(v.diarias_totais || v.diarias) || 0), 0);
+
+  // Box informativo se já tem vouchers anteriores
+  if (qtdVouchers > 0) {
+    boxInfo.classList.remove('hidden');
+    txtInfo.innerHTML = `Este cliente já possui <strong>${qtdVouchers} voucher(s)</strong> emitido(s) no sistema com <strong>${diariasJaEmitidas} diárias</strong> concedidas anteriormente. (Direito pelo plano: <strong>${diariasPermitidas} diárias anuais</strong>).`;
+  } else {
+    boxInfo.classList.add('hidden');
+  }
+
+  // Checagem de inconsistência
+  const totalFuturo = diariasJaEmitidas + diariasNovas;
+  const excesso = totalFuturo - diariasPermitidas;
+
+  let violouUnitario = false;
+  if (cotasSocio.length === 1) {
+    const prod = (cotasSocio[0].produto || '').toUpperCase();
+    const limiteUnitario = (prod.includes('PRATA') || prod.includes('BRONZE')) ? 2 : (prod.includes('OURO') ? 4 : 6);
+    if (diariasNovas > limiteUnitario) {
+      violouUnitario = true;
+    }
+  }
+
+  if (totalFuturo > diariasPermitidas || violouUnitario) {
+    boxAlerta.classList.remove('hidden');
+    let msg = '';
+    if (totalFuturo > diariasPermitidas) {
+      msg = `O plano deste sócio (<strong>${escHtml(descCota)}</strong>) concede <strong>${diariasPermitidas} diárias anuais</strong>. Com este voucher de <strong>${diariasNovas} diárias</strong>, o total acumulado será de <strong>${totalFuturo} diárias (+${excesso} acima da regra)</strong>.`;
+    } else if (violouUnitario) {
+      msg = `A cota deste cliente (<strong>${escHtml(descCota)}</strong>) permite no máximo <strong>2 diárias por voucher</strong>, mas foram informadas <strong>${diariasNovas} diárias</strong>.`;
+    }
+    txtAlerta.innerHTML = msg;
+  } else {
+    boxAlerta.classList.add('hidden');
+  }
+}
+window.verificarInconsistenciaModalEmissao = verificarInconsistenciaModalEmissao;
+
 // ── Gestão de Acessos & Perfis ─────────────────────────────────
 
 function getIconePerfil(u) {
@@ -600,6 +983,7 @@ function aplicarPermissoesPerfil() {
   const tabReservas = document.getElementById('tabNavReservas');
   const tabModelos = document.getElementById('tabNavModelos');
   const tabUsuarios = document.getElementById('tabNavUsuarios');
+  const tabInconsistencias = document.getElementById('tabNavInconsistencias');
 
   if (perfilAtivo === 'admin') {
     btnAssinatura.style.display = 'inline-flex';
@@ -610,6 +994,7 @@ function aplicarPermissoesPerfil() {
     tabReservas.style.display = 'inline-flex';
     tabModelos.style.display = 'inline-flex';
     if (tabUsuarios) tabUsuarios.style.display = 'inline-flex';
+    if (tabInconsistencias) tabInconsistencias.style.display = 'inline-flex';
   } else if (perfilAtivo === 'pos_venda') {
     btnAssinatura.style.display = 'none';
     btnNovo.style.display = 'inline-flex';
@@ -619,6 +1004,7 @@ function aplicarPermissoesPerfil() {
     tabReservas.style.display = 'none';
     tabModelos.style.display = 'inline-flex'; // Pós Venda pode acessar os modelos de voucher
     if (tabUsuarios) tabUsuarios.style.display = 'none';
+    if (tabInconsistencias) tabInconsistencias.style.display = 'inline-flex';
     if (abaAtiva === 'reservas' || abaAtiva === 'usuarios') mudarAba('cotas');
   } else if (perfilAtivo === 'reservas' || perfilAtivo === 'recepcao') {
     btnAssinatura.style.display = 'none';
@@ -629,17 +1015,19 @@ function aplicarPermissoesPerfil() {
     tabReservas.style.display = 'inline-flex';
     tabModelos.style.display = 'none';
     if (tabUsuarios) tabUsuarios.style.display = 'none';
+    if (tabInconsistencias) tabInconsistencias.style.display = 'none';
     if (abaAtiva !== 'vouchers' && abaAtiva !== 'reservas' && abaAtiva !== 'solicitacoes') mudarAba('reservas');
   }
 
   atualizarBadgeSolicitacoes();
+  renderBannerAlertaInconsistencias();
 }
 
 // ── Troca de Abas ──────────────────────────────────────────────
 function mudarAba(novaAba) {
   abaAtiva = novaAba;
 
-  const abas = ['cotas', 'vouchers', 'solicitacoes', 'reservas', 'modelos', 'usuarios'];
+  const abas = ['cotas', 'vouchers', 'solicitacoes', 'inconsistencias', 'reservas', 'modelos', 'usuarios'];
   abas.forEach(a => {
     const btn = document.getElementById(`tabNav${a.charAt(0).toUpperCase() + a.slice(1)}`);
     const secao = document.getElementById(`secao${a.charAt(0).toUpperCase() + a.slice(1)}`);
@@ -650,6 +1038,7 @@ function mudarAba(novaAba) {
   if (novaAba === 'cotas') renderTabelaCotas();
   if (novaAba === 'vouchers') carregarVouchers();
   if (novaAba === 'solicitacoes') renderTabelaSolicitacoes();
+  if (novaAba === 'inconsistencias') renderTabelaInconsistencias();
   if (novaAba === 'reservas') renderTabelaReservas();
   if (novaAba === 'modelos') renderModelos();
   if (novaAba === 'usuarios') renderTabelaUsuarios();
@@ -703,6 +1092,8 @@ async function sincronizarCotas() {
   renderStatsCotas();
   renderTabelaCotas();
   renderTabelaReservas();
+  renderStatsVouchers(listaVouchers);
+  renderBannerAlertaInconsistencias();
 }
 
 function atualizarStatusCotasComVouchers() {
@@ -780,34 +1171,51 @@ function renderTabelaCotas() {
     // Diárias calculadas para este sócio
     const diariasTotais = calcularDiariasSocio(c.nome_socio);
 
-    const acaoHtml = c.voucher_codigo
-      ? `
-        <div class="actions">
-          <a href="${linkVoucher(c.voucher_codigo)}" target="_blank" class="btn btn-ghost" style="padding:.3rem .6rem;font-size:.78rem;">
-            👁️ Ver
+    // Vouchers emitidos para este sócio
+    const nomeSocioNorm = (c.nome_socio || '').trim().toUpperCase();
+    const vouchersDoSocio = listaVouchers.filter(v => (v.nome_socio || '').trim().toUpperCase() === nomeSocioNorm);
+    const qtdVouchers = vouchersDoSocio.length;
+    const totalDiariasEmitidas = vouchersDoSocio.reduce((acc, v) => acc + (Number(v.diarias_totais || v.diarias) || 0), 0);
+    const isInconsistente = totalDiariasEmitidas > diariasTotais;
+
+    let acaoHtml = '';
+    if (qtdVouchers > 0) {
+      const vPrincipal = vouchersDoSocio[0];
+      acaoHtml = `
+        <div class="actions" style="flex-wrap:wrap;gap:4px;">
+          <a href="${linkVoucher(vPrincipal.codigo)}" target="_blank" class="btn btn-ghost" style="padding:.28rem .55rem;font-size:.75rem;" title="${qtdVouchers > 1 ? `Visualizar Voucher principal (${qtdVouchers} vouchers emitidos para este sócio)` : 'Visualizar Voucher'}">
+            👁️ Ver ${qtdVouchers > 1 ? `(${qtdVouchers})` : ''}
           </a>
-          <button class="link-copy" onclick="copiarLink('${c.voucher_codigo}')" style="font-size:.78rem;padding:.3rem .6rem;">
+          <button class="link-copy" onclick="copiarLink('${vPrincipal.codigo}')" style="font-size:.75rem;padding:.28rem .55rem;" title="Copiar link do voucher">
             Copiar
           </button>
-        </div>`
-      : (perfilAtivo === 'reservas' ? '—' : `
+          ${perfilAtivo !== 'reservas' ? `
+          <button class="btn btn-primary" onclick="abrirModalEmitirParaCota('${escHtml(c.id)}', true)" style="padding:.28rem .55rem;font-size:.74rem;background:#0d9488;border-color:#0d9488;font-weight:700;" title="Gerar novo voucher adicional para este cliente">
+            + Novo Voucher
+          </button>` : ''}
+        </div>
+      `;
+    } else {
+      acaoHtml = (perfilAtivo === 'reservas' ? '—' : `
         <button class="btn-emitir" onclick="abrirModalEmitirParaCota('${escHtml(c.id)}')">
           ⚡ Emitir Voucher
         </button>`);
+    }
 
     return `
       <tr>
         <td>
           <div class="cota-socio-name">
             <strong>${escHtml(c.nome_socio)}</strong>
+            ${isInconsistente ? `<span class="badge-inconsistente" title="Cliente possui ${totalDiariasEmitidas} diárias emitidas, mas a cota permite ${diariasTotais}">⚠️ Fora da regra (${totalDiariasEmitidas}/${diariasTotais}d)</span>` : ''}
           </div>
         </td>
         <td><code>${escHtml(c.produto)}</code></td>
         <td>${fmtDate(c.data_aquisicao)}</td>
         <td>${badgeCota}</td>
         <td>
-          <span class="diarias-pill diarias-saldo">
-            ${diariasTotais} diárias anuais
+          <span class="diarias-pill ${isInconsistente ? 'diarias-usadas' : 'diarias-saldo'}">
+            ${diariasTotais} diárias anuais ${qtdVouchers > 0 ? `(${totalDiariasEmitidas} emitidas)` : ''}
           </span>
         </td>
         <td>${acaoHtml}</td>
@@ -860,6 +1268,10 @@ async function carregarVouchers() {
       return !v.usado && v.status_fluxo !== 'aguardando_assinatura';
     } else if (filtroStatusVouchers === 'usado') {
       return v.usado;
+    } else if (filtroStatusVouchers === 'inconsistente') {
+      const incs = auditarInconsistenciasVouchers();
+      const codigosInc = new Set(incs.map(i => i.voucher.codigo));
+      return codigosInc.has(v.codigo);
     }
     return true; // 'todos'
   });
@@ -890,6 +1302,24 @@ function renderStatsVouchers(dados) {
   if (elUsd) elUsd.textContent = usados;
   const elDiar = document.getElementById('statDiariasRestantes');
   if (elDiar) elDiar.textContent = `${totalDiariasDisponiveis} diárias`;
+
+  // Auditoria de inconsistências
+  const incs = auditarInconsistenciasVouchers();
+  const elCountInc = document.getElementById('countFiltroInconsistentes');
+  if (elCountInc) elCountInc.textContent = incs.length;
+
+  const badgeInc = document.getElementById('badgeTotalInconsistencias');
+  if (badgeInc) {
+    badgeInc.textContent = incs.length;
+    badgeInc.style.display = incs.length > 0 ? 'inline-flex' : 'none';
+  }
+
+  const tabIncNav = document.getElementById('tabNavInconsistencias');
+  if (tabIncNav) {
+    tabIncNav.style.display = (incs.length > 0 || perfilAtivo === 'admin') ? 'inline-flex' : 'none';
+  }
+
+  renderBannerAlertaInconsistencias();
 
   // Atualizar badge no menu superior
   const badgeV = document.getElementById('badgeTotalVouchers');
@@ -967,16 +1397,28 @@ function renderTabelaVouchers(dados) {
 
     const obsReal = obterObservacaoReal(v);
     const temObs = Boolean(obsReal);
+    const incDoVoucher = auditarInconsistenciasVouchers().find(i => i.voucher.codigo === v.codigo);
 
     return `
       <tr>
         <td style="white-space:nowrap;">
           <strong>#${v.numero || '—'}</strong>
           ${temObs ? `<span class="badge-obs-alerta" title="Voucher possui observação especial">⚠️ OBS</span>` : ''}
+          ${incDoVoucher ? `
+            <div>
+              <span class="badge-inconsistente" onclick="mudarAba('inconsistencias')" style="cursor:pointer;margin-top:3px;" title="${escHtml(incDoVoucher.motivo)}">
+                ⚠️ Fora da regra
+              </span>
+            </div>` : ''}
         </td>
         <td>
           <div style="font-weight:700;color:var(--text-1);">${escHtml(v.nome_socio)}</div>
           ${v.sala_venda ? `<div style="font-size:.72rem;color:var(--text-3);">Sala: ${escHtml(v.sala_venda)}</div>` : ''}
+          ${incDoVoucher ? `
+            <div style="font-size:.72rem;color:#b91c1c;margin-top:2px;">
+              ⚠️ Limite Cota: ${incDoVoucher.diarias_permitidas}d | Total Concedido: ${incDoVoucher.diarias_emitidas_total}d
+            </div>
+          ` : ''}
           ${temObs ? `
             <div class="voucher-obs-strip" title="${escHtml(obsReal)}">
               <span class="voucher-obs-icon">📝</span>
@@ -1001,6 +1443,10 @@ function renderTabelaVouchers(dados) {
         </td>
         <td>
           <div class="actions">
+            ${incDoVoucher ? `
+            <button class="btn btn-sm btn-notif-whatsapp" onclick="notificarMarcioInconsistencia('${escHtml(v.codigo)}')" title="Notificar Márcio no WhatsApp" style="padding:.2rem .45rem;font-size:.72rem;">
+              📲 Márcio
+            </button>` : ''}
             ${isPendenteAssinatura && perfilAtivo === 'admin' ? `
             <button class="btn btn-primary" style="padding:.25rem .55rem;font-size:.75rem;background:#0f766e;border-color:#0f766e;" onclick="abrirModalAssinarVoucher('${v.id}')" title="Conferir e assinar voucher">
               ✍️ Assinar
@@ -1639,7 +2085,7 @@ function atualizarDicaSocioVoucher(nomeDigitado) {
 }
 
 // ── Emissão de Voucher ─────────────────────────────────────────
-function abrirModalEmitirParaCota(cotaId) {
+function abrirModalEmitirParaCota(cotaId, isNovoVoucherAdicional = false) {
   solicitacaoEmAtendimentoId = null;
   const cota = listaCotas.find(c => c.id === cotaId);
   if (!cota) return;
@@ -1649,22 +2095,31 @@ function abrirModalEmitirParaCota(cotaId) {
 
   document.getElementById('editId').value = '';
   document.getElementById('cotaVinculadaId').value = cota.id;
-  document.getElementById('modalTitulo').textContent = `Emitir Voucher — ${cota.nome_socio}`;
+  document.getElementById('modalTitulo').textContent = isNovoVoucherAdicional 
+    ? `Gerar Novo Voucher Adicional — ${cota.nome_socio}` 
+    : `Emitir Voucher — ${cota.nome_socio}`;
   document.getElementById('btnSalvar').textContent = 'Confirmar e Emitir';
 
-  // Cálculo automático de diárias com regras Ouro/Prata/Teto
-  const diariasCalculadas = calcularDiariasSocio(cota.nome_socio);
+  // Cálculo de diárias e histórico de vouchers anteriores do sócio
+  const nomeNorm = (cota.nome_socio || '').trim().toUpperCase();
+  const diariasTotaisPlano = calcularDiariasSocio(cota.nome_socio);
+  const vouchersAnteriores = listaVouchers.filter(v => (v.nome_socio || '').trim().toUpperCase() === nomeNorm);
+  const diariasJaEmitidas = vouchersAnteriores.reduce((acc, v) => acc + (Number(v.diarias_totais || v.diarias) || 0), 0);
+  const saldoRestantePlano = Math.max(0, diariasTotaisPlano - diariasJaEmitidas);
 
   document.getElementById('inputNome').value = cota.nome_socio;
   const infoEl = document.getElementById('inputNomeInfoSocio');
   if (infoEl) {
-    infoEl.textContent = `✓ Sócio selecionado: ${cota.produto} — ${diariasCalculadas} diárias pelo plano.`;
+    infoEl.textContent = `✓ Sócio selecionado: ${cota.produto} — ${diariasTotaisPlano} diárias pelo plano.`;
     infoEl.style.color = '#15803d';
   }
   document.getElementById('inputSala').value = 'VILLA';
   document.getElementById('inputValor').value = '';
-  document.getElementById('inputDiarias').value = diariasCalculadas;
-  document.getElementById('lblDicaDiarias').textContent = `(Calculado: ${diariasCalculadas} diárias pelo plano)`;
+
+  // Se for novo voucher adicional, sugere o saldo restante ou 2 diárias
+  const diariasSugeridas = (isNovoVoucherAdicional && saldoRestantePlano > 0) ? saldoRestantePlano : (isNovoVoucherAdicional ? 2 : diariasTotaisPlano);
+  document.getElementById('inputDiarias').value = diariasSugeridas;
+  document.getElementById('lblDicaDiarias').textContent = `(Plano: ${diariasTotaisPlano}d | ${diariasJaEmitidas}d já emitidas)`;
 
   // Validade padrão: 1 ano
   const dataHoje = new Date();
@@ -1682,8 +2137,17 @@ function abrirModalEmitirParaCota(cotaId) {
 
   adequarTextosPorDiarias();
 
+  document.getElementById('wrapAdminAssinanteEdit')?.classList.add('hidden');
+  if (document.getElementById('inputAdminAssinanteEdit')) document.getElementById('inputAdminAssinanteEdit').value = '';
+
   document.getElementById('modalOverlay').classList.remove('hidden');
+  verificarInconsistenciaModalEmissao();
   salvarSnapshotModalVoucher();
+  if (isNovoVoucherAdicional) {
+    document.getElementById('inputDiarias').focus();
+  } else {
+    document.getElementById('inputNome').focus();
+  }
 }
 
 function abrirModalNovo() {
@@ -1719,6 +2183,7 @@ function abrirModalNovo() {
   if (document.getElementById('inputAdminAssinanteEdit')) document.getElementById('inputAdminAssinanteEdit').value = '';
 
   document.getElementById('modalOverlay').classList.remove('hidden');
+  verificarInconsistenciaModalEmissao();
   salvarSnapshotModalVoucher();
   document.getElementById('inputNome').focus();
 }
@@ -1758,6 +2223,7 @@ async function abrirModalEditar(id) {
   document.getElementById('modalTitulo').textContent = 'Editar Voucher';
   document.getElementById('btnSalvar').textContent = 'Atualizar Voucher';
   document.getElementById('modalOverlay').classList.remove('hidden');
+  verificarInconsistenciaModalEmissao();
   salvarSnapshotModalVoucher();
   document.getElementById('inputNome').focus();
 }
@@ -2287,6 +2753,18 @@ document.getElementById('tabNavVouchers').addEventListener('click', () => mudarA
 document.getElementById('tabNavSolicitacoes').addEventListener('click', () => mudarAba('solicitacoes'));
 document.getElementById('tabNavReservas').addEventListener('click', () => mudarAba('reservas'));
 document.getElementById('tabNavModelos').addEventListener('click', () => mudarAba('modelos'));
+const tabNavInc = document.getElementById('tabNavInconsistencias');
+if (tabNavInc) tabNavInc.addEventListener('click', () => mudarAba('inconsistencias'));
+const tabFiltroInc = document.getElementById('tabFiltroInconsistentes');
+if (tabFiltroInc) tabFiltroInc.addEventListener('click', () => filtrarVouchersStatusRapido('inconsistente'));
+
+// Verificação em tempo real de regras ao preencher voucher
+document.getElementById('inputNome')?.addEventListener('input', () => {
+  if (typeof verificarInconsistenciaModalEmissao === 'function') verificarInconsistenciaModalEmissao();
+});
+document.getElementById('inputDiarias')?.addEventListener('input', () => {
+  if (typeof verificarInconsistenciaModalEmissao === 'function') verificarInconsistenciaModalEmissao();
+});
 
 document.getElementById('btnNovo').addEventListener('click', () => {
   solicitacaoEmAtendimentoId = null;

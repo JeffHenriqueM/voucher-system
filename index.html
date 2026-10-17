@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Villamor Vouchers — Gestão de Vouchers & Cotas</title>
-  <link rel="stylesheet" href="style.css?v=20261015_25" />
+  <link rel="stylesheet" href="style.css?v=20261017_01" />
 </head>
 <body>
 
@@ -120,6 +120,10 @@
         <button class="nav-btn" id="tabNavUsuarios">
           <span>👥 Usuários</span>
         </button>
+        <button class="nav-btn" id="tabNavInconsistencias" style="color:#b91c1c;">
+          <span>⚠️ Inconsistências</span>
+          <span class="nav-counter" id="badgeTotalInconsistencias" style="background:#fee2e2;color:#dc2626;font-weight:700;">0</span>
+        </button>
       </nav>
 
       <!-- Ações do Header & Perfil Ativo -->
@@ -143,6 +147,11 @@
   </header>
 
   <main class="container">
+
+    <!-- Banner de Alerta para Gerência (Márcio) & Auditoria de Inconsistências -->
+    <div id="bannerAlertaInconsistencias" class="hidden" style="margin-bottom:1.25rem;">
+      <!-- Preenchido dinamicamente via renderBannerAlertaInconsistencias() -->
+    </div>
 
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- ABA 1: BASE DE COTAS / SÓCIOS                             -->
@@ -242,6 +251,7 @@
           <button class="tab" data-status="aguardando_assinatura" id="tabFiltroAguardando">✍️ Aguardando Assinatura</button>
           <button class="tab" data-status="disponivel">✓ Ativos / Disponíveis</button>
           <button class="tab" data-status="usado">✗ Utilizados</button>
+          <button class="tab" data-status="inconsistente" id="tabFiltroInconsistentes" style="color:#b91c1c;font-weight:700;">⚠️ Inconsistentes (<span id="countFiltroInconsistentes">0</span>)</button>
         </div>
       </div>
 
@@ -312,6 +322,68 @@
           </thead>
           <tbody id="tbodySolicitacoes">
             <tr><td colspan="8" class="empty">Carregando solicitações...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- ABA: AUDITORIA DE VOUCHERS INCONSISTENTES (GERÊNCIA)       -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section id="secaoInconsistencias" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;margin-bottom:1.25rem;">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <h2 style="font-size:1.25rem;color:var(--text-1);">⚠️ Auditoria de Vouchers Fora da Regra</h2>
+            <span class="badge badge-red" id="badgeHeaderInconsistencias" style="font-size:.78rem;font-weight:700;">0 detectados</span>
+          </div>
+          <p style="color:var(--text-2);font-size:.85rem;margin-top:2px;">
+            Painel de segurança e conformidade: detecta clientes que receberam mais diárias do que o contrato prevê, vouchers duplicados e excesso de diárias concedidas.
+          </p>
+        </div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+          <button class="btn btn-outline" onclick="copiarRelatorioInconsistencias()" style="font-size:.8rem;">
+            📋 Copiar Relatório
+          </button>
+          <button class="btn btn-primary" onclick="notificarMarcioWhatsAppGeral()" style="background:#15803d;border-color:#15803d;font-size:.8rem;">
+            📲 Notificar Márcio no WhatsApp
+          </button>
+        </div>
+      </div>
+
+      <!-- Métricas Rápidas -->
+      <div class="stats-bar" style="margin-bottom:1.25rem;">
+        <div class="stat-card stat-red">
+          <span class="stat-value" id="statTotalInconsistentes">0</span>
+          <span class="stat-label">Vouchers Fora da Regra</span>
+        </div>
+        <div class="stat-card stat-yellow">
+          <span class="stat-value" id="statSociosInconsistentes">0</span>
+          <span class="stat-label">Sócios com Divergência</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-value" id="statDiariasExcedentes">0</span>
+          <span class="stat-label">Diárias Excedentes Acumuladas</span>
+        </div>
+      </div>
+
+      <!-- Tabela de Inconsistências -->
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Voucher</th>
+              <th>Sócio / Cessionário</th>
+              <th>Cota Cadastrada</th>
+              <th>Direito por Regra</th>
+              <th>Diárias Emitidas</th>
+              <th>Motivo da Inconsistência</th>
+              <th>Responsável</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyInconsistencias">
+            <tr><td colspan="8" class="empty">Nenhuma inconsistência encontrada. Todos os vouchers respeitam as cotas.</td></tr>
           </tbody>
         </table>
       </div>
@@ -424,6 +496,35 @@
       <form id="formVoucher">
         <input type="hidden" id="editId" />
         <input type="hidden" id="cotaVinculadaId" />
+
+        <!-- Alerta Chamativo de Inconsistência de Regras de Cotas -->
+        <div id="boxAlertaInconsistenciaModal" class="hidden" style="margin-bottom:1rem;border-radius:10px;padding:.8rem 1rem;background:#fef2f2;border:1px solid #fecaca;border-left:4px solid #dc2626;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <strong style="color:#991b1b;font-size:.85rem;display:flex;align-items:center;gap:6px;">
+              <span>⚠️ ATENÇÃO: EMISSÃO FORA DA REGRA DO PLANO</span>
+            </strong>
+            <span class="badge badge-red" style="font-size:.68rem;">Inconsistência</span>
+          </div>
+          <p id="txtAlertaInconsistenciaModal" style="color:#7f1d1d;font-size:.8rem;margin:.4rem 0 .5rem;line-height:1.45;">
+            <!-- Explicativo dinâmico -->
+          </p>
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;border-top:1px dashed #fca5a5;padding-top:.4rem;">
+            <span style="font-size:.72rem;color:#991b1b;font-weight:600;">📢 O Administrador (Márcio Pimenta) será notificado desta divergência na auditoria.</span>
+            <button type="button" class="btn btn-sm" onclick="notificarMarcioWhatsAppModal()" style="font-size:.72rem;color:#15803d;border:1px solid #86efac;background:#f0fdf4;padding:.25rem .6rem;border-radius:6px;cursor:pointer;">
+              📲 Avisar Márcio no WhatsApp
+            </button>
+          </div>
+        </div>
+
+        <!-- Box Informativo de Vouchers Já Concedidos para este Sócio -->
+        <div id="boxInfoVouchersAnterioresModal" class="hidden" style="margin-bottom:1rem;border-radius:8px;padding:.65rem .85rem;background:#eff6ff;border:1px solid #bfdbfe;border-left:4px solid #2563eb;">
+          <div style="display:flex;align-items:center;gap:6px;color:#1e40af;font-size:.8rem;font-weight:600;">
+            <span>ℹ️ Sócio já possui voucher(s) emitido(s) no sistema</span>
+          </div>
+          <p id="txtInfoVouchersAnterioresModal" style="color:#1e3a8a;font-size:.78rem;margin-top:.25rem;line-height:1.4;">
+            <!-- Explicativo dinâmico -->
+          </p>
+        </div>
 
         <div class="form-grid-2col">
           <!-- Coluna 1: Dados do Voucher & Sócio -->
@@ -886,8 +987,8 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js?v=20261015_25"></script>
-  <script src="cotas_dados.js?v=20261015_25"></script>
-  <script src="app.js?v=20261015_25"></script>
+  <script src="config.js?v=20261017_01"></script>
+  <script src="cotas_dados.js?v=20261017_01"></script>
+  <script src="app.js?v=20261017_01"></script>
 </body>
 </html>

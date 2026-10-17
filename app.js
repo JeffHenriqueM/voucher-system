@@ -2594,23 +2594,64 @@ function atualizarBadgeSolicitacoes() {
   renderBannerPosVenda();
   const badge = document.getElementById('badgeTotalSolicitacoes');
   if (!badge) return;
-  const pendentesPosVenda = listaSolicitacoes.filter(s => s.status === 'pendente').length;
-  const aguardaAdmin = listaSolicitacoes.filter(s => s.status === 'aguardando_assinatura').length;
+
+  const pendentes = (listaSolicitacoes || []).filter(s => s.status === 'pendente').length;
+  const aguardaAdmin = (listaSolicitacoes || []).filter(s => s.status === 'aguardando_assinatura').length;
+
+  // Garante que o contador esteja SEMPRE visível na barra de navegação superior
+  badge.style.display = 'inline-block';
 
   if (perfilAtivo === 'admin') {
-    if (aguardaAdmin > 0) {
+    if (aguardaAdmin > 0 && pendentes > 0) {
+      badge.textContent = `${pendentes + aguardaAdmin} (${aguardaAdmin} ✍️)`;
+      badge.style.background = '#fef3c7';
+      badge.style.color = '#b45309';
+      badge.title = `${pendentes} pendente(s) de emissão e ${aguardaAdmin} aguardando assinatura`;
+    } else if (aguardaAdmin > 0) {
       badge.textContent = `${aguardaAdmin} ✍️`;
       badge.style.background = '#fef3c7';
       badge.style.color = '#b45309';
-      badge.style.display = 'inline-block';
+      badge.title = `${aguardaAdmin} voucher(s) aguardando assinatura`;
+    } else if (pendentes > 0) {
+      badge.textContent = pendentes;
+      badge.style.background = '#fee2e2';
+      badge.style.color = '#dc2626';
+      badge.title = `${pendentes} solicitação(ões) de voucher aguardando emissão`;
     } else {
-      badge.style.display = 'none';
+      badge.textContent = '0';
+      badge.style.background = 'rgba(79, 70, 229, 0.1)';
+      badge.style.color = 'var(--primary)';
+      badge.title = 'Nenhuma solicitação pendente';
     }
   } else {
-    badge.textContent = pendentesPosVenda;
-    badge.style.background = '#fee2e2';
-    badge.style.color = '#dc2626';
-    badge.style.display = pendentesPosVenda > 0 ? 'inline-block' : 'none';
+    // Pós Venda, Reservas, Recepção
+    if (pendentes > 0) {
+      badge.textContent = pendentes;
+      badge.style.background = '#fee2e2';
+      badge.style.color = '#dc2626';
+      badge.title = `${pendentes} solicitação(ões) de voucher aguardando emissão`;
+    } else {
+      badge.textContent = '0';
+      badge.style.background = 'rgba(79, 70, 229, 0.1)';
+      badge.style.color = 'var(--primary)';
+      badge.title = 'Nenhuma solicitação pendente';
+    }
+  }
+
+  // Atualizar também os contadores das abas de filtro interno da seção de Solicitações
+  const btnPendente = document.querySelector('[data-solic-filtro="pendente"]');
+  const btnAssinatura = document.querySelector('[data-solic-filtro="aguardando_assinatura"]');
+  const btnGerado = document.querySelector('[data-solic-filtro="gerado"]');
+  const btnTodos = document.querySelector('[data-solic-filtro="todos"]');
+
+  if (btnPendente) btnPendente.textContent = `1. Pendentes (${pendentes})`;
+  if (btnAssinatura) btnAssinatura.textContent = `2. Aguarda Assinatura (${aguardaAdmin})`;
+  if (btnGerado) {
+    const gerados = (listaSolicitacoes || []).filter(s => s.status === 'gerado').length;
+    btnGerado.textContent = `3. Concluídas & Ativas (${gerados})`;
+  }
+  if (btnTodos) {
+    btnTodos.textContent = `Todas (${(listaSolicitacoes || []).length})`;
   }
 }
 

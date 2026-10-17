@@ -2614,11 +2614,18 @@ function renderTabelaSolicitacoes() {
       acoesHtml = '—';
     }
 
+    const diariasSolic = s.diarias_solicitadas || s.diarias || 2;
+
     return `
       <tr>
         <td style="font-size:.8rem;color:var(--text-3);">${fmtDateTime(s.created_at)}</td>
         <td><strong>${escHtml(s.nome_socio)}</strong></td>
         <td style="font-size:.82rem;font-weight:600;color:var(--primary);">${periodoStr}</td>
+        <td>
+          <span class="diarias-pill diarias-saldo" style="font-size:.76rem;font-weight:700;">
+            ${diariasSolic} diária(s)
+          </span>
+        </td>
         <td><span class="badge badge-blue" style="font-size:.75rem;">${escHtml(s.modelo_nome || s.modelo_id || 'Padrão')}</span></td>
         <td style="max-width:240px;font-size:.82rem;">${escHtml(s.motivo || '—')}</td>
         <td style="font-size:.8rem;color:var(--text-2);">${escHtml(s.solicitante_nome || s.solicitante || 'Reservas')}</td>
@@ -2653,6 +2660,9 @@ function abrirModalSolicitarVoucher(nomeSocioPreenchido = '') {
   if (inputCheckin) inputCheckin.value = hoje;
   if (inputCheckout) inputCheckout.value = '';
 
+  const inDiarias = document.getElementById('solicDiarias');
+  if (inDiarias) inDiarias.value = 2;
+
   const opNome = usuarioLogado ? usuarioLogado.nome : (perfilAtivo === 'recepcao' ? 'Recepção' : (perfilAtivo === 'reservas' ? 'Equipe de Reservas' : (perfilAtivo === 'admin' ? 'Administrador' : 'Pós Venda')));
   document.getElementById('solicOperador').value = opNome;
 
@@ -2669,8 +2679,10 @@ function fecharModalSolicitarVoucher() {
 function atualizarDicaSocioSolicitacao(nome) {
   const lblDica = document.getElementById('solicInfoSocio');
   const inputDiarias = document.getElementById('solicDiarias');
+  const dicaDiarias = document.getElementById('solicDiariasDica');
   if (!nome || !nome.trim()) {
     if (lblDica) lblDica.textContent = '';
+    if (dicaDiarias) dicaDiarias.textContent = '';
     return;
   }
 
@@ -2684,10 +2696,12 @@ function atualizarDicaSocioSolicitacao(nome) {
       lblDica.innerHTML = `Sócio identificado na base RSM: <strong>${cotasSocio.length} cota(s)</strong> (${produtos || 'Cotas'}). Diárias anuais recomendadas: <strong>${diariasTotais} diárias</strong>.`;
     }
     if (inputDiarias) inputDiarias.value = diariasTotais;
+    if (dicaDiarias) dicaDiarias.textContent = `(Plano: ${diariasTotais}d)`;
   } else {
     if (lblDica) {
-      lblDica.innerHTML = `⚠️ Sócio não localizado diretamente na lista de cotas. Você pode prosseguir normalmente informando o período e observações.`;
+      lblDica.innerHTML = `⚠️ Sócio não localizado diretamente na lista de cotas. Você pode prosseguir normalmente informando as diárias e observações.`;
     }
+    if (dicaDiarias) dicaDiarias.textContent = `(Padrão: 2d)`;
   }
 }
 
@@ -2708,10 +2722,11 @@ async function atenderSolicitacao(idSolicitacao) {
   if (document.getElementById('inputCheckin')) document.getElementById('inputCheckin').value = solic.periodo_checkin || '';
   if (document.getElementById('inputCheckout')) document.getElementById('inputCheckout').value = solic.periodo_checkout || '';
 
-  // Pós Venda define/confere as diárias disponíveis com base nas cotas do sócio
+  // Pós Venda define/confere as diárias disponíveis com base nas cotas do sócio e no pedido de Reservas
   const diariasCalculadas = calcularDiariasSocio(solic.nome_socio);
-  document.getElementById('inputDiarias').value = diariasCalculadas;
-  document.getElementById('lblDicaDiarias').textContent = `(Pós Venda: ${diariasCalculadas} diárias disponíveis calculadas pelo plano)`;
+  const diariasSolicitadas = Number(solic.diarias_solicitadas || solic.diarias) || diariasCalculadas;
+  document.getElementById('inputDiarias').value = diariasSolicitadas;
+  document.getElementById('lblDicaDiarias').textContent = `(Reservas solicitou: ${diariasSolicitadas} diárias | Plano: ${diariasCalculadas}d)`;
 
   adequarTextosPorDiarias();
 
@@ -2719,7 +2734,7 @@ async function atenderSolicitacao(idSolicitacao) {
     ? `Período pretendido: ${fmtDate(solic.periodo_checkin)} até ${fmtDate(solic.periodo_checkout)}.`
     : '';
 
-  document.getElementById('inputObs').value = `${periodoStr} Solicitado por ${solic.solicitante_nome || solic.solicitante || 'Reservas'}: ${solic.motivo || ''}`.trim();
+  document.getElementById('inputObs').value = `${periodoStr} [${diariasSolicitadas} diárias solicitadas] Solicitado por ${solic.solicitante_nome || solic.solicitante || 'Reservas'}: ${solic.motivo || ''}`.trim();
   
   // Replicar especificação de regras do modelo
   const mod = listaModelos.find(m => m.id === solic.modelo_id) || listaModelos[0] || MODELOS_PADRAO[0];
@@ -2822,6 +2837,7 @@ document.getElementById('formSolicitarVoucher').addEventListener('submit', async
   const modeloObj = listaModelos.find(m => m.id === modeloId);
   const motivo = document.getElementById('solicMotivo').value.trim();
   const solicitanteNome = usuarioLogado ? usuarioLogado.nome : (document.getElementById('solicOperador').value.trim() || 'Equipe de Reservas');
+  const diariasSolicitadas = Number(document.getElementById('solicDiarias')?.value) || 2;
 
   if (!checkin || !checkout) {
     showToast('Por favor, informe o período pretendido de Check-in e Check-out.', 'error');
@@ -2834,6 +2850,7 @@ document.getElementById('formSolicitarVoucher').addEventListener('submit', async
     nome_socio: nomeSocio,
     modelo_id: modeloId,
     modelo_nome: modeloObj ? modeloObj.nome : modeloId,
+    diarias_solicitadas: diariasSolicitadas,
     periodo_checkin: checkin,
     periodo_checkout: checkout,
     motivo: motivo,

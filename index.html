@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Villamor Vouchers — Gestão de Vouchers & Cotas</title>
-  <link rel="stylesheet" href="style.css?v=20261017_02" />
+  <link rel="stylesheet" href="style.css?v=20261017_03" />
 </head>
 <body>
 
@@ -313,6 +313,7 @@
               <th>Data</th>
               <th>Sócio Solicitado</th>
               <th>Período Pretendido</th>
+              <th>Diárias Solicitadas</th>
               <th>Modelo Sugerido</th>
               <th>Motivo / Observações</th>
               <th>Solicitante</th>
@@ -321,7 +322,7 @@
             </tr>
           </thead>
           <tbody id="tbodySolicitacoes">
-            <tr><td colspan="8" class="empty">Carregando solicitações...</td></tr>
+            <tr><td colspan="9" class="empty">Carregando solicitações...</td></tr>
           </tbody>
         </table>
       </div>
@@ -845,11 +846,20 @@
           • <strong>Finais de semana (sex/sáb) ou eventos:</strong> 2 diárias por dia (período especial, sob autorização prévia).
         </div>
 
-        <div class="form-group">
-          <label for="solicModelo">Modelo Sugerido</label>
-          <select id="solicModelo" style="width:100%;padding:.5rem;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);">
-            <!-- Opções carregadas dinamicamente -->
-          </select>
+        <div class="form-row" style="margin-top:.85rem;">
+          <div class="form-group" style="flex:1;">
+            <label for="solicDiarias" style="font-weight:700;display:flex;align-items:center;justify-content:space-between;">
+              <span>🎟️ Diárias de Voucher a Usar *</span>
+              <small id="solicDiariasDica" style="color:var(--primary);font-size:.72rem;font-weight:600;"></small>
+            </label>
+            <input type="number" id="solicDiarias" required min="1" step="1" value="2" placeholder="Ex: 2" />
+          </div>
+          <div class="form-group" style="flex:1;">
+            <label for="solicModelo">Modelo Sugerido</label>
+            <select id="solicModelo" style="width:100%;padding:.5rem;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface);">
+              <!-- Opções carregadas dinamicamente -->
+            </select>
+          </div>
         </div>
 
         <div class="form-group">
@@ -987,8 +997,8 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js?v=20261017_02"></script>
-  <script src="cotas_dados.js?v=20261017_02"></script>
-  <script src="app.js?v=20261017_02"></script>
+  <script src="config.js?v=20261017_03"></script>
+  <script src="cotas_dados.js?v=20261017_03"></script>
+  <script src="app.js?v=20261017_03"></script>
 </body>
 </html>

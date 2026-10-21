@@ -581,8 +581,8 @@ function renderTabelaInconsistencias() {
             <button class="btn btn-sm btn-notif-whatsapp" onclick="notificarMarcioInconsistencia('${escHtml(v.codigo)}')" title="Enviar alerta detalhado para o Márcio Pimenta no WhatsApp">
               📲 Márcio
             </button>
-            ${perfilAtivo === 'admin' ? `
-            <button class="btn-icon" title="Editar Voucher" onclick="abrirModalEditar('${v.id}')">
+            ${perfilAtivo === 'admin' && (!v.assinado_em || v.status_fluxo === 'aguardando_assinatura') ? `
+            <button class="btn-icon" title="Editar Voucher (Aguardando Assinatura)" onclick="abrirModalEditar('${v.id}')">
               ✏️
             </button>` : ''}
           </div>
@@ -1665,10 +1665,11 @@ function renderTabelaVouchers(dados) {
             <button class="btn-icon" title="Registrar Hospedagem / Baixa" onclick="abrirModalBaixa('${v.id}')">
               🛎️
             </button>` : ''}
-            ${perfilAtivo === 'admin' ? `
-            <button class="btn-icon" title="Editar" onclick="abrirModalEditar('${v.id}')">
+            ${perfilAtivo === 'admin' && (!v.assinado_em || v.status_fluxo === 'aguardando_assinatura') ? `
+            <button class="btn-icon" title="Editar Voucher (Aguardando Assinatura)" onclick="abrirModalEditar('${v.id}')">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-            </button>
+            </button>` : ''}
+            ${perfilAtivo === 'admin' ? `
             <button class="btn-icon danger" title="Excluir" onclick="confirmarDelete('${v.id}')">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
             </button>` : ''}
@@ -2506,6 +2507,13 @@ async function abrirModalEditar(id) {
   const { data: v, error } = await db.from('vouchers').select('*').eq('id', id).single();
   if (error || !v) { showToast('Erro ao carregar voucher', 'error'); return; }
 
+  // Regra de segurança: Voucher emitido pode ser editado pelo Admin ANTES da assinatura oficial.
+  // Após assinado, nenhuma alteração cadastral é permitida para manter fé pública e jurídica.
+  if (v.assinado_em && v.status_fluxo !== 'aguardando_assinatura') {
+    showToast('⚠️ Este voucher já foi assinado oficialmente pelo Administrador e não pode mais ser editado.', 'error');
+    return;
+  }
+
   document.getElementById('editId').value = v.id;
   document.getElementById('cotaVinculadaId').value = '';
   document.getElementById('inputNome').value = v.nome_socio;
@@ -2673,6 +2681,12 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
     let resultData;
     if (id) {
       const vAntigo = listaVouchers.find(v => v.id === id);
+      if (vAntigo && vAntigo.assinado_em && vAntigo.status_fluxo !== 'aguardando_assinatura') {
+        showToast('⚠️ Este voucher já foi assinado oficialmente pelo Administrador e não pode mais ser alterado.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Atualizar Voucher';
+        return;
+      }
       if (vAntigo) {
         payload.status_fluxo = vAntigo.status_fluxo || statusFluxo;
         payload.assinado_em = vAntigo.assinado_em || null;

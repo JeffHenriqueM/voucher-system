@@ -811,13 +811,35 @@ body.dark-mode .regras-sucesso-box {
   color: #78350f;
   max-width: 440px;
   box-shadow: 0 1px 3px rgba(245, 158, 11, 0.08);
-  transition: transform .15s, border-color .15s;
+  transition: transform .15s, border-color .15s, background .15s;
+  cursor: pointer;
+  user-select: none;
 }
 
 .voucher-obs-strip:hover {
+  background: #fef3c7;
   transform: translateY(-1px);
   border-color: #f59e0b;
-  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.16);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.22);
+}
+
+.voucher-obs-hint {
+  font-size: .63rem;
+  font-weight: 700;
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-left: 4px;
+  flex-shrink: 0;
+  transition: all .15s;
+}
+
+.voucher-obs-strip:hover .voucher-obs-hint {
+  background: #d97706;
+  color: #ffffff;
+  border-color: #b45309;
 }
 
 .voucher-obs-icon {
@@ -871,6 +893,12 @@ body.dark-mode .voucher-obs-text {
 body.dark-mode .voucher-obs-label {
   background: #f59e0b !important;
   color: #0f172a !important;
+}
+
+body.dark-mode .voucher-obs-hint {
+  color: #fde68a !important;
+  background: rgba(245, 158, 11, 0.25) !important;
+  border-color: #d97706 !important;
 }
 
 /* ─── Layout Amplo do Modal de Emissão & Card de Observações ─ */
@@ -2029,5 +2057,17 @@ body.dark-mode .banner-checkout-chip {
   gap: .6rem;
   flex-wrap: wrap;
 }
+
+/* ── Modal de Observações do Voucher ────────────────────────────── */
+body.dark-mode #modalObservacaoVoucher .modal-body > div[style*="background:#fffbeb"] {
+  background: rgba(245, 158, 11, 0.12) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+  border-left-color: #f59e0b !important;
+}
+
+body.dark-mode #modalObsTextoCompleto {
+  color: #fef3c7 !important;
+}
+
 
 

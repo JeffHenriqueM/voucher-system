@@ -1602,7 +1602,7 @@ function renderTabelaVouchers(dados) {
       <tr>
         <td style="white-space:nowrap;">
           <strong>#${v.numero || '—'}</strong>
-          ${temObs ? `<span class="badge-obs-alerta" title="Voucher possui observação especial">⚠️ OBS</span>` : ''}
+          ${temObs ? `<span class="badge-obs-alerta" onclick="abrirModalObservacaoVoucher('${v.id}')" style="cursor:pointer;" title="Clique para ler a observação completa">⚠️ OBS</span>` : ''}
           ${incDoVoucher ? `
             <div>
               <span class="badge-inconsistente" onclick="mudarAba('inconsistencias')" style="cursor:pointer;margin-top:3px;" title="${escHtml(incDoVoucher.motivo)}">
@@ -1619,10 +1619,11 @@ function renderTabelaVouchers(dados) {
             </div>
           ` : ''}
           ${temObs ? `
-            <div class="voucher-obs-strip" title="${escHtml(obsReal)}">
+            <div class="voucher-obs-strip" onclick="abrirModalObservacaoVoucher('${v.id}')" style="cursor:pointer;" title="Clique para ler a observação completa">
               <span class="voucher-obs-icon">📝</span>
               <span class="voucher-obs-label">OBS</span>
               <span class="voucher-obs-text">${escHtml(obsReal)}</span>
+              <span class="voucher-obs-hint">🔍 Ver tudo</span>
             </div>
           ` : ''}
         </td>
@@ -1802,15 +1803,16 @@ function renderTabelaReservas() {
       <tr>
         <td style="white-space:nowrap;">
           <strong>#${v.numero || v.codigo}</strong>
-          ${temObs ? `<span class="badge-obs-alerta" title="Voucher possui observação especial">⚠️ OBS</span>` : ''}
+          ${temObs ? `<span class="badge-obs-alerta" onclick="abrirModalObservacaoVoucher('${v.id}')" style="cursor:pointer;" title="Clique para ler a observação completa">⚠️ OBS</span>` : ''}
         </td>
         <td>
           <div style="font-weight:700;color:var(--text-1);">${escHtml(v.nome_socio)}</div>
           ${temObs ? `
-            <div class="voucher-obs-strip" title="${escHtml(obsReal)}">
+            <div class="voucher-obs-strip" onclick="abrirModalObservacaoVoucher('${v.id}')" style="cursor:pointer;" title="Clique para ler a observação completa">
               <span class="voucher-obs-icon">📝</span>
               <span class="voucher-obs-label">OBS</span>
               <span class="voucher-obs-text">${escHtml(obsReal)}</span>
+              <span class="voucher-obs-hint">🔍 Ver tudo</span>
             </div>
           ` : ''}
         </td>
@@ -1904,6 +1906,71 @@ function abrirModalBaixa(voucherId) {
 function fecharModalBaixa() {
   document.getElementById('modalBaixaReserva').classList.add('hidden');
 }
+
+// ── Modal de Observações do Voucher ───────────────────────────
+function abrirModalObservacaoVoucher(voucherId) {
+  const v = (listaVouchers || []).find(item => item.id === voucherId || String(item.numero) === String(voucherId) || item.codigo === voucherId);
+  if (!v) return;
+
+  const obs = obterObservacaoReal(v);
+  if (!obs) {
+    showToast('Este voucher não possui observações registradas.', 'info');
+    return;
+  }
+
+  const elTitulo = document.getElementById('modalObsVoucherTitulo');
+  if (elTitulo) {
+    elTitulo.innerHTML = `<span>📝 Observação — Voucher #${v.numero || v.codigo}</span>`;
+  }
+
+  const elSocio = document.getElementById('modalObsSocioInfo');
+  if (elSocio) {
+    elSocio.innerHTML = `
+      <div><strong>Sócio / Hóspede:</strong> ${escHtml(v.nome_socio)}</div>
+      ${v.sala_venda ? `<div><strong>Sala de Venda:</strong> ${escHtml(v.sala_venda)}</div>` : ''}
+    `;
+  }
+
+  const elTexto = document.getElementById('modalObsTextoCompleto');
+  if (elTexto) {
+    elTexto.textContent = obs;
+  }
+
+  const elMeta = document.getElementById('modalObsMetadados');
+  if (elMeta) {
+    const quemGerou = v.pos_venda_nome || 'Pós Venda';
+    const quandoGerou = v.created_at ? fmtDateTime(v.created_at) : '—';
+    const quemAssinou = v.admin_assinante_nome || (v.assinado_em ? 'Administrador' : 'Pendente de assinatura');
+    const quandoAssinou = v.assinado_em ? fmtDateTime(v.assinado_em) : '';
+
+    elMeta.innerHTML = `
+      <div>💼 <strong>Emissão:</strong> ${escHtml(quemGerou)} (${quandoGerou})</div>
+      <div>✍️ <strong>Assinatura:</strong> ${escHtml(quemAssinou)} ${quandoAssinou ? `(${quandoAssinou})` : ''}</div>
+      ${v.solicitante_nome ? `<div>🛎️ <strong>Solicitado por:</strong> ${escHtml(v.solicitante_nome)}</div>` : ''}
+    `;
+  }
+
+  const modal = document.getElementById('modalObservacaoVoucher');
+  if (modal) modal.classList.remove('hidden');
+}
+window.abrirModalObservacaoVoucher = abrirModalObservacaoVoucher;
+
+function fecharModalObservacaoVoucher() {
+  const modal = document.getElementById('modalObservacaoVoucher');
+  if (modal) modal.classList.add('hidden');
+}
+window.fecharModalObservacaoVoucher = fecharModalObservacaoVoucher;
+
+function copiarTextoObsModal() {
+  const texto = document.getElementById('modalObsTextoCompleto')?.textContent || '';
+  if (!texto) return;
+  navigator.clipboard.writeText(texto).then(() => {
+    showToast('Texto da observação copiado!');
+  }).catch(() => {
+    showToast('Não foi possível copiar.', 'error');
+  });
+}
+window.copiarTextoObsModal = copiarTextoObsModal;
 
 // Submit da Baixa de Reserva
 document.getElementById('formBaixaReserva').addEventListener('submit', async (e) => {

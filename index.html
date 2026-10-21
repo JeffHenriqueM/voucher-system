@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Villamor Vouchers — Gestão de Vouchers & Cotas</title>
-  <link rel="stylesheet" href="style.css?v=20261021_02" />
+  <link rel="stylesheet" href="style.css?v=20261021_03" />
 </head>
 <body>
 
@@ -990,6 +990,40 @@
     </div>
   </div>
 
+  <!-- ── Modal Exibir Observação Completa do Voucher ─────────── -->
+  <div class="modal-overlay hidden" id="modalObservacaoVoucher">
+    <div class="modal modal-md">
+      <div class="modal-header">
+        <h2 id="modalObsVoucherTitulo" style="display:flex;align-items:center;gap:8px;">
+          <span>📝 Observações do Voucher</span>
+        </h2>
+        <button class="modal-close" onclick="fecharModalObservacaoVoucher()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:1.25rem;">
+        <div id="modalObsSocioInfo" style="margin-bottom:1rem;color:var(--text-2);font-size:.85rem;"></div>
+
+        <div style="background:#fffbeb;border:1px solid #fcd34d;border-left:4px solid #d97706;border-radius:8px;padding:1rem 1.15rem;margin-bottom:1.25rem;">
+          <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;color:#92400e;letter-spacing:.05em;margin-bottom:.35rem;">
+            Texto da Observação:
+          </div>
+          <div id="modalObsTextoCompleto" style="font-size:.92rem;line-height:1.6;color:#78350f;white-space:pre-wrap;word-break:break-word;">
+            <!-- Preenchido dinamicamente -->
+          </div>
+        </div>
+
+        <div id="modalObsMetadados" style="font-size:.76rem;color:var(--text-3);line-height:1.5;"></div>
+      </div>
+      <div class="form-actions" style="display:flex;justify-content:space-between;align-items:center;padding:1rem 1.25rem;border-top:1px solid var(--border);">
+        <button type="button" class="btn btn-outline" id="btnCopiarObsTexto" onclick="copiarTextoObsModal()" style="font-size:.82rem;">
+          📋 Copiar Texto
+        </button>
+        <button type="button" class="btn btn-primary" onclick="fecharModalObservacaoVoucher()" style="font-size:.82rem;">
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Modal Confirmar Deletar ──────────────────────────────── -->
   <div class="modal-overlay hidden" id="modalDelete">
     <div class="modal modal-sm">
@@ -1009,8 +1043,8 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js?v=20261021_02"></script>
-  <script src="cotas_dados.js?v=20261021_02"></script>
-  <script src="app.js?v=20261021_02"></script>
+  <script src="config.js?v=20261021_03"></script>
+  <script src="cotas_dados.js?v=20261021_03"></script>
+  <script src="app.js?v=20261021_03"></script>
 </body>
 </html>

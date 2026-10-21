@@ -2624,8 +2624,17 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
   const diariasTotais = Number(document.getElementById('inputDiarias').value) || 2;
 
   const solicitacaoAtual = solicitacaoEmAtendimentoId ? listaSolicitacoes.find(s => s.id === solicitacaoEmAtendimentoId) : null;
-  const isFluxoAdmin = perfilAtivo === 'admin';
-  const statusFluxo = isFluxoAdmin ? 'ativo' : 'aguardando_assinatura';
+
+  // Regra rígida de fluxo de aprovação e assinatura:
+  // 1. Se veio do fluxo de solicitação (Solicitação -> Atender e Registrar diárias), NUNCA sai assinado direto.
+  //    Vai SEMPRE para 'aguardando_assinatura' para que a Gerência/Márcio confira e assine no painel oficial.
+  // 2. Se for emissão direta avulsa, só sai assinado diretamente se quem está emitindo for o próprio Márcio Pimenta.
+  const isMarcioAdmin = usuarioLogado && (
+    (usuarioLogado.usuario || '').toLowerCase() === 'marcio' ||
+    (usuarioLogado.nome || '').toLowerCase().includes('marcio')
+  );
+  const deveAssinarDireto = !solicitacaoAtual && isMarcioAdmin && Boolean(assinaturaAdminAtual);
+  const statusFluxo = deveAssinarDireto ? 'ativo' : 'aguardando_assinatura';
 
   const payload = {
     nome_socio:         document.getElementById('inputNome').value.trim(),
@@ -2643,12 +2652,15 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
     modelo_nome:        modeloObj ? modeloObj.nome : null,
     status_fluxo:       statusFluxo,
     pos_venda_nome:     usuarioLogado ? usuarioLogado.nome : 'Equipe de Pós Venda',
-    assinatura_url:     (isFluxoAdmin ? (assinaturaAdminAtual || null) : null)
+    assinatura_url:     deveAssinarDireto ? (assinaturaAdminAtual || null) : null
   };
 
-  if (isFluxoAdmin && assinaturaAdminAtual) {
-    payload.admin_assinante_nome = usuarioLogado ? usuarioLogado.nome : 'Administrador Geral';
+  if (deveAssinarDireto) {
+    payload.admin_assinante_nome = usuarioLogado ? usuarioLogado.nome : 'Marcio Pimenta';
     payload.assinado_em = new Date().toISOString();
+  } else {
+    payload.admin_assinante_nome = null;
+    payload.assinado_em = null;
   }
 
   if (solicitacaoAtual) {
@@ -2706,10 +2718,10 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
       listaVouchers.unshift(resultData);
       localStorage.setItem('rsm_vouchers_cache', JSON.stringify(listaVouchers));
 
-      if (isFluxoAdmin) {
+      if (deveAssinarDireto) {
         showToast(`Voucher #${resultData.codigo} emitido e assinado com sucesso!`);
       } else {
-        showToast(`Minuta do voucher #${resultData.codigo} gerada! Enviado para assinatura do Administrador.`);
+        showToast(`Voucher #${resultData.codigo} gerado com sucesso! Enviado para conferência e assinatura do Administrador.`);
       }
 
       if (cotaId) {
@@ -2724,7 +2736,8 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
       if (solicitacaoEmAtendimentoId) {
         const sId = solicitacaoEmAtendimentoId;
         solicitacaoEmAtendimentoId = null;
-        const novoStatusSolic = isFluxoAdmin ? 'gerado' : 'aguardando_assinatura';
+        // Solicitação atendida pelo Pós Venda entra SEMPRE como aguardando assinatura do Márcio
+        const novoStatusSolic = 'aguardando_assinatura';
         try {
           await db.from('voucher_solicitacoes').update({
             status: novoStatusSolic,

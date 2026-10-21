@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Villamor Vouchers — Gestão de Vouchers & Cotas</title>
-  <link rel="stylesheet" href="style.css?v=20261017_05" />
+  <link rel="stylesheet" href="style.css?v=20261021_01" />
 </head>
 <body>
 
@@ -113,6 +113,7 @@
         </button>
         <button class="nav-btn" id="tabNavReservas">
           <span>🛎️ Baixa de Reservas</span>
+          <span class="nav-counter" id="badgeTotalReservasAlerta" style="display:none;background:#ffedd5;color:#c2410c;font-weight:700;">0</span>
         </button>
         <button class="nav-btn" id="tabNavModelos">
           <span>📝 Modelos</span>
@@ -156,6 +157,11 @@
     <!-- Banner Fila de Trabalho Pós Venda: Vouchers Aguardando Emissão -->
     <div id="bannerPosVendaFila" class="hidden" style="margin-bottom:1.25rem;">
       <!-- Preenchido dinamicamente via renderBannerPosVenda() -->
+    </div>
+
+    <!-- Banner de Alerta Operacional: Vouchers com Checkout Realizado e Sem Baixa -->
+    <div id="bannerAlertaCheckoutSemBaixa" class="hidden" style="margin-bottom:1.25rem;">
+      <!-- Preenchido dinamicamente via renderBannerCheckoutSemBaixa() -->
     </div>
 
     <!-- ════════════════════════════════════════════════════════════ -->
@@ -256,6 +262,7 @@
           <button class="tab" data-status="aguardando_assinatura" id="tabFiltroAguardando">✍️ Aguardando Assinatura</button>
           <button class="tab" data-status="disponivel">✓ Ativos / Disponíveis</button>
           <button class="tab" data-status="usado">✗ Utilizados</button>
+          <button class="tab" data-status="checkout_sem_baixa" id="tabFiltroCheckoutSemBaixa" style="color:#c2410c;font-weight:700;">🛎️ Checkout sem Baixa (<span id="countFiltroCheckoutSemBaixa">0</span>)</button>
           <button class="tab" data-status="inconsistente" id="tabFiltroInconsistentes" style="color:#b91c1c;font-weight:700;">⚠️ Inconsistentes (<span id="countFiltroInconsistentes">0</span>)</button>
         </div>
       </div>
@@ -1002,8 +1009,8 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js?v=20261017_05"></script>
-  <script src="cotas_dados.js?v=20261017_05"></script>
-  <script src="app.js?v=20261017_05"></script>
+  <script src="config.js?v=20261021_01"></script>
+  <script src="cotas_dados.js?v=20261021_01"></script>
+  <script src="app.js?v=20261021_01"></script>
 </body>
 </html>

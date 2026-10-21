@@ -419,6 +419,97 @@ function renderBannerPosVenda() {
 }
 window.renderBannerPosVenda = renderBannerPosVenda;
 
+// ── Vouchers com Check-out Realizado e Sem Baixa de Diárias ──────
+function obterVouchersCheckoutPassadoSemBaixa() {
+  const hojeStr = new Date().toISOString().split('T')[0];
+
+  return (listaVouchers || []).filter(v => {
+    if (v.status_fluxo === 'cancelado') return false;
+
+    // Diárias concedidas e utilizadas
+    const tot = Number(v.diarias_totais || v.diarias || 0);
+    const usd = Number(v.diarias_usadas || (v.usado ? tot : 0));
+    const saldo = Math.max(0, tot - usd);
+
+    // Se já esgotou ou usado, já teve baixa
+    if (saldo <= 0 || v.usado) return false;
+
+    // Data de check-out
+    let dataCheckout = v.periodo_checkout;
+    if (!dataCheckout && typeof listaSolicitacoes !== 'undefined') {
+      const solic = listaSolicitacoes.find(s => s.voucher_codigo === v.codigo || (s.id && s.id === v.solicitacao_id));
+      if (solic && solic.periodo_checkout) dataCheckout = solic.periodo_checkout;
+    }
+    if (!dataCheckout && v.observacoes) {
+      const m = v.observacoes.match(/(\d{4}-\d{2}-\d{2})/g);
+      if (m && m.length >= 2) dataCheckout = m[1];
+    }
+
+    if (!dataCheckout) return false;
+
+    // Regra operacional: o check-out já passou da data de hoje
+    return dataCheckout < hojeStr;
+  });
+}
+window.obterVouchersCheckoutPassadoSemBaixa = obterVouchersCheckoutPassadoSemBaixa;
+
+// Renderiza banner dinâmico de alerta para vouchers com check-out realizado e sem baixa
+function renderBannerCheckoutSemBaixa() {
+  const container = document.getElementById('bannerAlertaCheckoutSemBaixa');
+  if (!container) return;
+
+  const lista = obterVouchersCheckoutPassadoSemBaixa();
+  if (!lista.length) {
+    container.classList.add('hidden');
+    container.innerHTML = '';
+    return;
+  }
+
+  const chipsHtml = lista.slice(0, 4).map(v => {
+    const tot = v.diarias_totais || v.diarias || 0;
+    const usd = v.diarias_usadas || (v.usado ? tot : 0);
+    const saldo = Math.max(0, tot - usd);
+    const dataCheckout = v.periodo_checkout || '';
+    return `
+      <span class="banner-checkout-chip" title="Check-out em ${fmtDate(dataCheckout)} — ${saldo} diária(s) não baixadas">
+        👤 <strong>#${v.numero || v.codigo} ${escHtml(v.nome_socio)}</strong> (Saída ${fmtDate(dataCheckout)} — ${saldo}d pendentes)
+      </span>
+    `;
+  }).join('');
+
+  const maisQtd = lista.length > 4 ? `<span class="banner-checkout-chip">+${lista.length - 4} outro(s)</span>` : '';
+  const primeiro = lista[0];
+  const primeiroNome = (primeiro.nome_socio || 'Sócio').split(' ')[0];
+
+  container.classList.remove('hidden');
+  container.innerHTML = `
+    <div class="banner-checkout-alerta">
+      <div style="flex:1;min-width:280px;">
+        <div class="banner-checkout-title">
+          <span>🛎️ ALERTA OPERACIONAL: CHECK-OUT REALIZADO SEM BAIXA DE DIÁRIAS</span>
+          <span class="banner-checkout-badge">⚠️ ${lista.length} voucher(s) aguardando baixa</span>
+        </div>
+        <div class="banner-checkout-desc">
+          Identificamos <strong>${lista.length} voucher(s)</strong> cuja data de check-out da hospedagem já passou, mas as diárias continuam constando como saldo disponível (não foi dada a baixa no sistema).
+        </div>
+        <div class="banner-checkout-chips">
+          ${chipsHtml}
+          ${maisQtd}
+        </div>
+      </div>
+      <div class="banner-checkout-actions">
+        <button class="btn btn-warning" onclick="abrirModalBaixa('${primeiro.id}')" title="Dar baixa no voucher de ${escHtml(primeiro.nome_socio)}" style="background:#ea580c;border-color:#ea580c;color:#fff;font-size:.82rem;padding:.45rem .95rem;font-weight:700;">
+          ⚡ Dar Baixa Agora (${escHtml(primeiroNome)})
+        </button>
+        <button class="btn btn-ghost" onclick="filtrarVouchersStatusRapido('checkout_sem_baixa')" style="font-size:.82rem;padding:.45rem .85rem;background:rgba(255,255,255,0.85);border:1px solid #fed7aa;font-weight:600;color:#9a3412;">
+          📋 Ver os ${lista.length} Vouchers
+        </button>
+      </div>
+    </div>
+  `;
+}
+window.renderBannerCheckoutSemBaixa = renderBannerCheckoutSemBaixa;
+
 // Renderização da tabela de inconsistências
 function renderTabelaInconsistencias() {
   const incs = auditarInconsistenciasVouchers();
@@ -1091,6 +1182,7 @@ function aplicarPermissoesPerfil() {
   atualizarBadgeSolicitacoes();
   renderBannerAlertaInconsistencias();
   renderBannerPosVenda();
+  renderBannerCheckoutSemBaixa();
 }
 
 // ── Troca de Abas ──────────────────────────────────────────────
@@ -1165,6 +1257,7 @@ async function sincronizarCotas() {
   renderStatsVouchers(listaVouchers);
   renderBannerAlertaInconsistencias();
   renderBannerPosVenda();
+  renderBannerCheckoutSemBaixa();
 }
 
 function atualizarStatusCotasComVouchers() {
@@ -1339,6 +1432,10 @@ async function carregarVouchers() {
       return !v.usado && v.status_fluxo !== 'aguardando_assinatura';
     } else if (filtroStatusVouchers === 'usado') {
       return v.usado;
+    } else if (filtroStatusVouchers === 'checkout_sem_baixa') {
+      const semBaixa = obterVouchersCheckoutPassadoSemBaixa();
+      const idsSemBaixa = new Set(semBaixa.map(item => item.id));
+      return idsSemBaixa.has(v.id);
     } else if (filtroStatusVouchers === 'inconsistente') {
       const incs = auditarInconsistenciasVouchers();
       const codigosInc = new Set(incs.map(i => i.voucher.codigo));
@@ -1379,6 +1476,21 @@ function renderStatsVouchers(dados) {
   const elCountInc = document.getElementById('countFiltroInconsistentes');
   if (elCountInc) elCountInc.textContent = incs.length;
 
+  // Auditoria de check-out vencido sem baixa
+  const listaCheckoutSemBaixa = obterVouchersCheckoutPassadoSemBaixa();
+  const elCountCheckout = document.getElementById('countFiltroCheckoutSemBaixa');
+  if (elCountCheckout) elCountCheckout.textContent = listaCheckoutSemBaixa.length;
+
+  const badgeResAlerta = document.getElementById('badgeTotalReservasAlerta');
+  if (badgeResAlerta) {
+    if (listaCheckoutSemBaixa.length > 0) {
+      badgeResAlerta.textContent = `${listaCheckoutSemBaixa.length} ⚠️`;
+      badgeResAlerta.style.display = 'inline-block';
+    } else {
+      badgeResAlerta.style.display = 'none';
+    }
+  }
+
   const badgeInc = document.getElementById('badgeTotalInconsistencias');
   if (badgeInc) {
     badgeInc.textContent = incs.length;
@@ -1391,6 +1503,8 @@ function renderStatsVouchers(dados) {
   }
 
   renderBannerAlertaInconsistencias();
+  renderBannerPosVenda();
+  renderBannerCheckoutSemBaixa();
 
   // Atualizar badge no menu superior
   const badgeV = document.getElementById('badgeTotalVouchers');
@@ -1424,10 +1538,13 @@ function renderTabelaVouchers(dados) {
     const saldo = Math.max(0, tot - usd);
     const isPendenteAssinatura = v.status_fluxo === 'aguardando_assinatura';
     const isVencido = v.validade ? (v.validade < hojeStr) : false;
+    const isCheckoutPassadoSemBaixa = Boolean(v.periodo_checkout && v.periodo_checkout < hojeStr && saldo > 0 && !v.usado);
 
     let statusBadge = '';
     if (isPendenteAssinatura) {
       statusBadge = '<span class="badge badge-yellow" style="background:#fef3c7;color:#b45309;font-weight:700;">✍️ Aguarda Assinatura</span>';
+    } else if (isCheckoutPassadoSemBaixa) {
+      statusBadge = `<span class="badge" style="background:#ffedd5;color:#c2410c;border:1px solid #fdba74;font-weight:700;" title="Check-out ocorreu em ${fmtDate(v.periodo_checkout)}. As diárias ainda não foram baixadas.">🛎️ Checkout Vencido (Sem Baixa)</span>`;
     } else if (isVencido) {
       statusBadge = '<span class="badge badge-red" style="background:#fee2e2;color:#dc2626;font-weight:700;">⚠️ Vencido / Expirado</span>';
     } else {
@@ -1528,7 +1645,11 @@ function renderTabelaVouchers(dados) {
             <button class="btn-icon" title="Ver Trilha de Auditoria Completa" onclick="abrirModalTrilhaAuditoria('${v.id}')">
               📋
             </button>
-            ${perfilAtivo !== 'pos_venda' && !isPendenteAssinatura && !isVencido ? `
+            ${isCheckoutPassadoSemBaixa ? `
+            <button class="btn btn-sm" style="padding:.2rem .5rem;font-size:.72rem;background:#ea580c;color:#fff;border-color:#ea580c;font-weight:700;" onclick="abrirModalBaixa('${v.id}')" title="Regularizar baixa do check-out realizado em ${fmtDate(v.periodo_checkout)}">
+              🛎️ Baixar
+            </button>` : ''}
+            ${perfilAtivo !== 'pos_venda' && !isPendenteAssinatura && !isVencido && !isCheckoutPassadoSemBaixa ? `
             <button class="btn-icon" title="Registrar Hospedagem / Baixa" onclick="abrirModalBaixa('${v.id}')">
               🛎️
             </button>` : ''}
@@ -1567,12 +1688,28 @@ function renderTabelaReservas() {
     return;
   }
 
+  // Priorizar no topo os vouchers com check-out passado e diárias sem baixa
+  filtrados.sort((a, b) => {
+    const aTot = a.diarias_totais || a.diarias || 0;
+    const aUsd = a.diarias_usadas || (a.usado ? aTot : 0);
+    const aSaldo = Math.max(0, aTot - aUsd);
+    const aCheckPassou = (a.periodo_checkout && a.periodo_checkout < hojeStr && aSaldo > 0 && !a.usado) ? 1 : 0;
+
+    const bTot = b.diarias_totais || b.diarias || 0;
+    const bUsd = b.diarias_usadas || (b.usado ? bTot : 0);
+    const bSaldo = Math.max(0, bTot - bUsd);
+    const bCheckPassou = (b.periodo_checkout && b.periodo_checkout < hojeStr && bSaldo > 0 && !b.usado) ? 1 : 0;
+
+    return bCheckPassou - aCheckPassou;
+  });
+
   tbody.innerHTML = filtrados.map(v => {
     const tot = v.diarias_totais || v.diarias || 2;
     const usd = v.diarias_usadas || (v.usado ? tot : 0);
     const saldo = Math.max(0, tot - usd);
     const isSemAssinatura = v.status_fluxo === 'aguardando_assinatura' || !v.assinado_em;
     const isVencido = v.validade ? (v.validade < hojeStr) : false;
+    const isCheckoutPassadoSemBaixa = Boolean(v.periodo_checkout && v.periodo_checkout < hojeStr && saldo > 0 && !v.usado);
 
     // Coluna Vencimento
     let vencimentoHtml = '';
@@ -1595,6 +1732,10 @@ function renderTabelaReservas() {
       `;
     }
 
+    if (isCheckoutPassadoSemBaixa) {
+      vencimentoHtml += `<div style="font-size:.72rem;color:#c2410c;font-weight:700;margin-top:3px;">🛎️ Checkout: ${fmtDate(v.periodo_checkout)}</div>`;
+    }
+
     // Buscar histórico deste voucher
     const historico = listaHistoricoReservas.filter(h => h.voucher_codigo === v.codigo);
     const histResumo = historico.length
@@ -1606,6 +1747,12 @@ function renderTabelaReservas() {
       botaoAcao = `
         <button class="btn btn-ghost" disabled style="padding:.35rem .65rem;font-size:.76rem;color:#b45309;background:#fef3c7;border:1px dashed #f59e0b;cursor:not-allowed;font-weight:600;" title="Voucher aguarda assinatura oficial do Gerente/Admin. Bloqueado para uso.">
           ✍️ Bloqueado (Sem Assinatura)
+        </button>
+      `;
+    } else if (isCheckoutPassadoSemBaixa) {
+      botaoAcao = `
+        <button class="btn btn-warning" style="padding:.35rem .75rem;font-size:.8rem;background:#ea580c;color:#fff;border-color:#ea580c;font-weight:700;" onclick="abrirModalBaixa('${v.id}')" title="Check-out ocorreu em ${fmtDate(v.periodo_checkout)}. Clique para registrar a baixa das diárias.">
+          🛎️ Dar Baixa Pendente
         </button>
       `;
     } else if (isVencido) {
@@ -1667,23 +1814,24 @@ function abrirModalBaixa(voucherId) {
   const v = listaVouchers.find(item => item.id === voucherId);
   if (!v) return;
 
+  const hojeStr = new Date().toISOString().split('T')[0];
+  const tot = v.diarias_totais || v.diarias || 2;
+  const usd = v.diarias_usadas || (v.usado ? tot : 0);
+  const saldo = Math.max(0, tot - usd);
+  const isVencido = v.validade && (v.validade < hojeStr);
+  const isCheckoutPassado = Boolean(v.periodo_checkout && v.periodo_checkout < hojeStr && saldo > 0);
+
   // Requisito: um voucher sem assinatura não pode ser utilizado
   if (v.status_fluxo === 'aguardando_assinatura' || !v.assinado_em) {
     showToast('⚠️ Este voucher aguarda assinatura da Gerência/Admin e NÃO PODE ser utilizado!', 'error');
     return;
   }
 
-  // Requisito: voucher vencido não pode ser utilizado
-  const hojeStr = new Date().toISOString().split('T')[0];
-  if (v.validade && v.validade < hojeStr) {
+  // Requisito: voucher vencido não pode ser utilizado para novas estadias, exceto para regularizar estadias com check-out já ocorrido
+  if (v.validade && v.validade < hojeStr && !isCheckoutPassado) {
     showToast(`⚠️ Este voucher expirou a validade em ${fmtDate(v.validade)} e não pode ser utilizado!`, 'error');
     return;
   }
-
-  const tot = v.diarias_totais || v.diarias || 2;
-  const usd = v.diarias_usadas || (v.usado ? tot : 0);
-  const saldo = Math.max(0, tot - usd);
-  const isVencido = v.validade && (v.validade < hojeStr);
 
   document.getElementById('baixaVoucherId').value = v.id;
   document.getElementById('baixaVoucherCodigo').value = v.codigo;
@@ -1695,16 +1843,22 @@ function abrirModalBaixa(voucherId) {
     Já Utilizadas: <strong style="color:#dc2626;">${usd}</strong> | 
     Saldo Restante: <strong style="color:#16a34a;">${saldo} diárias</strong> | 
     Vencimento: <strong style="color:${isVencido ? '#dc2626' : 'var(--text-1)'};">${v.validade ? fmtDate(v.validade) : 'A definir'}</strong>
+    ${isCheckoutPassado ? ` | <span class="badge" style="background:#ffedd5;color:#c2410c;font-weight:700;">🛎️ Check-out ocorrido em ${fmtDate(v.periodo_checkout)}</span>` : ''}
   `;
 
   document.getElementById('baixaDiariasQtd').max = saldo > 0 ? saldo : 1;
-  document.getElementById('baixaDiariasQtd').value = saldo > 0 ? 1 : 0;
+  document.getElementById('baixaDiariasQtd').value = saldo > 0 ? saldo : 1;
 
-  // Datas padrão
+  // Datas padrão: se check-out já ocorreu, preenche com as datas da estadia prevista
   const hoje = new Date().toISOString().split('T')[0];
-  document.getElementById('baixaCheckin').value = hoje;
-  document.getElementById('baixaCheckout').value = '';
-  document.getElementById('baixaObs').value = '';
+  if (isCheckoutPassado && v.periodo_checkin && v.periodo_checkout) {
+    document.getElementById('baixaCheckin').value = v.periodo_checkin;
+    document.getElementById('baixaCheckout').value = v.periodo_checkout;
+  } else {
+    document.getElementById('baixaCheckin').value = hoje;
+    document.getElementById('baixaCheckout').value = '';
+  }
+  document.getElementById('baixaObs').value = isCheckoutPassado ? `Regularização de estadia realizada (Check-out ${fmtDate(v.periodo_checkout)}).` : '';
 
   // Histórico anterior
   const container = document.getElementById('baixaHistoricoLista');
@@ -1762,9 +1916,10 @@ document.getElementById('formBaixaReserva').addEventListener('submit', async (e)
     return;
   }
 
-  // Validação rígida: voucher vencido não pode ter diárias baixadas
+  // Validação: voucher vencido não pode ter diárias baixadas, exceto para regularizar check-out já ocorrido
   const hojeSubmit = new Date().toISOString().split('T')[0];
-  if (voucher.validade && voucher.validade < hojeSubmit) {
+  const isCheckoutPassadoSubmit = Boolean(voucher.periodo_checkout && voucher.periodo_checkout < hojeSubmit && (voucher.diarias_totais || 2) > (voucher.diarias_usadas || 0));
+  if (voucher.validade && voucher.validade < hojeSubmit && !isCheckoutPassadoSubmit) {
     showToast(`Operação bloqueada: este voucher expirou a validade em ${fmtDate(voucher.validade)}.`, 'error');
     btn.disabled = false;
     btn.textContent = 'Confirmar Baixa de Diárias';

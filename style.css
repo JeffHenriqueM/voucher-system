@@ -1934,3 +1934,100 @@ body.dark-mode .banner-posvenda-chip {
   flex-wrap: wrap;
 }
 
+/* ── Banner Alerta Checkout Realizado sem Baixa ─────────────────── */
+.banner-checkout-alerta {
+  background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+  border: 1px solid #fb923c;
+  border-left: 5px solid #ea580c;
+  border-radius: 12px;
+  padding: 1.1rem 1.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.1rem;
+  box-shadow: 0 4px 16px rgba(234, 88, 12, 0.12);
+  transition: all .25s ease;
+}
+
+body.dark-mode .banner-checkout-alerta {
+  background: linear-gradient(135deg, rgba(124, 45, 18, 0.35) 0%, rgba(67, 20, 7, 0.45) 100%);
+  border-color: #f97316;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.banner-checkout-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #9a3412;
+}
+
+body.dark-mode .banner-checkout-title {
+  color: #fed7aa;
+}
+
+.banner-checkout-badge {
+  background: #ea580c;
+  color: #ffffff;
+  font-size: .75rem;
+  font-weight: 800;
+  padding: .2rem .65rem;
+  border-radius: 99px;
+  letter-spacing: .02em;
+  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.3);
+  animation: pulseCheckoutBadge 2s infinite ease-in-out;
+}
+
+@keyframes pulseCheckoutBadge {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.92; }
+}
+
+.banner-checkout-desc {
+  font-size: .85rem;
+  color: #7c2d12;
+  margin-top: .35rem;
+  line-height: 1.5;
+}
+
+body.dark-mode .banner-checkout-desc {
+  color: #ffedd5;
+}
+
+.banner-checkout-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin-top: .5rem;
+}
+
+.banner-checkout-chip {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+  font-size: .75rem;
+  font-weight: 600;
+  padding: .2rem .55rem;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+body.dark-mode .banner-checkout-chip {
+  background: rgba(124, 45, 18, 0.5);
+  border-color: #ea580c;
+  color: #ffedd5;
+}
+
+.banner-checkout-actions {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  flex-wrap: wrap;
+}
+
+

@@ -1536,26 +1536,37 @@ function renderTabelaVouchers(dados) {
     const tot = v.diarias_totais || v.diarias || 2;
     const usd = v.diarias_usadas || (v.usado ? tot : 0);
     const saldo = Math.max(0, tot - usd);
+    const isUsadoTotal = Boolean(v.usado || saldo === 0);
     const isPendenteAssinatura = v.status_fluxo === 'aguardando_assinatura';
-    const isVencido = v.validade ? (v.validade < hojeStr) : false;
-    const isCheckoutPassadoSemBaixa = Boolean(v.periodo_checkout && v.periodo_checkout < hojeStr && saldo > 0 && !v.usado);
+    // Se o voucher já foi dado baixa (usado), ele NÃO é vencido!
+    const isVencido = !isUsadoTotal && v.validade ? (v.validade < hojeStr) : false;
+    const isCheckoutPassadoSemBaixa = Boolean(!isUsadoTotal && v.periodo_checkout && v.periodo_checkout < hojeStr && saldo > 0);
 
     let statusBadge = '';
     if (isPendenteAssinatura) {
       statusBadge = '<span class="badge badge-yellow" style="background:#fef3c7;color:#b45309;font-weight:700;">✍️ Aguarda Assinatura</span>';
+    } else if (isUsadoTotal) {
+      statusBadge = '<span class="badge" style="background:#e2e8f0;color:#334155;border:1px solid #cbd5e1;font-weight:700;">✓ Utilizado</span>';
     } else if (isCheckoutPassadoSemBaixa) {
       statusBadge = `<span class="badge" style="background:#ffedd5;color:#c2410c;border:1px solid #fdba74;font-weight:700;" title="Check-out ocorreu em ${fmtDate(v.periodo_checkout)}. As diárias ainda não foram baixadas.">🛎️ Checkout Vencido (Sem Baixa)</span>`;
     } else if (isVencido) {
       statusBadge = '<span class="badge badge-red" style="background:#fee2e2;color:#dc2626;font-weight:700;">⚠️ Vencido / Expirado</span>';
     } else {
-      statusBadge = v.usado || saldo === 0
-        ? '<span class="badge badge-red">Utilizado</span>'
-        : (usd > 0 ? `<span class="badge badge-yellow" style="background:#fef9c3;color:#854d0e;">Parcial (${saldo} restam)</span>` : '<span class="badge badge-green">✓ Ativo & Disponível</span>');
+      statusBadge = usd > 0
+        ? `<span class="badge badge-yellow" style="background:#fef9c3;color:#854d0e;">Parcial (${saldo} restam)</span>`
+        : '<span class="badge badge-green">✓ Ativo & Disponível</span>';
     }
 
     // Exibição da Data de Vencimento
     let vencimentoHtml = '';
-    if (!v.validade) {
+    if (isUsadoTotal) {
+      vencimentoHtml = `
+        <div style="line-height:1.25;">
+          <strong style="color:var(--text-2);font-size:.82rem;">${v.validade ? fmtDate(v.validade) : '—'}</strong>
+          <div><span class="badge" style="background:#f1f5f9;color:#475569;font-size:.65rem;padding:1px 5px;display:inline-block;margin-top:2px;">✓ Baixado</span></div>
+        </div>
+      `;
+    } else if (!v.validade) {
       vencimentoHtml = '<span style="color:var(--text-3);font-size:.78rem;">A definir</span>';
     } else if (isVencido) {
       vencimentoHtml = `
@@ -1707,13 +1718,22 @@ function renderTabelaReservas() {
     const tot = v.diarias_totais || v.diarias || 2;
     const usd = v.diarias_usadas || (v.usado ? tot : 0);
     const saldo = Math.max(0, tot - usd);
+    const isUsadoTotal = Boolean(v.usado || saldo === 0);
     const isSemAssinatura = v.status_fluxo === 'aguardando_assinatura' || !v.assinado_em;
-    const isVencido = v.validade ? (v.validade < hojeStr) : false;
-    const isCheckoutPassadoSemBaixa = Boolean(v.periodo_checkout && v.periodo_checkout < hojeStr && saldo > 0 && !v.usado);
+    // Se o voucher já foi dado baixa (usado), ele NÃO é vencido!
+    const isVencido = !isUsadoTotal && v.validade ? (v.validade < hojeStr) : false;
+    const isCheckoutPassadoSemBaixa = Boolean(!isUsadoTotal && v.periodo_checkout && v.periodo_checkout < hojeStr && saldo > 0);
 
     // Coluna Vencimento
     let vencimentoHtml = '';
-    if (!v.validade) {
+    if (isUsadoTotal) {
+      vencimentoHtml = `
+        <div style="line-height:1.25;">
+          <strong style="color:var(--text-2);font-size:.82rem;">${v.validade ? fmtDate(v.validade) : '—'}</strong>
+          <div><span class="badge" style="background:#f1f5f9;color:#475569;font-size:.65rem;padding:1px 5px;display:inline-block;margin-top:2px;">✓ Baixado</span></div>
+        </div>
+      `;
+    } else if (!v.validade) {
       vencimentoHtml = '<span style="color:var(--text-3);font-size:.78rem;">A definir</span>';
     } else if (isVencido) {
       vencimentoHtml = `
@@ -1749,6 +1769,12 @@ function renderTabelaReservas() {
           ✍️ Bloqueado (Sem Assinatura)
         </button>
       `;
+    } else if (isUsadoTotal) {
+      botaoAcao = `
+        <button class="btn btn-ghost" disabled style="padding:.35rem .65rem;font-size:.78rem;background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;cursor:not-allowed;font-weight:600;">
+          ✓ Diárias Baixadas
+        </button>
+      `;
     } else if (isCheckoutPassadoSemBaixa) {
       botaoAcao = `
         <button class="btn btn-warning" style="padding:.35rem .75rem;font-size:.8rem;background:#ea580c;color:#fff;border-color:#ea580c;font-weight:700;" onclick="abrirModalBaixa('${v.id}')" title="Check-out ocorreu em ${fmtDate(v.periodo_checkout)}. Clique para registrar a baixa das diárias.">
@@ -1759,12 +1785,6 @@ function renderTabelaReservas() {
       botaoAcao = `
         <button class="btn btn-ghost" disabled style="padding:.35rem .65rem;font-size:.76rem;color:#dc2626;background:#fee2e2;border:1px dashed #ef4444;cursor:not-allowed;font-weight:600;" title="Voucher expirou a validade em ${fmtDate(v.validade)}.">
           ⚠️ Vencido
-        </button>
-      `;
-    } else if (saldo === 0) {
-      botaoAcao = `
-        <button class="btn btn-ghost" disabled style="padding:.35rem .65rem;font-size:.78rem;opacity:.6;cursor:not-allowed;">
-          ✓ Diárias Esgotadas
         </button>
       `;
     } else {
@@ -1800,7 +1820,7 @@ function renderTabelaReservas() {
         <td>
           <span class="diarias-pill ${saldo > 0 ? 'diarias-disponiveis' : 'diarias-usadas'}">${saldo} restante(s)</span>
           ${isSemAssinatura ? '<div style="font-size:.7rem;color:#b45309;font-weight:600;margin-top:3px;">✍️ Aguarda Assinatura</div>' : ''}
-          ${isVencido ? '<div style="font-size:.7rem;color:#dc2626;font-weight:600;margin-top:3px;">⚠️ Vencido</div>' : ''}
+          ${isUsadoTotal ? '<div style="font-size:.7rem;color:#475569;font-weight:600;margin-top:3px;">✓ Utilizado</div>' : (isVencido ? '<div style="font-size:.7rem;color:#dc2626;font-weight:600;margin-top:3px;">⚠️ Vencido</div>' : '')}
         </td>
         <td>${histResumo}</td>
         <td>${botaoAcao}</td>

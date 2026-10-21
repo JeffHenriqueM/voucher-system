@@ -586,11 +586,16 @@
     // ── Render Voucher ───────────────────────────────────────
     function renderVoucher(v, historicoEstadias = [], assinaturaUrl = '', solicitacaoOrigem = null) {
       document.title = `Voucher ${v.numero || v.codigo} — ${v.nome_socio}`;
+      const tot = v.diarias_totais || v.diarias || 2;
+      const usd = v.diarias_usadas || (v.usado ? tot : 0);
+      const saldo = Math.max(0, tot - usd);
+      const isUsadoTotal = Boolean(v.usado || saldo === 0);
       const isAssinado = (v.status_fluxo === 'ativo' || v.status_fluxo === 'usado') && Boolean(v.assinado_em);
       const isMinuta = v.status_fluxo === 'aguardando_assinatura' || !isAssinado;
       const hojeStr = new Date().toISOString().split('T')[0];
-      const isVencido = v.validade ? (v.validade < hojeStr) : false;
-      const disponivel = !v.usado && isAssinado && !isVencido;
+      // Se já foi dado baixa (usado), ele NÃO é considerado vencido
+      const isVencido = !isUsadoTotal && v.validade ? (v.validade < hojeStr) : false;
+      const disponivel = !isUsadoTotal && isAssinado && !isVencido;
       const linkAtual = window.location.href;
 
       const espec = `Voucher de ${v.diarias > 1 ? v.diarias + ' ('+numPorExtenso(v.diarias)+')' : 'uma (01)'} diária${v.diarias > 1 ? 's' : ''} anua${v.diarias > 1 ? 'is' : 'l'} para um casal no Hotel Villamor Prime.`;
@@ -628,21 +633,24 @@
           ${isMinuta ? `
           <span class="badge-status" style="background:#fef3c7;color:#b45309;">
             ✍️ Minuta — Aguardando Assinatura do Administrador
+          </span>` : (isUsadoTotal ? `
+          <span class="badge-status" style="background:#e2e8f0;color:#334155;border:1px solid #cbd5e1;font-weight:bold;">
+            ✓ Voucher Utilizado / Diárias Baixadas
           </span>` : (isVencido ? `
           <span class="badge-status" style="background:#fee2e2;color:#991b1b;font-weight:bold;">
             ⚠️ VOUCHER VENCIDO (EXPIRADO EM ${fmtDate(v.validade)})
           </span>` : `
-          <span class="badge-status ${disponivel ? 'badge-ok' : 'badge-used'}">
-            ${disponivel ? '✓ Disponível para Reserva' : '✗ Diárias Esgotadas / Utilizado'}
-          </span>`)}
+          <span class="badge-status badge-ok">
+            ✓ Disponível para Reserva
+          </span>`))}
           <button class="btn-print" onclick="window.print()">
             🖨️ Imprimir
           </button>
         </div>
 
         <!-- Documento Voucher -->
-        <div class="voucher ${v.usado ? 'is-usado' : ''}" id="voucherDoc">
-          <div class="v-usado-stamp">${isVencido ? 'EXPIRADO' : 'UTILIZADO'}</div>
+        <div class="voucher ${isUsadoTotal ? 'is-usado' : ''}" id="voucherDoc">
+          <div class="v-usado-stamp">${isUsadoTotal ? 'UTILIZADO' : (isVencido ? 'EXPIRADO' : '')}</div>
           ${isMinuta ? `
           <div style="background:#fffbeb;color:#92400e;padding:7px 12px;font-weight:bold;text-align:center;font-size:11px;border-bottom:2px dashed #f59e0b;">
             ⚠️ MINUTA DE VOUCHER — AGUARDA ASSINATURA OFICIAL DO ADMINISTRADOR (SEM VALIDADE PARA CHECK-IN ANTES DA ASSINATURA)
@@ -650,6 +658,10 @@
           ${isVencido ? `
           <div style="background:#fee2e2;color:#991b1b;padding:7px 12px;font-weight:bold;text-align:center;font-size:11px;border-bottom:2px dashed #ef4444;">
             ⚠️ VOUCHER VENCIDO / EXPIRADO — A DATA LIMITE DE VALIDADE (${fmtDate(v.validade)}) FOI ULTRAPASSADA
+          </div>` : ''}
+          ${isUsadoTotal ? `
+          <div style="background:#f1f5f9;color:#334155;padding:7px 12px;font-weight:bold;text-align:center;font-size:11px;border-bottom:2px solid #cbd5e1;">
+            ✓ VOUCHER UTILIZADO — TODAS AS DIÁRIAS FORAM BAIXADAS COM SUCESSO
           </div>` : ''}
 
           <!-- Cabeçalho -->
@@ -704,10 +716,10 @@
               <span class="v-value"><strong>${fmtDate(v.periodo_checkin)} até ${fmtDate(v.periodo_checkout)}</strong></span>
             </div>` : ''}
             ${v.validade ? `
-            <div class="v-row" style="background:${isVencido ? '#fee2e2' : '#f0fdf4'};padding:5px 8px;border-radius:4px;border:1px solid ${isVencido ? '#fca5a5' : '#bbf7d0'};margin-top:6px;">
-              <span class="v-label" style="color:${isVencido ? '#991b1b' : '#166534'};font-weight:800;">DATA DE VENCIMENTO:</span>
-              <span class="v-value" style="color:${isVencido ? '#991b1b' : '#166534'};font-weight:800;">
-                VÁLIDO ATÉ ${fmtDate(v.validade)} ${isVencido ? '⚠️ (EXPIRADO)' : '✓ (NO PRAZO)'}
+            <div class="v-row" style="background:${isUsadoTotal ? '#f1f5f9' : (isVencido ? '#fee2e2' : '#f0fdf4')};padding:5px 8px;border-radius:4px;border:1px solid ${isUsadoTotal ? '#cbd5e1' : (isVencido ? '#fca5a5' : '#bbf7d0')};margin-top:6px;">
+              <span class="v-label" style="color:${isUsadoTotal ? '#475569' : (isVencido ? '#991b1b' : '#166534')};font-weight:800;">DATA DE VENCIMENTO:</span>
+              <span class="v-value" style="color:${isUsadoTotal ? '#475569' : (isVencido ? '#991b1b' : '#166534')};font-weight:800;">
+                VÁLIDO ATÉ ${fmtDate(v.validade)} ${isUsadoTotal ? '✓ (UTILIZADO)' : (isVencido ? '⚠️ (EXPIRADO)' : '✓ (NO PRAZO)')}
               </span>
             </div>` : ''}
           </div>

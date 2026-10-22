@@ -611,52 +611,62 @@ function renderTabelaInconsistencias() {
   tbody.innerHTML = incs.map(item => {
     const v = item.voucher;
     return `
-      <tr>
-        <td>
-          <div style="font-weight:700;color:var(--text-1);">#${v.numero || '—'}</div>
-          <div style="font-size:.7rem;color:var(--text-3);font-family:monospace;">${escHtml(v.codigo)}</div>
+      <tr class="inc-card-row">
+        <td class="col-card-top" data-label="Voucher">
+          <div class="card-num-wrap">
+            <strong class="card-voucher-num">#${v.numero || '—'}</strong>
+            <span style="font-size:.7rem;color:var(--text-3);font-family:monospace;">${escHtml(v.codigo)}</span>
+          </div>
+          <div class="mobile-only-status">
+            <span class="badge badge-red" style="font-weight:700;">⚠️ ${escHtml(item.tipo_titulo)}</span>
+          </div>
         </td>
-        <td>
-          <div style="font-weight:700;color:var(--text-1);">${escHtml(item.nome_socio)}</div>
+        <td class="col-card-socio" data-label="Sócio">
+          <div class="card-socio-name">${escHtml(item.nome_socio)}</div>
           <div style="font-size:.72rem;color:var(--text-3);">${item.qtd_vouchers_socio} voucher(s) deste sócio</div>
         </td>
-        <td>
+        <td class="col-card-cota" data-label="Cota">
+          <div class="card-cell-label">Cotas / Unidades</div>
           <code style="font-size:.78rem;">${escHtml(item.cotas_descricao)}</code>
         </td>
-        <td>
+        <td class="col-card-permitido" data-label="Permitido">
+          <div class="card-cell-label">Diárias Permitidas</div>
           <span class="diarias-pill diarias-saldo" style="font-size:.75rem;">
             ${item.diarias_permitidas} diárias anuais
           </span>
         </td>
-        <td>
+        <td class="col-card-concedido" data-label="Concedido">
+          <div class="card-cell-label">Diárias Emitidas</div>
           <div style="line-height:1.25;">
             <strong style="color:#dc2626;font-size:.85rem;">${item.diarias_voucher}d neste voucher</strong>
             <div style="font-size:.7rem;color:var(--text-3);">${item.diarias_emitidas_total}d total cliente</div>
           </div>
         </td>
-        <td>
+        <td class="col-card-motivo" data-label="Motivo">
+          <div class="card-cell-label">Inconformidade</div>
           <div class="inconsistencia-motivo-box" title="${escHtml(item.motivo)}">
             <span style="font-weight:700;color:#991b1b;display:block;margin-bottom:2px;">⚠️ ${escHtml(item.tipo_titulo)}:</span>
             ${escHtml(item.motivo)}
           </div>
         </td>
-        <td>
+        <td class="col-card-emissor" data-label="Emissor">
+          <div class="card-cell-label">Gerado por</div>
           <div style="font-size:.75rem;line-height:1.35;color:var(--text-2);">
             <div>💼 ${escHtml(v.pos_venda_nome || 'Pós Venda')}</div>
             ${v.admin_assinante_nome ? `<div style="color:#15803d;font-size:.7rem;">✍️ ${escHtml(v.admin_assinante_nome)}</div>` : ''}
           </div>
         </td>
-        <td>
-          <div class="actions" style="flex-wrap:wrap;gap:4px;">
-            <a href="${linkVoucher(v.codigo)}" target="_blank" class="btn btn-ghost" style="padding:.25rem .5rem;font-size:.75rem;" title="Visualizar Voucher">
-              👁️ Ver
+        <td class="col-card-acoes" data-label="Ações">
+          <div class="actions card-actions-flex" style="flex-wrap:wrap;gap:4px;">
+            <a href="${linkVoucher(v.codigo)}" target="_blank" class="btn btn-sm btn-ghost" style="padding:.28rem .55rem;font-size:.76rem;" title="Visualizar Voucher">
+              👁️ Ver Voucher
             </a>
-            <button class="btn btn-sm btn-notif-whatsapp" onclick="notificarMarcioInconsistencia('${escHtml(v.codigo)}')" title="Enviar alerta detalhado para o Márcio Pimenta no WhatsApp">
+            <button class="btn btn-sm btn-notif-whatsapp" onclick="notificarMarcioInconsistencia('${escHtml(v.codigo)}')" title="Enviar alerta detalhado para o Márcio Pimenta no WhatsApp" style="padding:.28rem .55rem;font-size:.76rem;">
               📲 Márcio
             </button>
             ${(perfilAtivo === 'admin' || perfilAtivo === 'pos_venda') && (!v.assinado_em || v.status_fluxo === 'aguardando_assinatura') ? `
-            <button class="btn-icon" title="Editar Voucher (Aguardando Assinatura)" onclick="abrirModalEditar('${v.id}')">
-              ✏️
+            <button class="btn btn-sm btn-ghost" title="Editar Voucher (Aguardando Assinatura)" onclick="abrirModalEditar('${v.id}')" style="padding:.28rem .55rem;font-size:.76rem;">
+              ✏️ Editar
             </button>` : ''}
           </div>
         </td>
@@ -1445,22 +1455,32 @@ function renderTabelaCotas() {
     }
 
     return `
-      <tr>
-        <td>
+      <tr class="cota-card-row">
+        <td class="col-cota-socio" data-label="Sócio">
           <div class="cota-socio-name">
             <strong>${escHtml(c.nome_socio)}</strong>
             ${isInconsistente ? `<span class="badge-inconsistente" title="Cliente possui ${totalDiariasEmitidas} diárias emitidas, mas a cota permite ${diariasTotais}">⚠️ Fora da regra (${totalDiariasEmitidas}/${diariasTotais}d)</span>` : ''}
           </div>
         </td>
-        <td><code>${escHtml(c.produto)}</code></td>
-        <td>${fmtDate(c.data_aquisicao)}</td>
-        <td>${badgeCota}</td>
-        <td>
+        <td class="col-cota-produto" data-label="Produto">
+          <div class="card-cell-label">Unidade / Cota</div>
+          <code>${escHtml(c.produto)}</code>
+        </td>
+        <td class="col-cota-data" data-label="Aquisição">
+          <div class="card-cell-label">Data Aquisição</div>
+          <span>${fmtDate(c.data_aquisicao)}</span>
+        </td>
+        <td class="col-cota-tipo" data-label="Situação">
+          <div class="card-cell-label">Situação</div>
+          ${badgeCota}
+        </td>
+        <td class="col-cota-diarias" data-label="Diárias">
+          <div class="card-cell-label">Diárias Anuais</div>
           <span class="diarias-pill ${isInconsistente ? 'diarias-usadas' : 'diarias-saldo'}">
             ${diariasTotais} diárias anuais ${qtdVouchers > 0 ? `(${totalDiariasEmitidas} emitidas)` : ''}
           </span>
         </td>
-        <td>${acaoHtml}</td>
+        <td class="col-cota-acao" data-label="Ação">${acaoHtml}</td>
       </tr>
     `;
   }).join('');
@@ -1706,22 +1726,25 @@ function renderTabelaVouchers(dados) {
     const incDoVoucher = auditarInconsistenciasVouchers().find(i => i.voucher.codigo === v.codigo);
 
     return `
-      <tr class="${isCancelado ? 'voucher-row-cancelado' : ''}" style="${isCancelado ? 'background:rgba(254,226,226,0.18);' : ''}">
-        <td style="white-space:nowrap;">
-          <strong>#${v.numero || '—'}</strong>
-          ${temObs ? `<span class="badge-obs-alerta" onclick="abrirModalObservacaoVoucher('${v.id}')" style="cursor:pointer;" title="Clique para ler a observação completa">⚠️ OBS</span>` : ''}
-          ${incDoVoucher ? `
-            <div>
-              <span class="badge-inconsistente" onclick="mudarAba('inconsistencias')" style="cursor:pointer;margin-top:3px;" title="${escHtml(incDoVoucher.motivo)}">
+      <tr class="voucher-card-row ${isCancelado ? 'voucher-row-cancelado' : ''}" style="${isCancelado ? 'background:rgba(254,226,226,0.18);' : ''}">
+        <td class="col-card-top" data-label="Número">
+          <div class="card-num-wrap">
+            <strong class="card-voucher-num">#${v.numero || '—'}</strong>
+            ${temObs ? `<span class="badge-obs-alerta" onclick="abrirModalObservacaoVoucher('${v.id}')" style="cursor:pointer;" title="Clique para ler a observação completa">⚠️ OBS</span>` : ''}
+            ${incDoVoucher ? `
+              <span class="badge-inconsistente" onclick="mudarAba('inconsistencias')" style="cursor:pointer;" title="${escHtml(incDoVoucher.motivo)}">
                 ⚠️ Fora da regra
-              </span>
-            </div>` : ''}
+              </span>` : ''}
+          </div>
+          <div class="mobile-only-status">
+            ${statusBadge}
+          </div>
         </td>
-        <td>
-          <div style="font-weight:700;color:var(--text-1);">${escHtml(v.nome_socio)}</div>
-          ${v.sala_venda ? `<div style="font-size:.72rem;color:var(--text-3);">Sala: ${escHtml(v.sala_venda)}</div>` : ''}
+        <td class="col-card-socio" data-label="Sócio">
+          <div class="card-socio-name">${escHtml(v.nome_socio)}</div>
+          ${v.sala_venda ? `<div class="card-socio-sala">Sala: ${escHtml(v.sala_venda)}</div>` : ''}
           ${incDoVoucher ? `
-            <div style="font-size:.72rem;color:#b91c1c;margin-top:2px;">
+            <div class="card-socio-inc-warning" style="font-size:.72rem;color:#b91c1c;margin-top:2px;">
               ⚠️ Limite Cota: ${incDoVoucher.diarias_permitidas}d | Total Concedido: ${incDoVoucher.diarias_emitidas_total}d
             </div>
           ` : ''}
@@ -1740,59 +1763,75 @@ function renderTabelaVouchers(dados) {
             </div>
           ` : ''}
         </td>
-        <td>${vencimentoHtml}</td>
-        <td>
-          <span class="diarias-pill ${isCancelado ? 'diarias-usadas' : 'diarias-disponiveis'}" title="Concedidas">${tot} tot</span> /
-          <span class="diarias-pill diarias-usadas" title="Utilizadas">${usd} usd</span> /
-          <span class="diarias-pill ${isCancelado ? 'diarias-usadas' : 'diarias-saldo'}" title="Saldo">${isCancelado ? 0 : saldo} saldo</span>
+        <td class="col-card-vencimento" data-label="Vencimento">
+          <div class="card-cell-label">📅 Validade</div>
+          <div class="card-cell-content">${vencimentoHtml}</div>
         </td>
-        <td>${trilhaHtml}</td>
-        <td>${statusBadge}</td>
-        <td>
+        <td class="col-card-diarias" data-label="Diárias">
+          <div class="card-cell-label">🏨 Diárias</div>
+          <div class="card-cell-content">
+            <span class="diarias-pill ${isCancelado ? 'diarias-usadas' : 'diarias-disponiveis'}" title="Concedidas">${tot} tot</span> /
+            <span class="diarias-pill diarias-usadas" title="Utilizadas">${usd} usd</span> /
+            <span class="diarias-pill ${isCancelado ? 'diarias-usadas' : 'diarias-saldo'}" title="Saldo">${isCancelado ? 0 : saldo} saldo</span>
+          </div>
+        </td>
+        <td class="col-card-trilha" data-label="Auditoria">
+          <div class="card-cell-label">📋 Trilha & Auditoria</div>
+          <div class="card-cell-content">${trilhaHtml}</div>
+        </td>
+        <td class="col-card-status desktop-only-cell" data-label="Status">
+          ${statusBadge}
+        </td>
+        <td class="col-card-link desktop-only-cell" data-label="Link">
           <button class="link-copy" onclick="copiarLink('${v.codigo}')">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
             Copiar link
           </button>
         </td>
-        <td>
-          <div class="actions">
+        <td class="col-card-acoes" data-label="Ações">
+          <div class="actions card-actions-flex">
+            <a href="${linkVoucher(v.codigo)}" target="_blank" class="btn btn-sm btn-primary-card" title="Visualizar / Imprimir Voucher">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+              <span>Ver Voucher</span>
+            </a>
+            <button class="btn btn-sm btn-ghost mobile-only-inline-btn" onclick="copiarLink('${v.codigo}')" title="Copiar link do voucher">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
+              <span>Link</span>
+            </button>
             ${isCancelado ? `
-            <button class="btn btn-ghost" style="padding:.25rem .5rem;font-size:.74rem;color:#991b1b;border:1px solid #fca5a5;" onclick="abrirModalVerMotivoCancelamentoVoucher('${v.id}')" title="Ver justificativa do cancelamento">
+            <button class="btn btn-ghost" style="padding:.28rem .5rem;font-size:.76rem;color:#991b1b;border:1px solid #fca5a5;" onclick="abrirModalVerMotivoCancelamentoVoucher('${v.id}')" title="Ver justificativa do cancelamento">
               🚫 Motivo
             </button>` : ''}
             ${incDoVoucher && !isCancelado ? `
-            <button class="btn btn-sm btn-notif-whatsapp" onclick="notificarMarcioInconsistencia('${escHtml(v.codigo)}')" title="Notificar Márcio no WhatsApp" style="padding:.2rem .45rem;font-size:.72rem;">
+            <button class="btn btn-sm btn-notif-whatsapp" onclick="notificarMarcioInconsistencia('${escHtml(v.codigo)}')" title="Notificar Márcio no WhatsApp" style="padding:.25rem .5rem;font-size:.74rem;">
               📲 Márcio
             </button>` : ''}
             ${isPendenteAssinatura && perfilAtivo === 'admin' ? `
-            <button class="btn btn-primary" style="padding:.25rem .55rem;font-size:.75rem;background:#0f766e;border-color:#0f766e;" onclick="abrirModalAssinarVoucher('${v.id}')" title="Conferir e assinar voucher">
+            <button class="btn btn-primary" style="padding:.28rem .6rem;font-size:.76rem;background:#0f766e;border-color:#0f766e;" onclick="abrirModalAssinarVoucher('${v.id}')" title="Conferir e assinar voucher">
               ✍️ Assinar
             </button>` : ''}
-            <a href="${linkVoucher(v.codigo)}" target="_blank" class="btn-icon" title="Visualizar / Imprimir Voucher">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-            </a>
-            <button class="btn-icon" title="Ver Trilha de Auditoria Completa" onclick="abrirModalTrilhaAuditoria('${v.id}')">
-              📋
+            <button class="btn btn-sm btn-ghost" title="Ver Trilha de Auditoria Completa" onclick="abrirModalTrilhaAuditoria('${v.id}')" style="padding:.28rem .5rem;font-size:.76rem;">
+              📋 Trilha
             </button>
             ${isCheckoutPassadoSemBaixa && !isCancelado ? `
-            <button class="btn btn-sm" style="padding:.2rem .5rem;font-size:.72rem;background:#ea580c;color:#fff;border-color:#ea580c;font-weight:700;" onclick="abrirModalBaixa('${v.id}')" title="Regularizar baixa do check-out realizado em ${fmtDate(v.periodo_checkout)}">
+            <button class="btn btn-sm" style="padding:.28rem .6rem;font-size:.76rem;background:#ea580c;color:#fff;border-color:#ea580c;font-weight:700;" onclick="abrirModalBaixa('${v.id}')" title="Regularizar baixa do check-out realizado em ${fmtDate(v.periodo_checkout)}">
               🛎️ Baixar
             </button>` : ''}
             ${perfilAtivo !== 'pos_venda' && !isPendenteAssinatura && !isVencido && !isCheckoutPassadoSemBaixa && !isCancelado ? `
-            <button class="btn-icon" title="Registrar Hospedagem / Baixa" onclick="abrirModalBaixa('${v.id}')">
-              🛎️
+            <button class="btn btn-sm btn-ghost" title="Registrar Hospedagem / Baixa" onclick="abrirModalBaixa('${v.id}')" style="padding:.28rem .5rem;font-size:.76rem;color:#0d9488;border-color:#99f6e4;">
+              🛎️ Baixar
             </button>` : ''}
             ${(perfilAtivo === 'admin' || perfilAtivo === 'pos_venda') && (!v.assinado_em || v.status_fluxo === 'aguardando_assinatura') && !isCancelado ? `
-            <button class="btn-icon" title="Editar Voucher (Aguardando Assinatura)" onclick="abrirModalEditar('${v.id}')">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+            <button class="btn btn-sm btn-ghost" title="Editar Voucher (Aguardando Assinatura)" onclick="abrirModalEditar('${v.id}')" style="padding:.28rem .5rem;font-size:.76rem;">
+              ✏️ Editar
             </button>` : ''}
             ${(perfilAtivo === 'admin' || perfilAtivo === 'pos_venda') && !isCancelado && !isUsadoTotal ? `
-            <button class="btn-icon danger" title="Cancelar Voucher" onclick="abrirModalCancelarVoucher('${v.id}')">
-              🚫
+            <button class="btn btn-sm btn-ghost danger" title="Cancelar Voucher" onclick="abrirModalCancelarVoucher('${v.id}')" style="padding:.28rem .5rem;font-size:.76rem;color:#dc2626;border-color:#fecaca;">
+              🚫 Cancelar
             </button>` : ''}
             ${perfilAtivo === 'admin' ? `
-            <button class="btn-icon danger" title="Excluir" onclick="confirmarDelete('${v.id}')">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            <button class="btn btn-sm btn-ghost danger" title="Excluir" onclick="confirmarDelete('${v.id}')" style="padding:.28rem .5rem;font-size:.76rem;color:#991b1b;">
+              🗑️
             </button>` : ''}
           </div>
         </td>
@@ -1936,13 +1975,18 @@ function renderTabelaReservas() {
     const temObs = Boolean(obsReal);
 
     return `
-      <tr>
-        <td style="white-space:nowrap;">
-          <strong>#${v.numero || v.codigo}</strong>
-          ${temObs ? `<span class="badge-obs-alerta" onclick="abrirModalObservacaoVoucher('${v.id}')" style="cursor:pointer;" title="Clique para ler a observação completa">⚠️ OBS</span>` : ''}
+      <tr class="reserva-card-row">
+        <td class="col-card-top" data-label="Voucher">
+          <div class="card-num-wrap">
+            <strong class="card-voucher-num">#${v.numero || v.codigo}</strong>
+            ${temObs ? `<span class="badge-obs-alerta" onclick="abrirModalObservacaoVoucher('${v.id}')" style="cursor:pointer;" title="Clique para ler a observação completa">⚠️ OBS</span>` : ''}
+          </div>
+          <div class="mobile-only-status">
+            ${isCancelado ? '<span class="badge badge-red">🚫 Cancelado</span>' : (isUsadoTotal ? '<span class="badge">✓ Baixado</span>' : (isCheckoutPassadoSemBaixa ? '<span class="badge" style="background:#ffedd5;color:#c2410c;font-weight:700;">🛎️ Checkout Pendente</span>' : (isSemAssinatura ? '<span class="badge badge-yellow">✍️ Sem Assinatura</span>' : (isVencido ? '<span class="badge badge-red">⚠️ Vencido</span>' : '<span class="badge badge-green">✓ Disponível</span>'))))}
+          </div>
         </td>
-        <td>
-          <div style="font-weight:700;color:var(--text-1);">${escHtml(v.nome_socio)}</div>
+        <td class="col-card-socio" data-label="Sócio">
+          <div class="card-socio-name">${escHtml(v.nome_socio)}</div>
           ${temObs ? `
             <div class="voucher-obs-strip" onclick="abrirModalObservacaoVoucher('${v.id}')" style="cursor:pointer;" title="Clique para ler a observação completa">
               <span class="voucher-obs-icon">📝</span>
@@ -1952,16 +1996,35 @@ function renderTabelaReservas() {
             </div>
           ` : ''}
         </td>
-        <td>${vencimentoHtml}</td>
-        <td>${tot} diária(s)</td>
-        <td><span style="color:#dc2626;font-weight:700;">${usd} diária(s)</span></td>
-        <td>
-          <span class="diarias-pill ${saldo > 0 ? 'diarias-disponiveis' : 'diarias-usadas'}">${saldo} restante(s)</span>
-          ${isSemAssinatura ? '<div style="font-size:.7rem;color:#b45309;font-weight:600;margin-top:3px;">✍️ Aguarda Assinatura</div>' : ''}
-          ${isUsadoTotal ? '<div style="font-size:.7rem;color:#475569;font-weight:600;margin-top:3px;">✓ Utilizado</div>' : (isVencido ? '<div style="font-size:.7rem;color:#dc2626;font-weight:600;margin-top:3px;">⚠️ Vencido</div>' : '')}
+        <td class="col-card-vencimento" data-label="Vencimento">
+          <div class="card-cell-label">📅 Vencimento</div>
+          <div class="card-cell-content">${vencimentoHtml}</div>
         </td>
-        <td>${histResumo}</td>
-        <td>${botaoAcao}</td>
+        <td class="col-card-diarias" data-label="Concedidas">
+          <div class="card-cell-label">🏨 Concedidas</div>
+          <div class="card-cell-content">${tot} diária(s)</div>
+        </td>
+        <td class="col-card-diarias-usd" data-label="Utilizadas">
+          <div class="card-cell-label">🏨 Utilizadas</div>
+          <div class="card-cell-content"><span style="color:#dc2626;font-weight:700;">${usd} diária(s)</span></div>
+        </td>
+        <td class="col-card-saldo" data-label="Saldo">
+          <div class="card-cell-label">🏨 Saldo Restante</div>
+          <div class="card-cell-content">
+            <span class="diarias-pill ${saldo > 0 ? 'diarias-disponiveis' : 'diarias-usadas'}">${saldo} restante(s)</span>
+            ${isSemAssinatura ? '<div style="font-size:.7rem;color:#b45309;font-weight:600;margin-top:3px;">✍️ Aguarda Assinatura</div>' : ''}
+            ${isUsadoTotal ? '<div style="font-size:.7rem;color:#475569;font-weight:600;margin-top:3px;">✓ Utilizado</div>' : (isVencido ? '<div style="font-size:.7rem;color:#dc2626;font-weight:600;margin-top:3px;">⚠️ Vencido</div>' : '')}
+          </div>
+        </td>
+        <td class="col-card-historico" data-label="Histórico">
+          <div class="card-cell-label">📖 Estadias Realizadas</div>
+          <div class="card-cell-content">${histResumo}</div>
+        </td>
+        <td class="col-card-acoes" data-label="Ação">
+          <div class="actions card-actions-flex">
+            ${botaoAcao}
+          </div>
+        </td>
       </tr>
     `;
   }).join('');
@@ -3237,18 +3300,36 @@ function renderTabelaSolicitacoes() {
     const motivoExibicao = (s.motivo || '').replace(/\[RECUSADA[^\]]*\]/gi, '').trim();
 
     return `
-      <tr style="${isRecusada ? 'background:rgba(254,226,226,0.18);' : ''}">
-        <td style="font-size:.8rem;color:var(--text-3);">${fmtDateTime(s.created_at)}</td>
-        <td><strong>${escHtml(s.nome_socio)}</strong></td>
-        <td style="font-size:.82rem;font-weight:600;color:var(--primary);">${periodoStr}</td>
-        <td>
+      <tr class="solic-card-row ${isRecusada ? 'solic-row-recusada' : ''}" style="${isRecusada ? 'background:rgba(254,226,226,0.18);' : ''}">
+        <td class="col-card-top" data-label="Data">
+          <div class="card-num-wrap">
+            <span style="font-size:.8rem;color:var(--text-3);font-weight:600;">📅 ${fmtDateTime(s.created_at)}</span>
+          </div>
+          <div class="mobile-only-status">
+            ${statusBadge}
+          </div>
+        </td>
+        <td class="col-card-socio" data-label="Sócio">
+          <div class="card-socio-name">${escHtml(s.nome_socio)}</div>
+          <div style="font-size:.76rem;color:var(--text-3);margin-top:2px;">Solicitante: <strong>${escHtml(s.solicitante_nome || s.solicitante || 'Reservas')}</strong></div>
+        </td>
+        <td class="col-card-periodo" data-label="Período">
+          <div class="card-cell-label">Período Pretendido</div>
+          <div style="font-size:.82rem;font-weight:600;color:var(--primary);">${periodoStr}</div>
+        </td>
+        <td class="col-card-diarias" data-label="Diárias">
+          <div class="card-cell-label">Diárias</div>
           <span class="diarias-pill ${isRecusada ? 'diarias-usadas' : 'diarias-saldo'}" style="font-size:.76rem;font-weight:700;">
             ${diariasSolic} diária(s)
           </span>
         </td>
-        <td><span class="badge badge-blue" style="font-size:.75rem;">${escHtml(s.modelo_nome || s.modelo_id || 'Padrão')}</span></td>
-        <td style="max-width:240px;font-size:.82rem;">
-          <div>${escHtml(motivoExibicao || '—')}</div>
+        <td class="col-card-modelo" data-label="Modelo">
+          <div class="card-cell-label">Modelo</div>
+          <span class="badge badge-blue" style="font-size:.75rem;">${escHtml(s.modelo_nome || s.modelo_id || 'Padrão')}</span>
+        </td>
+        <td class="col-card-motivo" data-label="Motivo">
+          <div class="card-cell-label">Motivo / Observação</div>
+          <div style="font-size:.82rem;">${escHtml(motivoExibicao || '—')}</div>
           ${isRecusada ? `
             <div onclick="abrirModalVerMotivoRecusa('${s.id}')" style="cursor:pointer;margin-top:4px;padding:3px 6px;background:#fee2e2;border-radius:4px;border:1px solid #fecaca;font-size:.72rem;color:#991b1b;display:inline-flex;align-items:center;gap:4px;" title="Clique para ver motivo completo">
               <span>⛔ <strong>Recusada:</strong> ${escHtml(dadosRecusa ? dadosRecusa.motivo : 'Sem justificativa')}</span>
@@ -3256,9 +3337,15 @@ function renderTabelaSolicitacoes() {
             </div>
           ` : ''}
         </td>
-        <td style="font-size:.8rem;color:var(--text-2);">${escHtml(s.solicitante_nome || s.solicitante || 'Reservas')}</td>
-        <td>${statusBadge}</td>
-        <td><div class="actions">${acoesHtml}</div></td>
+        <td class="col-card-solicitante desktop-only-cell" data-label="Solicitante">
+          ${escHtml(s.solicitante_nome || s.solicitante || 'Reservas')}
+        </td>
+        <td class="col-card-status desktop-only-cell" data-label="Status">
+          ${statusBadge}
+        </td>
+        <td class="col-card-acoes" data-label="Ações">
+          <div class="actions card-actions-flex">${acoesHtml}</div>
+        </td>
       </tr>
     `;
   }).join('');

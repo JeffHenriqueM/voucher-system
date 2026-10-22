@@ -2384,6 +2384,97 @@ body.dark-mode .sugestao-socio-item:hover {
   border-bottom: none;
 }
 
+/* ── Banner de Vouchers Assinados Liberados para Reservas ────────── */
+.banner-reservas-assinado {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 1px solid #86efac;
+  border-left: 5px solid #16a34a;
+  border-radius: 12px;
+  padding: 1.1rem 1.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.1rem;
+  box-shadow: 0 4px 16px rgba(22, 163, 74, 0.12);
+  transition: all .25s ease;
+}
+body.dark-mode .banner-reservas-assinado {
+  background: linear-gradient(135deg, rgba(22, 101, 52, 0.25) 0%, rgba(20, 83, 45, 0.35) 100%);
+  border-color: #22c55e;
+}
+
+.banner-reservas-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: .98rem;
+  font-weight: 800;
+  color: #14532d;
+}
+body.dark-mode .banner-reservas-title {
+  color: #86efac;
+}
+
+.banner-reservas-desc {
+  font-size: .84rem;
+  color: #166534;
+  margin-top: .3rem;
+  line-height: 1.45;
+}
+body.dark-mode .banner-reservas-desc {
+  color: #bbf7d0;
+}
+
+.banner-reservas-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: .65rem;
+}
+
+.banner-reservas-chip {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #86efac;
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: .78rem;
+  color: #14532d;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+body.dark-mode .banner-reservas-chip {
+  background: rgba(15, 23, 42, 0.6);
+  border-color: #22c55e;
+  color: #bbf7d0;
+}
+
+.banner-reservas-actions {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  flex-wrap: wrap;
+}
+
+.status-leitura-box {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-left: 4px solid #16a34a;
+  padding: .75rem 1rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: .75rem;
+}
+body.dark-mode .status-leitura-box {
+  background: rgba(22, 101, 52, 0.2);
+  border-color: #16a34a;
+}
+
+
 
 
 

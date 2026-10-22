@@ -377,6 +377,111 @@ function auditarInconsistenciasVouchers() {
 }
 window.auditarInconsistenciasVouchers = auditarInconsistenciasVouchers;
 
+// ── Gestão de Leitura de Inconsistências (Márcio / Admin / Gestão) ────
+function obterRegistroLeituraInconsistencias() {
+  try {
+    return JSON.parse(localStorage.getItem('rsm_inconsistencias_lidas') || 'null');
+  } catch (e) {
+    return null;
+  }
+}
+
+function saoInconsistenciasLidas(incs) {
+  if (!incs || !incs.length) return true;
+  const reg = obterRegistroLeituraInconsistencias();
+  if (!reg || !reg.data || !Array.isArray(reg.codigos)) return false;
+
+  const dataReg = new Date(reg.data).getTime();
+  const setCodigos = new Set(reg.codigos);
+
+  // Se houver qualquer inconsistência cujo voucher foi emitido APÓS a data da ciência
+  // ou cujo código não estava na lista lida, ela deve ser alertada!
+  return incs.every(item => {
+    const v = item.voucher;
+    if (!v) return false;
+    const criadoEm = v.created_at ? new Date(v.created_at).getTime() : 0;
+    const jaFoiLido = setCodigos.has(v.codigo);
+    return jaFoiLido && (criadoEm <= dataReg + 2000); // margem de segurança de 2s
+  });
+}
+
+function marcarInconsistenciasComoLidas() {
+  const incs = auditarInconsistenciasVouchers();
+  if (!incs.length) {
+    showToast('Nenhuma inconsistência ativa para marcar como lida.');
+    return;
+  }
+
+  const agoraIso = new Date().toISOString();
+  const quemLeu = usuarioLogado ? usuarioLogado.nome : 'Administrador';
+  const codigos = incs.map(i => i.voucher.codigo);
+
+  const registro = {
+    data: agoraIso,
+    usuario: quemLeu,
+    codigos: codigos,
+    qtd: incs.length
+  };
+
+  localStorage.setItem('rsm_inconsistencias_lidas', JSON.stringify(registro));
+
+  // Registrar auditoria persistente no Supabase
+  try {
+    db.from('voucher_historico_uso').insert([{
+      voucher_codigo: 'AUDITORIA_INCONSISTENCIAS',
+      diarias_utilizadas: 0,
+      usuario_registro: quemLeu,
+      observacoes: `[CIENCIA_INCONSISTENCIAS] Marcado como ciente em ${fmtDateTime(agoraIso)} por ${quemLeu}. Vouchers analisados: ${codigos.join(', ')}`,
+      created_at: agoraIso
+    }]).then(() => {});
+  } catch (e) {}
+
+  showToast(`✓ Inconsistências marcadas como cientes em ${fmtDateTime(agoraIso)} por ${quemLeu}. O alerta não aparecerá na tela principal.`);
+  renderBannerAlertaInconsistencias();
+  renderStatusLeituraInconsistencias();
+}
+window.marcarInconsistenciasComoLidas = marcarInconsistenciasComoLidas;
+
+function reexibirAlertaInconsistenciasTelaPrincipal() {
+  localStorage.removeItem('rsm_inconsistencias_lidas');
+  showToast('O alerta de inconsistências voltará a ser exibido na tela principal.');
+  renderBannerAlertaInconsistencias();
+  renderStatusLeituraInconsistencias();
+}
+window.reexibirAlertaInconsistenciasTelaPrincipal = reexibirAlertaInconsistenciasTelaPrincipal;
+
+function renderStatusLeituraInconsistencias() {
+  const container = document.getElementById('statusLeituraInconsistencias');
+  if (!container) return;
+
+  const reg = obterRegistroLeituraInconsistencias();
+  const incs = auditarInconsistenciasVouchers();
+  const tudoLido = saoInconsistenciasLidas(incs);
+
+  if (reg && reg.data && tudoLido) {
+    container.classList.remove('hidden');
+    container.innerHTML = `
+      <div class="status-leitura-box">
+        <div style="font-size:.83rem;color:#14532d;display:flex;align-items:center;gap:8px;">
+          <span>✓</span>
+          <div>
+            <strong>Inconsistências marcadas como lidas:</strong>
+            Confirmado por <strong>${escHtml(reg.usuario)}</strong> em <strong>${fmtDateTime(reg.data)}</strong>.
+            <span style="color:#64748b;font-size:.78rem;display:block;">O banner foi ocultado da tela principal para não poluir o fluxo diário.</span>
+          </div>
+        </div>
+        <button class="btn btn-ghost" onclick="reexibirAlertaInconsistenciasTelaPrincipal()" style="font-size:.76rem;padding:.3rem .65rem;color:#b45309;border-color:#fde68a;background:rgba(255,255,255,0.7);" title="Voltar a mostrar o aviso no topo da tela principal">
+          🔄 Reexibir alerta na tela principal
+        </button>
+      </div>
+    `;
+  } else {
+    container.classList.add('hidden');
+    container.innerHTML = '';
+  }
+}
+window.renderStatusLeituraInconsistencias = renderStatusLeituraInconsistencias;
+
 // Renderiza banner superior dinâmico (alerta Márcio e equipe)
 function renderBannerAlertaInconsistencias() {
   const container = document.getElementById('bannerAlertaInconsistencias');
@@ -384,6 +489,13 @@ function renderBannerAlertaInconsistencias() {
 
   const incs = auditarInconsistenciasVouchers();
   if (!incs.length) {
+    container.classList.add('hidden');
+    container.innerHTML = '';
+    return;
+  }
+
+  // Se o usuário já marcou as inconsistências atuais como lidas, NÃO exibe na tela principal!
+  if (saoInconsistenciasLidas(incs)) {
     container.classList.add('hidden');
     container.innerHTML = '';
     return;
@@ -417,11 +529,197 @@ function renderBannerAlertaInconsistencias() {
         <button class="btn-notif-whatsapp" onclick="notificarMarcioWhatsAppGeral()" style="font-size:.8rem;">
           📲 Notificar Márcio (WhatsApp)
         </button>
+        <button class="btn btn-ghost" onclick="marcarInconsistenciasComoLidas()" style="font-size:.8rem;padding:.4rem .85rem;background:rgba(255,255,255,0.85);border:1px solid #fca5a5;color:#991b1b;font-weight:700;" title="Marcar como lido para não poluir a tela principal">
+          ✓ Marcar como Lido / Ciente
+        </button>
       </div>
     </div>
   `;
 }
 window.renderBannerAlertaInconsistencias = renderBannerAlertaInconsistencias;
+
+// ── Gestão de Confirmação de Leitura de Vouchers Assinados (Reservas) ─
+function extrairLeituraReservas(solic) {
+  if (!solic) return null;
+  // 1. Verificar mapa em localStorage
+  try {
+    const mapaLocal = JSON.parse(localStorage.getItem('rsm_solicitacoes_lidas_reservas') || '{}');
+    if (mapaLocal[solic.id]) return mapaLocal[solic.id];
+    if (solic.voucher_codigo && mapaLocal[solic.voucher_codigo]) return mapaLocal[solic.voucher_codigo];
+  } catch (e) {}
+
+  // 2. Propriedade direta no objeto
+  if (solic.lido_reservas_em) {
+    return { data: solic.lido_reservas_em, usuario: solic.lido_reservas_por || 'Reservas' };
+  }
+
+  // 3. Tag no motivo persistido no Supabase: [CONFIRMADO_RESERVAS_EM: ... POR: ...]
+  const motivo = String(solic.motivo || '');
+  const match = motivo.match(/\[CONFIRMADO_RESERVAS_EM:\s*([^\]\s]+)\s*POR:\s*([^\]]+)\]/i);
+  if (match) {
+    return { data: match[1], usuario: match[2].trim() };
+  }
+
+  return null;
+}
+
+function isSolicitacaoLidaPorReservas(solic) {
+  return Boolean(extrairLeituraReservas(solic));
+}
+window.isSolicitacaoLidaPorReservas = isSolicitacaoLidaPorReservas;
+window.extrairLeituraReservas = extrairLeituraReservas;
+
+async function confirmarLeituraVoucherAssinado(idSolicitacao) {
+  const agoraIso = new Date().toISOString();
+  const quemLeu = usuarioLogado ? usuarioLogado.nome : 'Equipe de Reservas';
+
+  // 1. Salvar no mapa local
+  try {
+    const mapaLocal = JSON.parse(localStorage.getItem('rsm_solicitacoes_lidas_reservas') || '{}');
+    mapaLocal[idSolicitacao] = { data: agoraIso, usuario: quemLeu };
+    const solic = (listaSolicitacoes || []).find(s => s.id === idSolicitacao);
+    if (solic && solic.voucher_codigo) {
+      mapaLocal[solic.voucher_codigo] = { data: agoraIso, usuario: quemLeu };
+    }
+    localStorage.setItem('rsm_solicitacoes_lidas_reservas', JSON.stringify(mapaLocal));
+  } catch (e) {}
+
+  // 2. Atualizar objeto em memória
+  const solic = (listaSolicitacoes || []).find(s => s.id === idSolicitacao);
+  if (solic) {
+    solic.lido_reservas_em = agoraIso;
+    solic.lido_reservas_por = quemLeu;
+    const tagConfirmado = `[CONFIRMADO_RESERVAS_EM: ${agoraIso} POR: ${quemLeu}]`;
+    const motivoBase = (solic.motivo || '').replace(/\[CONFIRMADO_RESERVAS_EM:[^\]]*\]/gi, '').trim();
+    solic.motivo = `${motivoBase} ${tagConfirmado}`.trim();
+    localStorage.setItem('rsm_solicitacoes', JSON.stringify(listaSolicitacoes));
+
+    // 3. Persistir no Supabase
+    try {
+      await db.from('voucher_solicitacoes').update({
+        motivo: solic.motivo,
+        lido_reservas_em: agoraIso,
+        lido_reservas_por: quemLeu
+      }).eq('id', idSolicitacao);
+    } catch (err) {
+      try {
+        await db.from('voucher_solicitacoes').update({ motivo: solic.motivo }).eq('id', idSolicitacao);
+      } catch (e) {}
+    }
+  }
+
+  showToast(`✓ Confirmação registrada com sucesso! Este aviso não será mais exibido.`);
+  renderBannerReservasVouchersAssinados();
+  if (abaAtiva === 'solicitacoes') renderTabelaSolicitacoes();
+}
+window.confirmarLeituraVoucherAssinado = confirmarLeituraVoucherAssinado;
+
+async function confirmarLeituraTodosVouchersAssinados() {
+  const assinadasNaoLidas = (listaSolicitacoes || []).filter(s => {
+    if (s.status === 'recusada' || s.status === 'cancelado') return false;
+    const v = listaVouchers.find(item => item.codigo === s.voucher_codigo);
+    const isVoucherAssinado = (s.status === 'gerado' || (v && v.assinado_em && v.status_fluxo !== 'aguardando_assinatura' && v.status_fluxo !== 'cancelado'));
+    if (!isVoucherAssinado) return false;
+    return !isSolicitacaoLidaPorReservas(s);
+  });
+
+  if (!assinadasNaoLidas.length) return;
+
+  for (const s of assinadasNaoLidas) {
+    await confirmarLeituraVoucherAssinado(s.id);
+  }
+}
+window.confirmarLeituraTodosVouchersAssinados = confirmarLeituraTodosVouchersAssinados;
+
+function renderBannerReservasVouchersAssinados() {
+  const container = document.getElementById('bannerAlertaReservasVouchersAssinados');
+  if (!container) return;
+
+  // Visível para Reservas, Recepção e Administradores
+  const podeVer = perfilAtivo === 'reservas' || perfilAtivo === 'recepcao' || perfilAtivo === 'admin';
+  if (!podeVer) {
+    container.classList.add('hidden');
+    container.innerHTML = '';
+    return;
+  }
+
+  const assinadasNaoLidas = (listaSolicitacoes || []).filter(s => {
+    if (s.status === 'recusada' || s.status === 'cancelado') return false;
+    const v = listaVouchers.find(item => item.codigo === s.voucher_codigo);
+    const isVoucherAssinado = (s.status === 'gerado' || (v && v.assinado_em && v.status_fluxo !== 'aguardando_assinatura' && v.status_fluxo !== 'cancelado'));
+    if (!isVoucherAssinado) return false;
+    return !isSolicitacaoLidaPorReservas(s);
+  });
+
+  if (assinadasNaoLidas.length === 0) {
+    container.classList.add('hidden');
+    container.innerHTML = '';
+    return;
+  }
+
+  const total = assinadasNaoLidas.length;
+  const pluralVoucher = total === 1 ? '1 voucher solicitado foi assinado pelo Admin' : `${total} vouchers solicitados foram assinados pelo Admin`;
+
+  const cardsHtml = assinadasNaoLidas.map(s => {
+    const v = listaVouchers.find(item => item.codigo === s.voucher_codigo);
+    const numVoucher = v ? (v.numero || v.codigo) : (s.voucher_codigo || '—');
+    const adminAssinante = v?.admin_assinante_nome || 'Administrador Geral';
+    const assinadoEmFmt = v?.assinado_em ? fmtDateTime(v.assinado_em) : 'Recentemente';
+    const diariasTot = s.diarias_solicitadas || s.diarias || (v ? (v.diarias_totais || v.diarias) : 2);
+    const linkDoc = v ? linkVoucher(v.codigo) : (s.voucher_codigo ? linkVoucher(s.voucher_codigo) : '#');
+
+    return `
+      <div style="background:var(--surface);border:1px solid #86efac;border-radius:8px;padding:.65rem .85rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-top:.4rem;">
+        <div>
+          <div style="font-weight:700;color:var(--text-1);font-size:.88rem;">
+            👤 ${escHtml(s.nome_socio)} <span class="badge badge-green" style="font-size:.72rem;">Voucher #${numVoucher}</span>
+          </div>
+          <div style="font-size:.76rem;color:var(--text-2);margin-top:2px;">
+            ✍️ Assinado por <strong>${escHtml(adminAssinante)}</strong> em ${assinadoEmFmt} • <strong>${diariasTot} diária(s)</strong>
+          </div>
+        </div>
+        <div style="display:flex;gap:.4rem;align-items:center;">
+          <a href="${linkDoc}" target="_blank" class="btn btn-sm btn-ghost" style="padding:.28rem .6rem;font-size:.76rem;color:#15803d;border:1px solid #86efac;">
+            👁️ Ver Voucher
+          </a>
+          <button class="btn btn-sm btn-primary" onclick="confirmarLeituraVoucherAssinado('${s.id}')" style="background:#16a34a;border-color:#16a34a;padding:.28rem .65rem;font-size:.76rem;font-weight:700;">
+            ✓ Confirmar que li
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.classList.remove('hidden');
+  container.innerHTML = `
+    <div class="banner-reservas-assinado">
+      <div style="flex:1;min-width:280px;">
+        <div class="banner-reservas-title">
+          <span>🎉 ${pluralVoucher.toUpperCase()} — PRONTO PARA USO!</span>
+          <span class="badge badge-green" style="font-size:.72rem;font-weight:700;">${total} liberado(s)</span>
+        </div>
+        <div class="banner-reservas-desc">
+          O Administrador assinou a minuta do voucher solicitado pela equipe de Reservas. Você já pode consultar o documento oficial ou enviar para o hóspede. <strong>Confirme que leu abaixo para não exibir mais este alerta.</strong>
+        </div>
+        <div style="margin-top:.5rem;">
+          ${cardsHtml}
+        </div>
+      </div>
+      <div class="banner-reservas-actions" style="margin-top:.5rem;">
+        ${total > 1 ? `
+          <button class="btn btn-primary" onclick="confirmarLeituraTodosVouchersAssinados()" style="background:#15803d;border-color:#15803d;font-size:.8rem;padding:.45rem .85rem;font-weight:700;">
+            ✓ Confirmar Leitura de Todos (${total})
+          </button>
+        ` : ''}
+        <button class="btn btn-ghost" onclick="mudarAba('solicitacoes')" style="font-size:.78rem;padding:.45rem .75rem;background:rgba(255,255,255,0.7);border:1px solid #86efac;color:#14532d;font-weight:600;">
+          📥 Ver Solicitações
+        </button>
+      </div>
+    </div>
+  `;
+}
+window.renderBannerReservasVouchersAssinados = renderBannerReservasVouchersAssinados;
+
 
 // Renderiza banner superior dinâmico do Pós Venda (Vouchers aguardando emissão)
 function renderBannerPosVenda() {
@@ -585,6 +883,7 @@ window.renderBannerCheckoutSemBaixa = renderBannerCheckoutSemBaixa;
 
 // Renderização da tabela de inconsistências
 function renderTabelaInconsistencias() {
+  renderStatusLeituraInconsistencias();
   const incs = auditarInconsistenciasVouchers();
   const tbody = document.getElementById('tbodyInconsistencias');
   if (!tbody) return;
@@ -1265,8 +1564,10 @@ function aplicarPermissoesPerfil() {
 
   atualizarBadgeSolicitacoes();
   renderBannerAlertaInconsistencias();
+  renderStatusLeituraInconsistencias();
   renderBannerPosVenda();
   renderBannerCheckoutSemBaixa();
+  renderBannerReservasVouchersAssinados();
 }
 
 // ── Troca de Abas ──────────────────────────────────────────────
@@ -1344,8 +1645,10 @@ async function sincronizarCotas() {
     carregarVouchers();
   }
   renderBannerAlertaInconsistencias();
+  renderStatusLeituraInconsistencias();
   renderBannerPosVenda();
   renderBannerCheckoutSemBaixa();
+  renderBannerReservasVouchersAssinados();
 }
 
 function atualizarStatusCotasComVouchers() {
@@ -1619,8 +1922,10 @@ function renderStatsVouchers(dados) {
   }
 
   renderBannerAlertaInconsistencias();
+  renderStatusLeituraInconsistencias();
   renderBannerPosVenda();
   renderBannerCheckoutSemBaixa();
+  renderBannerReservasVouchersAssinados();
 
   // Atualizar badge no menu superior
   const badgeV = document.getElementById('badgeTotalVouchers');
@@ -3292,12 +3597,24 @@ function renderTabelaSolicitacoes() {
           👁️ Ver Voucher
         </a>
       `;
+      const leituraReserva = extrairLeituraReservas(s);
+      if (!leituraReserva && (perfilAtivo === 'reservas' || perfilAtivo === 'admin' || perfilAtivo === 'recepcao')) {
+        acoesHtml += `
+          <button class="btn btn-sm btn-primary" onclick="confirmarLeituraVoucherAssinado('${s.id}')" style="background:#16a34a;border-color:#16a34a;font-size:.74rem;padding:.25rem .55rem;font-weight:700;" title="Confirmar ciência da assinatura para remover alertas">
+            ✓ Confirmar Leitura
+          </button>
+        `;
+      }
     } else {
       acoesHtml = '—';
     }
 
     const diariasSolic = s.diarias_solicitadas || s.diarias || 2;
-    const motivoExibicao = (s.motivo || '').replace(/\[RECUSADA[^\]]*\]/gi, '').trim();
+    const motivoExibicao = (s.motivo || '')
+      .replace(/\[RECUSADA[^\]]*\]/gi, '')
+      .replace(/\[CONFIRMADO_RESERVAS_EM:[^\]]*\]/gi, '')
+      .trim();
+    const leituraReservaInfo = extrairLeituraReservas(s);
 
     return `
       <tr class="solic-card-row ${isRecusada ? 'solic-row-recusada' : ''}" style="${isRecusada ? 'background:rgba(254,226,226,0.18);' : ''}">
@@ -3312,6 +3629,11 @@ function renderTabelaSolicitacoes() {
         <td class="col-card-socio" data-label="Sócio">
           <div class="card-socio-name">${escHtml(s.nome_socio)}</div>
           <div style="font-size:.76rem;color:var(--text-3);margin-top:2px;">Solicitante: <strong>${escHtml(s.solicitante_nome || s.solicitante || 'Reservas')}</strong></div>
+          ${leituraReservaInfo ? `
+            <div style="font-size:.72rem;color:#15803d;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#f0fdf4;padding:1px 6px;border-radius:4px;border:1px solid #bbf7d0;">
+              <span>✓ Ciente por <strong>${escHtml(leituraReservaInfo.usuario)}</strong> em ${fmtDateTime(leituraReservaInfo.data)}</span>
+            </div>
+          ` : ''}
         </td>
         <td class="col-card-periodo" data-label="Período">
           <div class="card-cell-label">Período Pretendido</div>
@@ -4240,6 +4562,7 @@ document.getElementById('btnConfirmarAssinaturaVoucher').addEventListener('click
     showToast(`Voucher #${v.numero || v.codigo} assinado e ativado com sucesso!`);
     document.getElementById('modalAssinarAdmin').classList.add('hidden');
     sincronizarCotas();
+    renderBannerReservasVouchersAssinados();
     if (abaAtiva === 'vouchers') carregarVouchers();
     if (abaAtiva === 'solicitacoes') renderTabelaSolicitacoes();
   } catch (err) {

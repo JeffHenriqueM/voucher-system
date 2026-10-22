@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Villamor Vouchers — Gestão de Vouchers & Cotas</title>
-  <link rel="stylesheet" href="style.css?v=20261022_01" />
+  <link rel="stylesheet" href="style.css?v=20261022_02" />
 </head>
 <body>
 
@@ -264,6 +264,7 @@
           <button class="tab" data-status="usado">✗ Utilizados</button>
           <button class="tab" data-status="checkout_sem_baixa" id="tabFiltroCheckoutSemBaixa" style="color:#c2410c;font-weight:700;">🛎️ Checkout sem Baixa (<span id="countFiltroCheckoutSemBaixa">0</span>)</button>
           <button class="tab" data-status="inconsistente" id="tabFiltroInconsistentes" style="color:#b91c1c;font-weight:700;">⚠️ Inconsistentes (<span id="countFiltroInconsistentes">0</span>)</button>
+          <button class="tab" data-status="cancelado" id="tabFiltroCancelados" style="color:#dc2626;font-weight:700;">🚫 Cancelados (<span id="countFiltroCancelados">0</span>)</button>
         </div>
       </div>
 
@@ -313,6 +314,7 @@
           <button class="tab active" data-solic-filtro="pendente">1. Pendentes (Pós Venda)</button>
           <button class="tab" data-solic-filtro="aguardando_assinatura">2. Aguarda Assinatura (Admin)</button>
           <button class="tab" data-solic-filtro="gerado">3. Concluídas & Ativas</button>
+          <button class="tab" data-solic-filtro="recusada" id="tabFiltroSolicRecusadas" style="color:#dc2626;font-weight:700;">⛔ Recusadas (<span id="countFiltroSolicRecusadas">0</span>)</button>
           <button class="tab" data-solic-filtro="todos">Todas</button>
         </div>
       </div>
@@ -1024,6 +1026,101 @@
     </div>
   </div>
 
+  <!-- ── Modal Recusar Solicitação de Voucher ────────────────── -->
+  <div class="modal-overlay hidden" id="modalRecusarSolicitacao">
+    <div class="modal modal-md">
+      <div class="modal-header">
+        <h2 style="display:flex;align-items:center;gap:8px;color:#dc2626;">
+          <span>⛔</span> Recusar Solicitação de Voucher
+        </h2>
+        <button class="modal-close" onclick="fecharModalRecusarSolicitacao()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:1.25rem;">
+        <input type="hidden" id="recusarSolicitacaoId" />
+        
+        <div class="modal-info-card" id="cardResumoSolicitacaoRecusa" style="margin-bottom:1rem;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:.85rem;font-size:.85rem;line-height:1.5;">
+          <!-- Preenchido dinamicamente via JS -->
+        </div>
+
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label style="display:block;margin-bottom:4px;font-weight:700;color:var(--text-1);font-size:.85rem;">
+            Motivo da Recusa <span style="color:#dc2626;">*</span>
+          </label>
+          <textarea id="inputMotivoRecusaSolicitacao" rows="3" class="input" style="width:100%;resize:vertical;" placeholder="Ex: Indisponibilidade no período pretendido / Cliente já utilizou todas as diárias concedidas..."></textarea>
+          <span style="font-size:.75rem;color:var(--text-3);">Informe a justificativa detalhada para ficar registrada na solicitação e visível para a equipe.</span>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1.25rem;">
+          <button type="button" class="btn btn-ghost" onclick="fecharModalRecusarSolicitacao()">Voltar</button>
+          <button type="button" class="btn btn-danger" id="btnConfirmarRecusaSolicitacao" onclick="confirmarRecusaSolicitacao()" style="background:#dc2626;border-color:#dc2626;color:#fff;font-weight:700;">
+            Confirmar Recusa
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal Cancelar Voucher ────────────────────────────────── -->
+  <div class="modal-overlay hidden" id="modalCancelarVoucher">
+    <div class="modal modal-md">
+      <div class="modal-header">
+        <h2 style="display:flex;align-items:center;gap:8px;color:#dc2626;">
+          <span>🚫</span> Cancelar Voucher
+        </h2>
+        <button class="modal-close" onclick="fecharModalCancelarVoucher()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:1.25rem;">
+        <input type="hidden" id="cancelarVoucherId" />
+        
+        <div class="modal-info-card" id="cardResumoVoucherCancelamento" style="margin-bottom:1rem;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:.85rem;font-size:.85rem;line-height:1.5;">
+          <!-- Preenchido dinamicamente via JS -->
+        </div>
+
+        <div style="background:#fff1f2;border:1px solid #fecdd3;border-radius:6px;padding:.65rem .85rem;margin-bottom:1rem;font-size:.8rem;color:#9f1239;line-height:1.45;">
+          ⚠️ <strong>Atenção:</strong> Ao cancelar este voucher, ele será invalidado para qualquer check-in ou reserva no hotel. O link público exibirá o carimbo oficial de cancelado com a justificativa.
+        </div>
+
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label style="display:block;margin-bottom:4px;font-weight:700;color:var(--text-1);font-size:.85rem;">
+            Motivo do Cancelamento <span style="color:#dc2626;">*</span>
+          </label>
+          <textarea id="inputMotivoCancelamentoVoucher" rows="3" class="input" style="width:100%;resize:vertical;" placeholder="Ex: Cancelamento de contrato / Erro na emissão / Desistência pelo titular..."></textarea>
+          <span style="font-size:.75rem;color:var(--text-3);">Esta justificativa ficará gravada na trilha de auditoria e no documento oficial do voucher.</span>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1.25rem;">
+          <button type="button" class="btn btn-ghost" onclick="fecharModalCancelarVoucher()">Voltar</button>
+          <button type="button" class="btn btn-danger" id="btnConfirmarCancelamentoVoucher" onclick="confirmarCancelamentoVoucher()" style="background:#dc2626;border-color:#dc2626;color:#fff;font-weight:700;">
+            Confirmar Cancelamento do Voucher
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal Exibir Justificativa / Motivo ────────────────────── -->
+  <div class="modal-overlay hidden" id="modalVerMotivo">
+    <div class="modal modal-md">
+      <div class="modal-header">
+        <h2 id="modalVerMotivoTitulo" style="display:flex;align-items:center;gap:8px;">
+          <span>📋</span> Justificativa & Motivo
+        </h2>
+        <button class="modal-close" onclick="fecharModalVerMotivo()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:1.25rem;">
+        <div id="modalVerMotivoCardInfo" style="margin-bottom:1rem;font-size:.85rem;color:var(--text-2);"></div>
+        <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:1rem;margin-bottom:1rem;">
+          <label style="display:block;font-size:.75rem;font-weight:700;color:var(--text-3);text-transform:uppercase;margin-bottom:6px;">Motivo Registrado:</label>
+          <div id="modalVerMotivoTexto" style="font-size:.92rem;line-height:1.6;color:var(--text-1);white-space:pre-wrap;word-break:break-word;"></div>
+        </div>
+        <div id="modalVerMotivoMetadados" style="font-size:.78rem;color:var(--text-3);line-height:1.5;"></div>
+        <div style="display:flex;justify-content:flex-end;margin-top:1.25rem;">
+          <button type="button" class="btn btn-primary" onclick="fecharModalVerMotivo()">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Modal Confirmar Deletar ──────────────────────────────── -->
   <div class="modal-overlay hidden" id="modalDelete">
     <div class="modal modal-sm">
@@ -1043,8 +1140,8 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js?v=20261022_01"></script>
-  <script src="cotas_dados.js?v=20261022_01"></script>
-  <script src="app.js?v=20261022_01"></script>
+  <script src="config.js?v=20261022_02"></script>
+  <script src="cotas_dados.js?v=20261022_02"></script>
+  <script src="app.js?v=20261022_02"></script>
 </body>
 </html>

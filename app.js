@@ -151,6 +151,67 @@ function showToast(msg, tipo = 'success') {
   t._timer = setTimeout(() => t.classList.add('hidden'), 3500);
 }
 
+// ── Extração de Dados de Cancelamento e Recusa ─────────────────
+function extrairDadosCancelamento(v) {
+  if (!v) return null;
+  const isCancelado = Boolean(v.cancelado || v.status_fluxo === 'cancelado');
+  if (!isCancelado && !v.motivo_cancelamento) return null;
+
+  let motivo = v.motivo_cancelamento || '';
+  let por = v.cancelado_por || '';
+  let data = v.cancelado_em || '';
+
+  if ((!motivo || !por || !data) && v.observacoes) {
+    const match = String(v.observacoes).match(/\[CANCELADO\s*(?:em\s*([^.]+?))?\s*(?:por\s*([^.]+?))?\.\s*Motivo:\s*([^\]]+)\]/i);
+    if (match) {
+      if (!data) data = match[1] || '';
+      if (!por) por = match[2] || '';
+      if (!motivo) motivo = match[3] || '';
+    } else {
+      const matchSimples = String(v.observacoes).match(/\[CANCELADO:\s*([^\]]+)\]/i);
+      if (matchSimples && !motivo) motivo = matchSimples[1];
+    }
+  }
+
+  return {
+    isCancelado: true,
+    motivo: (motivo || 'Voucher cancelado pela administração.').trim(),
+    por: (por || v.pos_venda_nome || 'Administração').trim(),
+    data: (data || v.updated_at || v.created_at || '').trim()
+  };
+}
+window.extrairDadosCancelamento = extrairDadosCancelamento;
+
+function extrairDadosRecusa(s) {
+  if (!s) return null;
+  const isRecusada = s.status === 'recusada' || s.status === 'rejeitada';
+  if (!isRecusada && !s.motivo_recusa) return null;
+
+  let motivo = s.motivo_recusa || '';
+  let por = s.recusada_por || '';
+  let data = s.recusada_em || '';
+
+  if ((!motivo || !por || !data) && s.motivo) {
+    const match = String(s.motivo).match(/\[RECUSADA\s*(?:em\s*([^.]+?))?\s*(?:por\s*([^.]+?))?\.\s*Motivo:\s*([^\]]+)\]/i);
+    if (match) {
+      if (!data) data = match[1] || '';
+      if (!por) por = match[2] || '';
+      if (!motivo) motivo = match[3] || '';
+    } else {
+      const matchSimples = String(s.motivo).match(/\[RECUSADA:\s*([^\]]+)\]/i);
+      if (matchSimples && !motivo) motivo = matchSimples[1];
+    }
+  }
+
+  return {
+    isRecusada: true,
+    motivo: (motivo || 'Solicitação recusada pela equipe.').trim(),
+    por: (por || s.pos_venda_nome || 'Pós Venda').trim(),
+    data: (data || s.updated_at || s.created_at || '').trim()
+  };
+}
+window.extrairDadosRecusa = extrairDadosRecusa;
+
 function linkVoucher(codigo) {
   return `${window.location.origin}${window.location.pathname.replace('index.html', '')}voucher.html?v=${codigo}`;
 }
@@ -1426,17 +1487,30 @@ async function carregarVouchers() {
       if (!matchNome && !matchNum && !matchCod) return false;
     }
 
+    const isCancelado = Boolean(extrairDadosCancelamento(v) || v.cancelado || v.status_fluxo === 'cancelado');
+
+    if (filtroStatusVouchers === 'cancelado') {
+      return isCancelado;
+    }
+
+    // Se estiver cancelado e não for o filtro específico de cancelados, ele não entra nos outros status operacionais
+    if (isCancelado && filtroStatusVouchers && filtroStatusVouchers !== '') {
+      return false;
+    }
+
     if (filtroStatusVouchers === 'aguardando_assinatura') {
-      return v.status_fluxo === 'aguardando_assinatura';
+      return !isCancelado && v.status_fluxo === 'aguardando_assinatura';
     } else if (filtroStatusVouchers === 'disponivel') {
-      return !v.usado && v.status_fluxo !== 'aguardando_assinatura';
+      return !isCancelado && !v.usado && v.status_fluxo !== 'aguardando_assinatura';
     } else if (filtroStatusVouchers === 'usado') {
-      return v.usado;
+      return !isCancelado && v.usado;
     } else if (filtroStatusVouchers === 'checkout_sem_baixa') {
+      if (isCancelado) return false;
       const semBaixa = obterVouchersCheckoutPassadoSemBaixa();
       const idsSemBaixa = new Set(semBaixa.map(item => item.id));
       return idsSemBaixa.has(v.id);
     } else if (filtroStatusVouchers === 'inconsistente') {
+      if (isCancelado) return false;
       const incs = auditarInconsistenciasVouchers();
       const codigosInc = new Set(incs.map(i => i.voucher.codigo));
       return codigosInc.has(v.codigo);
@@ -1449,12 +1523,13 @@ async function carregarVouchers() {
 
 function renderStatsVouchers(dados) {
   const total = dados.length;
-  const aguardando = dados.filter(v => v.status_fluxo === 'aguardando_assinatura').length;
-  const usados = dados.filter(v => v.usado).length;
-  const disponiveis = dados.filter(v => !v.usado && v.status_fluxo !== 'aguardando_assinatura').length;
+  const cancelados = dados.filter(v => Boolean(extrairDadosCancelamento(v) || v.cancelado || v.status_fluxo === 'cancelado')).length;
+  const aguardando = dados.filter(v => !v.cancelado && v.status_fluxo === 'aguardando_assinatura').length;
+  const usados = dados.filter(v => !v.cancelado && v.status_fluxo !== 'cancelado' && v.usado).length;
+  const disponiveis = dados.filter(v => !v.cancelado && v.status_fluxo !== 'cancelado' && !v.usado && v.status_fluxo !== 'aguardando_assinatura').length;
 
   let totalDiariasDisponiveis = 0;
-  dados.filter(v => !v.usado && v.status_fluxo !== 'aguardando_assinatura').forEach(v => {
+  dados.filter(v => !v.cancelado && v.status_fluxo !== 'cancelado' && !v.usado && v.status_fluxo !== 'aguardando_assinatura').forEach(v => {
     const tot = v.diarias_totais || v.diarias || 2;
     const usd = v.diarias_usadas || 0;
     totalDiariasDisponiveis += Math.max(0, tot - usd);
@@ -1470,6 +1545,10 @@ function renderStatsVouchers(dados) {
   if (elUsd) elUsd.textContent = usados;
   const elDiar = document.getElementById('statDiariasRestantes');
   if (elDiar) elDiar.textContent = `${totalDiariasDisponiveis} diárias`;
+
+  // Contador da aba de cancelados
+  const elCountCanc = document.getElementById('countFiltroCancelados');
+  if (elCountCanc) elCountCanc.textContent = cancelados;
 
   // Auditoria de inconsistências
   const incs = auditarInconsistenciasVouchers();
@@ -1536,14 +1615,18 @@ function renderTabelaVouchers(dados) {
     const tot = v.diarias_totais || v.diarias || 2;
     const usd = v.diarias_usadas || (v.usado ? tot : 0);
     const saldo = Math.max(0, tot - usd);
+    const dadosCancelamento = extrairDadosCancelamento(v);
+    const isCancelado = Boolean(dadosCancelamento || v.cancelado || v.status_fluxo === 'cancelado');
     const isUsadoTotal = Boolean(v.usado || saldo === 0);
-    const isPendenteAssinatura = v.status_fluxo === 'aguardando_assinatura';
-    // Se o voucher já foi dado baixa (usado), ele NÃO é vencido!
-    const isVencido = !isUsadoTotal && v.validade ? (v.validade < hojeStr) : false;
-    const isCheckoutPassadoSemBaixa = Boolean(!isUsadoTotal && v.periodo_checkout && v.periodo_checkout < hojeStr && saldo > 0);
+    const isPendenteAssinatura = !isCancelado && v.status_fluxo === 'aguardando_assinatura';
+    // Se o voucher já foi dado baixa (usado) ou cancelado, ele NÃO é vencido!
+    const isVencido = !isCancelado && !isUsadoTotal && v.validade ? (v.validade < hojeStr) : false;
+    const isCheckoutPassadoSemBaixa = Boolean(!isCancelado && !isUsadoTotal && v.periodo_checkout && v.periodo_checkout < hojeStr && saldo > 0);
 
     let statusBadge = '';
-    if (isPendenteAssinatura) {
+    if (isCancelado) {
+      statusBadge = '<span class="badge" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;font-weight:700;">🚫 Cancelado</span>';
+    } else if (isPendenteAssinatura) {
       statusBadge = '<span class="badge badge-yellow" style="background:#fef3c7;color:#b45309;font-weight:700;">✍️ Aguarda Assinatura</span>';
     } else if (isUsadoTotal) {
       statusBadge = '<span class="badge" style="background:#e2e8f0;color:#334155;border:1px solid #cbd5e1;font-weight:700;">✓ Utilizado</span>';
@@ -1559,7 +1642,14 @@ function renderTabelaVouchers(dados) {
 
     // Exibição da Data de Vencimento
     let vencimentoHtml = '';
-    if (isUsadoTotal) {
+    if (isCancelado) {
+      vencimentoHtml = `
+        <div style="line-height:1.25;">
+          <strong style="color:var(--text-3);font-size:.82rem;text-decoration:line-through;">${v.validade ? fmtDate(v.validade) : '—'}</strong>
+          <div><span class="badge" style="background:#fee2e2;color:#991b1b;font-size:.65rem;padding:1px 5px;display:inline-block;margin-top:2px;">🚫 Inoperante</span></div>
+        </div>
+      `;
+    } else if (isUsadoTotal) {
       vencimentoHtml = `
         <div style="line-height:1.25;">
           <strong style="color:var(--text-2);font-size:.82rem;">${v.validade ? fmtDate(v.validade) : '—'}</strong>
@@ -1589,7 +1679,7 @@ function renderTabelaVouchers(dados) {
     const trilhaHtml = `
       <div style="font-size:.76rem;line-height:1.45;color:var(--text-2);">
         <div>💼 <strong>Gerado por:</strong> ${escHtml(v.pos_venda_nome || 'Pós Venda')} <span style="color:var(--text-3);font-size:.7rem;">(${fmtDateTime(v.created_at)})</span></div>
-        <div>✍️ <strong>Assinatura:</strong> ${v.assinado_em ? `<span style="color:#15803d;font-weight:600;">✓ ${escHtml(v.admin_assinante_nome || 'Admin')} (${fmtDateTime(v.assinado_em)})</span>` : '<span style="color:#b45309;font-weight:700;">⏳ Minuta Aguardando Admin</span>'}</div>
+        <div>✍️ <strong>Assinatura:</strong> ${v.assinado_em ? `<span style="color:#15803d;font-weight:600;">✓ ${escHtml(v.admin_assinante_nome || 'Admin')} (${fmtDateTime(v.assinado_em)})</span>` : (isCancelado ? '<span style="color:#991b1b;font-weight:700;">🚫 Cancelado</span>' : '<span style="color:#b45309;font-weight:700;">⏳ Minuta Aguardando Admin</span>')}</div>
         ${v.solicitante_nome ? `<div style="color:var(--text-3);font-size:.72rem;">🛎️ Solicitado por: <strong>${escHtml(v.solicitante_nome)}</strong></div>` : '<div style="color:var(--text-3);font-size:.72rem;font-style:italic;">🛎️ Emissão Direta</div>'}
       </div>
     `;
@@ -1599,7 +1689,7 @@ function renderTabelaVouchers(dados) {
     const incDoVoucher = auditarInconsistenciasVouchers().find(i => i.voucher.codigo === v.codigo);
 
     return `
-      <tr>
+      <tr class="${isCancelado ? 'voucher-row-cancelado' : ''}" style="${isCancelado ? 'background:rgba(254,226,226,0.18);' : ''}">
         <td style="white-space:nowrap;">
           <strong>#${v.numero || '—'}</strong>
           ${temObs ? `<span class="badge-obs-alerta" onclick="abrirModalObservacaoVoucher('${v.id}')" style="cursor:pointer;" title="Clique para ler a observação completa">⚠️ OBS</span>` : ''}
@@ -1618,6 +1708,12 @@ function renderTabelaVouchers(dados) {
               ⚠️ Limite Cota: ${incDoVoucher.diarias_permitidas}d | Total Concedido: ${incDoVoucher.diarias_emitidas_total}d
             </div>
           ` : ''}
+          ${isCancelado ? `
+            <div class="voucher-cancelado-strip" onclick="abrirModalVerMotivoCancelamentoVoucher('${v.id}')" style="cursor:pointer;margin-top:4px;padding:3px 8px;background:#fee2e2;border-radius:4px;border:1px solid #fecaca;display:inline-flex;align-items:center;gap:5px;font-size:.72rem;color:#991b1b;" title="Clique para ver motivo completo do cancelamento">
+              <span>🚫 <strong>Cancelado:</strong> ${escHtml(dadosCancelamento ? dadosCancelamento.motivo : 'Sem motivo informado')}</span>
+              <span style="text-decoration:underline;font-size:.68rem;">🔍 Ver</span>
+            </div>
+          ` : ''}
           ${temObs ? `
             <div class="voucher-obs-strip" onclick="abrirModalObservacaoVoucher('${v.id}')" style="cursor:pointer;" title="Clique para ler a observação completa">
               <span class="voucher-obs-icon">📝</span>
@@ -1629,9 +1725,9 @@ function renderTabelaVouchers(dados) {
         </td>
         <td>${vencimentoHtml}</td>
         <td>
-          <span class="diarias-pill diarias-disponiveis" title="Concedidas">${tot} tot</span> /
+          <span class="diarias-pill ${isCancelado ? 'diarias-usadas' : 'diarias-disponiveis'}" title="Concedidas">${tot} tot</span> /
           <span class="diarias-pill diarias-usadas" title="Utilizadas">${usd} usd</span> /
-          <span class="diarias-pill diarias-saldo" title="Saldo">${saldo} saldo</span>
+          <span class="diarias-pill ${isCancelado ? 'diarias-usadas' : 'diarias-saldo'}" title="Saldo">${isCancelado ? 0 : saldo} saldo</span>
         </td>
         <td>${trilhaHtml}</td>
         <td>${statusBadge}</td>
@@ -1643,7 +1739,11 @@ function renderTabelaVouchers(dados) {
         </td>
         <td>
           <div class="actions">
-            ${incDoVoucher ? `
+            ${isCancelado ? `
+            <button class="btn btn-ghost" style="padding:.25rem .5rem;font-size:.74rem;color:#991b1b;border:1px solid #fca5a5;" onclick="abrirModalVerMotivoCancelamentoVoucher('${v.id}')" title="Ver justificativa do cancelamento">
+              🚫 Motivo
+            </button>` : ''}
+            ${incDoVoucher && !isCancelado ? `
             <button class="btn btn-sm btn-notif-whatsapp" onclick="notificarMarcioInconsistencia('${escHtml(v.codigo)}')" title="Notificar Márcio no WhatsApp" style="padding:.2rem .45rem;font-size:.72rem;">
               📲 Márcio
             </button>` : ''}
@@ -1657,17 +1757,21 @@ function renderTabelaVouchers(dados) {
             <button class="btn-icon" title="Ver Trilha de Auditoria Completa" onclick="abrirModalTrilhaAuditoria('${v.id}')">
               📋
             </button>
-            ${isCheckoutPassadoSemBaixa ? `
+            ${isCheckoutPassadoSemBaixa && !isCancelado ? `
             <button class="btn btn-sm" style="padding:.2rem .5rem;font-size:.72rem;background:#ea580c;color:#fff;border-color:#ea580c;font-weight:700;" onclick="abrirModalBaixa('${v.id}')" title="Regularizar baixa do check-out realizado em ${fmtDate(v.periodo_checkout)}">
               🛎️ Baixar
             </button>` : ''}
-            ${perfilAtivo !== 'pos_venda' && !isPendenteAssinatura && !isVencido && !isCheckoutPassadoSemBaixa ? `
+            ${perfilAtivo !== 'pos_venda' && !isPendenteAssinatura && !isVencido && !isCheckoutPassadoSemBaixa && !isCancelado ? `
             <button class="btn-icon" title="Registrar Hospedagem / Baixa" onclick="abrirModalBaixa('${v.id}')">
               🛎️
             </button>` : ''}
-            ${(perfilAtivo === 'admin' || perfilAtivo === 'pos_venda') && (!v.assinado_em || v.status_fluxo === 'aguardando_assinatura') ? `
+            ${(perfilAtivo === 'admin' || perfilAtivo === 'pos_venda') && (!v.assinado_em || v.status_fluxo === 'aguardando_assinatura') && !isCancelado ? `
             <button class="btn-icon" title="Editar Voucher (Aguardando Assinatura)" onclick="abrirModalEditar('${v.id}')">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zm17.71-10.21a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+            </button>` : ''}
+            ${(perfilAtivo === 'admin' || perfilAtivo === 'pos_venda') && !isCancelado && !isUsadoTotal ? `
+            <button class="btn-icon danger" title="Cancelar Voucher" onclick="abrirModalCancelarVoucher('${v.id}')">
+              🚫
             </button>` : ''}
             ${perfilAtivo === 'admin' ? `
             <button class="btn-icon danger" title="Excluir" onclick="confirmarDelete('${v.id}')">
@@ -1720,15 +1824,23 @@ function renderTabelaReservas() {
     const tot = v.diarias_totais || v.diarias || 2;
     const usd = v.diarias_usadas || (v.usado ? tot : 0);
     const saldo = Math.max(0, tot - usd);
+    const isCancelado = Boolean(extrairDadosCancelamento(v) || v.cancelado || v.status_fluxo === 'cancelado');
     const isUsadoTotal = Boolean(v.usado || saldo === 0);
-    const isSemAssinatura = v.status_fluxo === 'aguardando_assinatura' || !v.assinado_em;
+    const isSemAssinatura = !isCancelado && (v.status_fluxo === 'aguardando_assinatura' || !v.assinado_em);
     // Se o voucher já foi dado baixa (usado), ele NÃO é vencido!
-    const isVencido = !isUsadoTotal && v.validade ? (v.validade < hojeStr) : false;
-    const isCheckoutPassadoSemBaixa = Boolean(!isUsadoTotal && v.periodo_checkout && v.periodo_checkout < hojeStr && saldo > 0);
+    const isVencido = !isCancelado && !isUsadoTotal && v.validade ? (v.validade < hojeStr) : false;
+    const isCheckoutPassadoSemBaixa = Boolean(!isCancelado && !isUsadoTotal && v.periodo_checkout && v.periodo_checkout < hojeStr && saldo > 0);
 
     // Coluna Vencimento
     let vencimentoHtml = '';
-    if (isUsadoTotal) {
+    if (isCancelado) {
+      vencimentoHtml = `
+        <div style="line-height:1.25;">
+          <strong style="color:var(--text-3);font-size:.82rem;text-decoration:line-through;">${v.validade ? fmtDate(v.validade) : '—'}</strong>
+          <div><span class="badge" style="background:#fee2e2;color:#991b1b;font-size:.65rem;padding:1px 5px;display:inline-block;margin-top:2px;">🚫 Cancelado</span></div>
+        </div>
+      `;
+    } else if (isUsadoTotal) {
       vencimentoHtml = `
         <div style="line-height:1.25;">
           <strong style="color:var(--text-2);font-size:.82rem;">${v.validade ? fmtDate(v.validade) : '—'}</strong>
@@ -1765,7 +1877,13 @@ function renderTabelaReservas() {
       : '<span style="color:#94a3b8;font-size:.75rem;">Nenhuma estadia realizada</span>';
 
     let botaoAcao = '';
-    if (isSemAssinatura) {
+    if (isCancelado) {
+      botaoAcao = `
+        <button class="btn btn-ghost" disabled style="padding:.35rem .65rem;font-size:.76rem;color:#991b1b;background:#fee2e2;border:1px dashed #ef4444;cursor:not-allowed;font-weight:700;">
+          🚫 Cancelado
+        </button>
+      `;
+    } else if (isSemAssinatura) {
       botaoAcao = `
         <button class="btn btn-ghost" disabled style="padding:.35rem .65rem;font-size:.76rem;color:#b45309;background:#fef3c7;border:1px dashed #f59e0b;cursor:not-allowed;font-weight:600;" title="Voucher aguarda assinatura oficial do Gerente/Admin. Bloqueado para uso.">
           ✍️ Bloqueado (Sem Assinatura)
@@ -2121,14 +2239,15 @@ function adequarTextosPorDiarias() {
 }
 window.adequarTextosPorDiarias = adequarTextosPorDiarias;
 
-// Helper para obter observação real, filtrando textos padrão automáticos antigos
+// Helper para obter observação real, filtrando textos padrão automáticos antigos e marcação de cancelamento
 function obterObservacaoReal(v) {
   if (!v || !v.observacoes) return '';
-  const obs = String(v.observacoes).trim();
+  let obs = String(v.observacoes).trim();
   if (!obs) return '';
   if (obs.startsWith('Voucher de ') && obs.includes('diárias') && obs.includes('casal')) {
     return '';
   }
+  obs = obs.replace(/\[CANCELADO[^\]]*\]/gi, '').trim();
   return obs;
 }
 
@@ -2915,6 +3034,7 @@ function atualizarBadgeSolicitacoes() {
   const btnPendente = document.querySelector('[data-solic-filtro="pendente"]');
   const btnAssinatura = document.querySelector('[data-solic-filtro="aguardando_assinatura"]');
   const btnGerado = document.querySelector('[data-solic-filtro="gerado"]');
+  const btnRecusada = document.querySelector('[data-solic-filtro="recusada"]');
   const btnTodos = document.querySelector('[data-solic-filtro="todos"]');
 
   if (btnPendente) btnPendente.textContent = `1. Pendentes (${pendentes})`;
@@ -2922,6 +3042,10 @@ function atualizarBadgeSolicitacoes() {
   if (btnGerado) {
     const gerados = (listaSolicitacoes || []).filter(s => s.status === 'gerado').length;
     btnGerado.textContent = `3. Concluídas & Ativas (${gerados})`;
+  }
+  if (btnRecusada) {
+    const recusadas = (listaSolicitacoes || []).filter(s => s.status === 'recusada' || s.status === 'rejeitada').length;
+    btnRecusada.textContent = `⛔ Recusadas (${recusadas})`;
   }
   if (btnTodos) {
     btnTodos.textContent = `Todas (${(listaSolicitacoes || []).length})`;
@@ -2936,7 +3060,11 @@ function renderTabelaSolicitacoes() {
 
   let dados = listaSolicitacoes.filter(s => {
     if (filtroSolicitacoes && filtroSolicitacoes !== 'todos') {
-      if (s.status !== filtroSolicitacoes) return false;
+      if (filtroSolicitacoes === 'recusada') {
+        if (s.status !== 'recusada' && s.status !== 'rejeitada') return false;
+      } else {
+        if (s.status !== filtroSolicitacoes) return false;
+      }
     }
     if (busca) {
       const matchNome = (s.nome_socio || '').toLowerCase().includes(busca);
@@ -2953,8 +3081,13 @@ function renderTabelaSolicitacoes() {
   }
 
   tbody.innerHTML = dados.map(s => {
+    const dadosRecusa = extrairDadosRecusa(s);
+    const isRecusada = Boolean(dadosRecusa || s.status === 'recusada' || s.status === 'rejeitada');
+
     let statusBadge = '<span class="badge badge-yellow">1. Solicitado (Reservas)</span>';
-    if (s.status === 'aguardando_assinatura') {
+    if (isRecusada) {
+      statusBadge = '<span class="badge badge-red" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;font-weight:700;">⛔ Recusada</span>';
+    } else if (s.status === 'aguardando_assinatura') {
       statusBadge = '<span class="badge badge-yellow" style="background:#fef3c7;color:#b45309;">2. Aguarda Assinatura (Admin)</span>';
     } else if (s.status === 'gerado') {
       statusBadge = `<span class="badge badge-green">3. Ativo & Assinado ${s.voucher_codigo ? `(#${s.voucher_codigo})` : ''}</span>`;
@@ -2967,16 +3100,25 @@ function renderTabelaSolicitacoes() {
       : (s.periodo_checkin ? `A partir de ${fmtDate(s.periodo_checkin)}` : '—');
 
     let acoesHtml = '';
-    if (s.status === 'pendente') {
+    if (isRecusada) {
+      acoesHtml = `
+        <button class="btn btn-ghost" style="padding:.28rem .55rem;font-size:.75rem;color:#991b1b;border:1px solid #fca5a5;" onclick="abrirModalVerMotivoRecusa('${s.id}')" title="Ver motivo detalhado da recusa">
+          📝 Ver Motivo
+        </button>
+      `;
+    } else if (s.status === 'pendente') {
       if (perfilAtivo === 'pos_venda' || perfilAtivo === 'admin') {
         acoesHtml += `
           <button class="btn btn-primary" style="padding:.3rem .6rem;font-size:.78rem;" onclick="atenderSolicitacao('${s.id}')" title="Registrar Diárias Disponíveis e Preparar Voucher">
             ⚡ Atender & Registrar Diárias
           </button>
+          <button class="btn btn-ghost" style="padding:.3rem .5rem;font-size:.78rem;color:#dc2626;border:1px solid #fca5a5;" onclick="abrirModalRecusarSolicitacao('${s.id}')" title="Recusar esta solicitação justificando o motivo">
+            ⛔ Recusar
+          </button>
         `;
       }
       acoesHtml += `
-        <button class="btn btn-ghost" style="padding:.3rem .5rem;font-size:.78rem;color:#dc2626;" onclick="cancelarSolicitacao('${s.id}')" title="Cancelar solicitação">
+        <button class="btn btn-ghost" style="padding:.3rem .5rem;font-size:.78rem;color:#64748b;" onclick="cancelarSolicitacao('${s.id}')" title="Cancelar solicitação">
           ✕ Cancelar
         </button>
       `;
@@ -2990,6 +3132,13 @@ function renderTabelaSolicitacoes() {
       } else {
         acoesHtml = '<span style="font-size:.78rem;color:var(--text-3);">Aguardando Admin</span>';
       }
+      if (perfilAtivo === 'admin' || perfilAtivo === 'pos_venda') {
+        acoesHtml += `
+          <button class="btn btn-ghost" style="padding:.3rem .5rem;font-size:.78rem;color:#dc2626;border:1px solid #fca5a5;margin-left:4px;" onclick="abrirModalRecusarSolicitacao('${s.id}')" title="Recusar solicitação">
+            ⛔ Recusar
+          </button>
+        `;
+      }
     } else if (s.status === 'gerado' && s.voucher_codigo) {
       acoesHtml += `
         <a href="${linkVoucher(s.voucher_codigo)}" target="_blank" class="btn btn-ghost" style="padding:.3rem .6rem;font-size:.78rem;" title="Ver Voucher">
@@ -3001,19 +3150,28 @@ function renderTabelaSolicitacoes() {
     }
 
     const diariasSolic = s.diarias_solicitadas || s.diarias || 2;
+    const motivoExibicao = (s.motivo || '').replace(/\[RECUSADA[^\]]*\]/gi, '').trim();
 
     return `
-      <tr>
+      <tr style="${isRecusada ? 'background:rgba(254,226,226,0.18);' : ''}">
         <td style="font-size:.8rem;color:var(--text-3);">${fmtDateTime(s.created_at)}</td>
         <td><strong>${escHtml(s.nome_socio)}</strong></td>
         <td style="font-size:.82rem;font-weight:600;color:var(--primary);">${periodoStr}</td>
         <td>
-          <span class="diarias-pill diarias-saldo" style="font-size:.76rem;font-weight:700;">
+          <span class="diarias-pill ${isRecusada ? 'diarias-usadas' : 'diarias-saldo'}" style="font-size:.76rem;font-weight:700;">
             ${diariasSolic} diária(s)
           </span>
         </td>
         <td><span class="badge badge-blue" style="font-size:.75rem;">${escHtml(s.modelo_nome || s.modelo_id || 'Padrão')}</span></td>
-        <td style="max-width:240px;font-size:.82rem;">${escHtml(s.motivo || '—')}</td>
+        <td style="max-width:240px;font-size:.82rem;">
+          <div>${escHtml(motivoExibicao || '—')}</div>
+          ${isRecusada ? `
+            <div onclick="abrirModalVerMotivoRecusa('${s.id}')" style="cursor:pointer;margin-top:4px;padding:3px 6px;background:#fee2e2;border-radius:4px;border:1px solid #fecaca;font-size:.72rem;color:#991b1b;display:inline-flex;align-items:center;gap:4px;" title="Clique para ver motivo completo">
+              <span>⛔ <strong>Recusada:</strong> ${escHtml(dadosRecusa ? dadosRecusa.motivo : 'Sem justificativa')}</span>
+              <span style="text-decoration:underline;">🔍 Ver</span>
+            </div>
+          ` : ''}
+        </td>
         <td style="font-size:.8rem;color:var(--text-2);">${escHtml(s.solicitante_nome || s.solicitante || 'Reservas')}</td>
         <td>${statusBadge}</td>
         <td><div class="actions">${acoesHtml}</div></td>
@@ -3147,6 +3305,257 @@ async function cancelarSolicitacao(idSolicitacao) {
   atualizarBadgeSolicitacoes();
   renderTabelaSolicitacoes();
 }
+
+// ── Funções de Recusa de Solicitação e Cancelamento de Voucher ──
+function abrirModalRecusarSolicitacao(idSolicitacao) {
+  const solic = listaSolicitacoes.find(s => s.id === idSolicitacao);
+  if (!solic) {
+    showToast('Solicitação não encontrada.', 'error');
+    return;
+  }
+
+  document.getElementById('recusarSolicitacaoId').value = solic.id;
+  document.getElementById('inputMotivoRecusaSolicitacao').value = '';
+
+  const periodoStr = (solic.periodo_checkin && solic.periodo_checkout)
+    ? `${fmtDate(solic.periodo_checkin)} até ${fmtDate(solic.periodo_checkout)}`
+    : (solic.periodo_checkin ? `A partir de ${fmtDate(solic.periodo_checkin)}` : 'A definir');
+
+  const card = document.getElementById('cardResumoSolicitacaoRecusa');
+  if (card) {
+    card.innerHTML = `
+      <div>👤 <strong>Hóspede/Sócio:</strong> ${escHtml(solic.nome_socio)}</div>
+      <div>📅 <strong>Período Pretendido:</strong> ${periodoStr}</div>
+      <div>🎟️ <strong>Diárias Solicitadas:</strong> ${solic.diarias_solicitadas || solic.diarias || 2} diária(s)</div>
+      <div>🛎️ <strong>Solicitante:</strong> ${escHtml(solic.solicitante_nome || solic.solicitante || 'Reservas')}</div>
+    `;
+  }
+
+  document.getElementById('modalRecusarSolicitacao').classList.remove('hidden');
+  document.getElementById('inputMotivoRecusaSolicitacao').focus();
+}
+window.abrirModalRecusarSolicitacao = abrirModalRecusarSolicitacao;
+
+function fecharModalRecusarSolicitacao() {
+  document.getElementById('modalRecusarSolicitacao').classList.add('hidden');
+}
+window.fecharModalRecusarSolicitacao = fecharModalRecusarSolicitacao;
+
+async function confirmarRecusaSolicitacao() {
+  const idSolicitacao = document.getElementById('recusarSolicitacaoId').value;
+  const motivo = (document.getElementById('inputMotivoRecusaSolicitacao').value || '').trim();
+
+  if (!motivo) {
+    showToast('Por favor, informe o motivo da recusa.', 'error');
+    document.getElementById('inputMotivoRecusaSolicitacao').focus();
+    return;
+  }
+
+  const btn = document.getElementById('btnConfirmarRecusaSolicitacao');
+  btn.disabled = true;
+  btn.textContent = 'Recusando…';
+
+  const agoraIso = new Date().toISOString();
+  const agoraFmt = fmtDateTime(agoraIso);
+  const quemRecusou = usuarioLogado ? usuarioLogado.nome : 'Pós Venda';
+
+  const solic = listaSolicitacoes.find(s => s.id === idSolicitacao);
+  const motivoAntigo = (solic && solic.motivo) ? String(solic.motivo).replace(/\[RECUSADA[^\]]*\]/gi, '').trim() : '';
+  const motivoFormatado = `[RECUSADA em ${agoraFmt} por ${quemRecusou}. Motivo: ${motivo}] ${motivoAntigo ? `| Solicitação original: ${motivoAntigo}` : ''}`.trim();
+
+  try {
+    const { error } = await db.from('voucher_solicitacoes').update({
+      status: 'recusada',
+      motivo: motivoFormatado
+    }).eq('id', idSolicitacao);
+    if (error) console.warn('Erro ao atualizar recusa no Supabase:', error);
+  } catch (err) {
+    console.warn('Erro rede Supabase recusa:', err);
+  }
+
+  const idx = listaSolicitacoes.findIndex(s => s.id === idSolicitacao);
+  if (idx !== -1) {
+    listaSolicitacoes[idx].status = 'recusada';
+    listaSolicitacoes[idx].motivo = motivoFormatado;
+    listaSolicitacoes[idx].motivo_recusa = motivo;
+    listaSolicitacoes[idx].recusada_em = agoraIso;
+    listaSolicitacoes[idx].recusada_por = quemRecusou;
+    localStorage.setItem('rsm_solicitacoes', JSON.stringify(listaSolicitacoes));
+  }
+
+  fecharModalRecusarSolicitacao();
+  btn.disabled = false;
+  btn.textContent = 'Confirmar Recusa';
+
+  showToast('Solicitação recusada com sucesso.');
+  atualizarBadgeSolicitacoes();
+  renderTabelaSolicitacoes();
+}
+window.confirmarRecusaSolicitacao = confirmarRecusaSolicitacao;
+
+function abrirModalVerMotivoRecusa(idSolicitacao) {
+  const solic = listaSolicitacoes.find(s => s.id === idSolicitacao);
+  if (!solic) return;
+
+  const dados = extrairDadosRecusa(solic);
+  document.getElementById('modalVerMotivoTitulo').innerHTML = '<span>⛔</span> Motivo da Recusa da Solicitação';
+
+  const periodoStr = (solic.periodo_checkin && solic.periodo_checkout)
+    ? `${fmtDate(solic.periodo_checkin)} até ${fmtDate(solic.periodo_checkout)}`
+    : (solic.periodo_checkin ? `A partir de ${fmtDate(solic.periodo_checkin)}` : 'A definir');
+
+  document.getElementById('modalVerMotivoCardInfo').innerHTML = `
+    <div>👤 <strong>Sócio/Hóspede:</strong> ${escHtml(solic.nome_socio)}</div>
+    <div>📅 <strong>Período Pretendido:</strong> ${periodoStr} (${solic.diarias_solicitadas || 2} diárias)</div>
+    <div>🛎️ <strong>Solicitante:</strong> ${escHtml(solic.solicitante_nome || solic.solicitante || 'Reservas')}</div>
+  `;
+
+  document.getElementById('modalVerMotivoTexto').textContent = dados.motivo;
+  document.getElementById('modalVerMotivoMetadados').innerHTML = `
+    <div>⛔ <strong>Recusado por:</strong> ${escHtml(dados.por)}</div>
+    <div>🕒 <strong>Data e Hora:</strong> ${dados.data ? fmtDateTime(dados.data) : 'Não informado'}</div>
+  `;
+
+  document.getElementById('modalVerMotivo').classList.remove('hidden');
+}
+window.abrirModalVerMotivoRecusa = abrirModalVerMotivoRecusa;
+
+function abrirModalCancelarVoucher(idVoucher) {
+  const v = listaVouchers.find(item => item.id === idVoucher);
+  if (!v) {
+    showToast('Voucher não encontrado.', 'error');
+    return;
+  }
+
+  document.getElementById('cancelarVoucherId').value = v.id;
+  document.getElementById('inputMotivoCancelamentoVoucher').value = '';
+
+  const tot = v.diarias_totais || v.diarias || 2;
+  const usd = v.diarias_usadas || (v.usado ? tot : 0);
+  const saldo = Math.max(0, tot - usd);
+
+  const card = document.getElementById('cardResumoVoucherCancelamento');
+  if (card) {
+    card.innerHTML = `
+      <div>🎟️ <strong>Voucher:</strong> #${v.numero || '—'} (${escHtml(v.codigo)})</div>
+      <div>👤 <strong>Hóspede/Sócio:</strong> ${escHtml(v.nome_socio)}</div>
+      <div>📊 <strong>Diárias:</strong> ${tot} concedida(s) | ${usd} usada(s) | <strong>${saldo} de saldo</strong></div>
+      <div>📅 <strong>Validade:</strong> ${v.validade ? fmtDate(v.validade) : 'A definir'}</div>
+      <div>💼 <strong>Emissor:</strong> ${escHtml(v.pos_venda_nome || 'Pós Venda')}</div>
+    `;
+  }
+
+  document.getElementById('modalCancelarVoucher').classList.remove('hidden');
+  document.getElementById('inputMotivoCancelamentoVoucher').focus();
+}
+window.abrirModalCancelarVoucher = abrirModalCancelarVoucher;
+
+function fecharModalCancelarVoucher() {
+  document.getElementById('modalCancelarVoucher').classList.add('hidden');
+}
+window.fecharModalCancelarVoucher = fecharModalCancelarVoucher;
+
+async function confirmarCancelamentoVoucher() {
+  const idVoucher = document.getElementById('cancelarVoucherId').value;
+  const motivo = (document.getElementById('inputMotivoCancelamentoVoucher').value || '').trim();
+
+  if (!motivo) {
+    showToast('Por favor, informe o motivo do cancelamento do voucher.', 'error');
+    document.getElementById('inputMotivoCancelamentoVoucher').focus();
+    return;
+  }
+
+  const btn = document.getElementById('btnConfirmarCancelamentoVoucher');
+  btn.disabled = true;
+  btn.textContent = 'Cancelando…';
+
+  const agoraIso = new Date().toISOString();
+  const agoraFmt = fmtDateTime(agoraIso);
+  const quemCancelou = usuarioLogado ? usuarioLogado.nome : (perfilAtivo === 'admin' ? 'Administrador' : 'Pós Venda');
+
+  const v = listaVouchers.find(item => item.id === idVoucher);
+  const obsAntiga = (v && v.observacoes) ? String(v.observacoes).replace(/\[CANCELADO[^\]]*\]/gi, '').trim() : '';
+  const obsFormatada = `[CANCELADO em ${agoraFmt} por ${quemCancelou}. Motivo: ${motivo}]${obsAntiga ? `\n${obsAntiga}` : ''}`.trim();
+
+  const payload = {
+    status_fluxo: 'cancelado',
+    observacoes: obsFormatada
+  };
+
+  try {
+    const { error } = await db.from('vouchers').update(payload).eq('id', idVoucher);
+    if (error) console.warn('Erro ao atualizar cancelamento no Supabase:', error);
+  } catch (err) {
+    console.warn('Erro rede Supabase cancelamento voucher:', err);
+  }
+
+  const idx = listaVouchers.findIndex(item => item.id === idVoucher);
+  if (idx !== -1) {
+    listaVouchers[idx].status_fluxo = 'cancelado';
+    listaVouchers[idx].cancelado = true;
+    listaVouchers[idx].observacoes = obsFormatada;
+    listaVouchers[idx].motivo_cancelamento = motivo;
+    listaVouchers[idx].cancelado_em = agoraIso;
+    listaVouchers[idx].cancelado_por = quemCancelou;
+    localStorage.setItem('rsm_vouchers_cache', JSON.stringify(listaVouchers));
+  }
+
+  // Se houver solicitação atrelada a este voucher, atualizar também
+  if (v && v.codigo) {
+    const idxSolic = listaSolicitacoes.findIndex(s => s.voucher_codigo === v.codigo);
+    if (idxSolic !== -1) {
+      listaSolicitacoes[idxSolic].status = 'cancelado';
+      listaSolicitacoes[idxSolic].motivo = `[Voucher Cancelado: ${motivo}] ${listaSolicitacoes[idxSolic].motivo || ''}`.trim();
+      localStorage.setItem('rsm_solicitacoes', JSON.stringify(listaSolicitacoes));
+      try {
+        await db.from('voucher_solicitacoes').update({ status: 'cancelado' }).eq('voucher_codigo', v.codigo);
+      } catch (e) {}
+    }
+  }
+
+  fecharModalCancelarVoucher();
+  btn.disabled = false;
+  btn.textContent = 'Confirmar Cancelamento do Voucher';
+
+  showToast('Voucher cancelado com sucesso.');
+  carregarVouchers();
+  if (abaAtiva === 'solicitacoes') renderTabelaSolicitacoes();
+  if (abaAtiva === 'reservas') renderTabelaReservas();
+}
+window.confirmarCancelamentoVoucher = confirmarCancelamentoVoucher;
+
+function abrirModalVerMotivoCancelamentoVoucher(idVoucher) {
+  const v = listaVouchers.find(item => item.id === idVoucher);
+  if (!v) return;
+
+  const dados = extrairDadosCancelamento(v);
+  document.getElementById('modalVerMotivoTitulo').innerHTML = '<span>🚫</span> Motivo do Cancelamento do Voucher';
+
+  const tot = v.diarias_totais || v.diarias || 2;
+  const usd = v.diarias_usadas || (v.usado ? tot : 0);
+  const saldo = Math.max(0, tot - usd);
+
+  document.getElementById('modalVerMotivoCardInfo').innerHTML = `
+    <div>🎟️ <strong>Voucher:</strong> #${v.numero || '—'} (${escHtml(v.codigo)})</div>
+    <div>👤 <strong>Sócio/Cliente:</strong> ${escHtml(v.nome_socio)}</div>
+    <div>📊 <strong>Diárias:</strong> ${tot} tot | ${usd} usd | ${saldo} saldo</div>
+    <div>💼 <strong>Emitido por:</strong> ${escHtml(v.pos_venda_nome || 'Pós Venda')}</div>
+  `;
+
+  document.getElementById('modalVerMotivoTexto').textContent = dados.motivo;
+  document.getElementById('modalVerMotivoMetadados').innerHTML = `
+    <div>🚫 <strong>Cancelado por:</strong> ${escHtml(dados.por)}</div>
+    <div>🕒 <strong>Data e Hora:</strong> ${dados.data ? fmtDateTime(dados.data) : 'Não informado'}</div>
+  `;
+
+  document.getElementById('modalVerMotivo').classList.remove('hidden');
+}
+window.abrirModalVerMotivoCancelamentoVoucher = abrirModalVerMotivoCancelamentoVoucher;
+
+function fecharModalVerMotivo() {
+  document.getElementById('modalVerMotivo').classList.add('hidden');
+}
+window.fecharModalVerMotivo = fecharModalVerMotivo;
 
 // ── Event Listeners Principais ─────────────────────────────────
 document.getElementById('tabNavCotas').addEventListener('click', () => mudarAba('cotas'));
@@ -3297,6 +3706,15 @@ document.getElementById('modalBaixaReserva').addEventListener('click', e => {
 });
 document.getElementById('modalSolicitarVoucher').addEventListener('click', e => {
   if (e.target === document.getElementById('modalSolicitarVoucher')) fecharModalSolicitarVoucher();
+});
+document.getElementById('modalRecusarSolicitacao')?.addEventListener('click', e => {
+  if (e.target === document.getElementById('modalRecusarSolicitacao')) fecharModalRecusarSolicitacao();
+});
+document.getElementById('modalCancelarVoucher')?.addEventListener('click', e => {
+  if (e.target === document.getElementById('modalCancelarVoucher')) fecharModalCancelarVoucher();
+});
+document.getElementById('modalVerMotivo')?.addEventListener('click', e => {
+  if (e.target === document.getElementById('modalVerMotivo')) fecharModalVerMotivo();
 });
 
 // Filtros da Base de Cotas
@@ -3687,6 +4105,8 @@ async function abrirModalTrilhaAuditoria(voucherId) {
   } catch (e) {}
 
   const isAssinado = (v.status_fluxo === 'ativo' || v.status_fluxo === 'usado') && Boolean(v.assinado_em);
+  const dadosCancelamento = extrairDadosCancelamento(v);
+  const isCancelado = Boolean(dadosCancelamento || v.cancelado || v.status_fluxo === 'cancelado');
   const temSolicitacao = Boolean(solicOrigem || v.solicitante_nome);
   const quemSolicitou = v.solicitante_nome || (solicOrigem ? (solicOrigem.solicitante_nome || solicOrigem.solicitante) : 'Reservas');
   const quandoSolicitou = (solicOrigem && solicOrigem.created_at) || v.solicitado_em || null;
@@ -3789,6 +4209,21 @@ async function abrirModalTrilhaAuditoria(voucherId) {
             ${baixasHtml}
           </div>
         </div>
+
+        ${isCancelado ? `
+        <!-- MARCO 5: CANCELAMENTO DO VOUCHER -->
+        <div style="border-left:3px solid #dc2626;background:#fff1f2;padding:.75rem 1rem;border-radius:0 8px 8px 0;border-top:1px solid #fecdd3;border-right:1px solid #fecdd3;border-bottom:1px solid #fecdd3;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <strong style="font-size:.85rem;color:#9f1239;">5. Cancelamento Oficial do Voucher</strong>
+            <span style="font-size:.72rem;color:#be123c;">${dadosCancelamento?.data ? fmtDateTime(dadosCancelamento.data) : 'Cancelado'}</span>
+          </div>
+          <div style="margin-top:.35rem;font-size:.8rem;color:#9f1239;line-height:1.5;">
+            <div>• <strong>Responsável pelo Cancelamento:</strong> ${escHtml(dadosCancelamento?.por || 'Administração')}</div>
+            <div>• <strong>Motivo Justificado:</strong> ${escHtml(dadosCancelamento?.motivo || 'Sem justificativa informada')}</div>
+            <div style="color:#dc2626;font-weight:700;">• Status: 🚫 Voucher invalidado para check-in e hospedagem</div>
+          </div>
+        </div>
+        ` : ''}
       </div>
     </div>
   `;

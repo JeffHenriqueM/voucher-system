@@ -370,15 +370,16 @@
       display: none;
     }
 
-    .voucher.is-usado .v-usado-stamp {
+    .voucher.is-usado .v-usado-stamp,
+    .voucher.is-cancelado .v-usado-stamp {
       display: block;
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%) rotate(-30deg);
-      font-size: 80px;
+      font-size: 74px;
       font-weight: 900;
-      color: rgba(220, 38, 38, 0.15);
+      color: rgba(220, 38, 38, 0.22);
       text-transform: uppercase;
       letter-spacing: .2em;
       pointer-events: none;
@@ -443,7 +444,7 @@
   <!-- Libs -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-  <script src="config.js?v=20261015_25"></script>
+  <script src="config.js?v=20261022_02"></script>
   <script>
     const { createClient } = supabase;
     const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -589,13 +590,42 @@
       const tot = v.diarias_totais || v.diarias || 2;
       const usd = v.diarias_usadas || (v.usado ? tot : 0);
       const saldo = Math.max(0, tot - usd);
+
+      function extrairDadosCancelamento(item) {
+        if (!item) return null;
+        const isCanc = Boolean(item.cancelado || item.status_fluxo === 'cancelado');
+        if (!isCanc && !item.motivo_cancelamento) return null;
+        let motivo = item.motivo_cancelamento || '';
+        let por = item.cancelado_por || '';
+        let data = item.cancelado_em || '';
+        if ((!motivo || !por || !data) && item.observacoes) {
+          const match = String(item.observacoes).match(/\[CANCELADO\s*(?:em\s*([^.]+?))?\s*(?:por\s*([^.]+?))?\.\s*Motivo:\s*([^\]]+)\]/i);
+          if (match) {
+            if (!data) data = match[1] || '';
+            if (!por) por = match[2] || '';
+            if (!motivo) motivo = match[3] || '';
+          } else {
+            const matchSimples = String(item.observacoes).match(/\[CANCELADO:\s*([^\]]+)\]/i);
+            if (matchSimples && !motivo) motivo = matchSimples[1];
+          }
+        }
+        return {
+          isCancelado: true,
+          motivo: (motivo || 'Voucher cancelado pela administração.').trim(),
+          por: (por || item.pos_venda_nome || 'Administração').trim(),
+          data: (data || item.updated_at || item.created_at || '').trim()
+        };
+      }
+
+      const dadosCancelamento = extrairDadosCancelamento(v);
+      const isCancelado = Boolean(dadosCancelamento || v.cancelado || v.status_fluxo === 'cancelado');
       const isUsadoTotal = Boolean(v.usado || saldo === 0);
       const isAssinado = (v.status_fluxo === 'ativo' || v.status_fluxo === 'usado') && Boolean(v.assinado_em);
-      const isMinuta = v.status_fluxo === 'aguardando_assinatura' || !isAssinado;
+      const isMinuta = !isCancelado && (v.status_fluxo === 'aguardando_assinatura' || !isAssinado);
       const hojeStr = new Date().toISOString().split('T')[0];
       // Se já foi dado baixa (usado), ele NÃO é considerado vencido
-      const isVencido = !isUsadoTotal && v.validade ? (v.validade < hojeStr) : false;
-      const disponivel = !isUsadoTotal && isAssinado && !isVencido;
+      const isVencido = !isCancelado && !isUsadoTotal && v.validade ? (v.validade < hojeStr) : false;
+      const disponivel = !isCancelado && !isUsadoTotal && isAssinado && !isVencido;
       const linkAtual = window.location.href;
 
       const espec = `Voucher de ${v.diarias > 1 ? v.diarias + ' ('+numPorExtenso(v.diarias)+')' : 'uma (01)'} diária${v.diarias > 1 ? 's' : ''} anua${v.diarias > 1 ? 'is' : 'l'} para um casal no Hotel Villamor Prime.`;
@@ -630,7 +660,10 @@
       document.getElementById('root').innerHTML = `
         <!-- Barra de ações -->
         <div class="actions-bar no-print">
-          ${isMinuta ? `
+          ${isCancelado ? `
+          <span class="badge-status" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;font-weight:bold;">
+            🚫 VOUCHER CANCELADO
+          </span>` : (isMinuta ? `
           <span class="badge-status" style="background:#fef3c7;color:#b45309;">
             ✍️ Minuta — Aguardando Assinatura do Administrador
           </span>` : (isUsadoTotal ? `
@@ -642,15 +675,20 @@
           </span>` : `
           <span class="badge-status badge-ok">
             ✓ Disponível para Reserva
-          </span>`))}
+          </span>`)))}
           <button class="btn-print" onclick="window.print()">
             🖨️ Imprimir
           </button>
         </div>
 
         <!-- Documento Voucher -->
-        <div class="voucher ${isUsadoTotal ? 'is-usado' : ''}" id="voucherDoc">
-          <div class="v-usado-stamp">${isUsadoTotal ? 'UTILIZADO' : (isVencido ? 'EXPIRADO' : '')}</div>
+        <div class="voucher ${isCancelado ? 'is-cancelado' : (isUsadoTotal ? 'is-usado' : '')}" id="voucherDoc">
+          <div class="v-usado-stamp">${isCancelado ? 'CANCELADO' : (isUsadoTotal ? 'UTILIZADO' : (isVencido ? 'EXPIRADO' : ''))}</div>
+          ${isCancelado ? `
+          <div style="background:#fee2e2;color:#991b1b;padding:9px 14px;font-weight:bold;text-align:center;font-size:12px;border-bottom:2px dashed #ef4444;line-height:1.45;">
+            🚫 VOUCHER CANCELADO — ESTE DOCUMENTO FOI OFICIALMENTE CANCELADO E NÃO TEM VALIDADE PARA HOSPEDAGEM.
+            ${dadosCancelamento ? `<br><span style="font-size:11px;font-weight:normal;color:#7f1d1d;">Motivo: <strong>${escHtml(dadosCancelamento.motivo)}</strong> | Registrado por: ${escHtml(dadosCancelamento.por)} (${fmtDateTime(dadosCancelamento.data)})</span>` : ''}
+          </div>` : ''}
           ${isMinuta ? `
           <div style="background:#fffbeb;color:#92400e;padding:7px 12px;font-weight:bold;text-align:center;font-size:11px;border-bottom:2px dashed #f59e0b;">
             ⚠️ MINUTA DE VOUCHER — AGUARDA ASSINATURA OFICIAL DO ADMINISTRADOR (SEM VALIDADE PARA CHECK-IN ANTES DA ASSINATURA)

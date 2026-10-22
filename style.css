@@ -2069,5 +2069,55 @@ body.dark-mode #modalObsTextoCompleto {
   color: #fef3c7 !important;
 }
 
+/* ── Dropdown de Sugestões de Sócios no Modal de Emissão / Edição ── */
+.dropdown-sugestoes-socios {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--border, #cbd5e1);
+  border-radius: var(--radius-sm, 8px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 99999;
+  margin-top: 4px;
+}
+
+body.dark-mode .dropdown-sugestoes-socios {
+  background: #1e293b;
+  border-color: #334155;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
+}
+
+.sugestao-socio-item {
+  padding: .6rem .85rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border, #f1f5f9);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: .83rem;
+  transition: background .15s ease;
+}
+
+.sugestao-socio-item:hover {
+  background: rgba(13, 148, 136, 0.12);
+}
+
+body.dark-mode .sugestao-socio-item {
+  border-bottom-color: #334155;
+}
+
+body.dark-mode .sugestao-socio-item:hover {
+  background: rgba(13, 148, 136, 0.25);
+}
+
+.sugestao-socio-item:last-child {
+  border-bottom: none;
+}
+
+
 
 

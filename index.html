@@ -7,7 +7,9 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Villamor Vouchers — Gestão de Vouchers & Cotas</title>
-  <link rel="stylesheet" href="style.css?v=20261022_02" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=20261022_03" />
+  <link rel="shortcut icon" href="favicon.svg?v=20261022_03" />
+  <link rel="stylesheet" href="style.css?v=20261022_03" />
 </head>
 <body>
 
@@ -551,10 +553,11 @@
               </select>
             </div>
 
-            <div class="form-group">
+            <div class="form-group" style="position:relative;">
               <label for="inputNome">Nome do Convidado / Sócio * <small style="color:var(--text-3);font-weight:normal;">(buscar na base)</small></label>
               <input type="text" id="inputNome" list="datalistSociosVoucher" required placeholder="Digite para buscar na base de sócios..." autocomplete="off" />
               <datalist id="datalistSociosVoucher"></datalist>
+              <div id="dropdownSugestoesSocios" class="dropdown-sugestoes-socios hidden"></div>
               <small id="inputNomeInfoSocio" style="color:var(--primary);font-size:.78rem;display:block;margin-top:.25rem;font-weight:600;"></small>
             </div>
 
@@ -1140,8 +1143,8 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js?v=20261022_02"></script>
-  <script src="cotas_dados.js?v=20261022_02"></script>
-  <script src="app.js?v=20261022_02"></script>
+  <script src="config.js?v=20261022_03"></script>
+  <script src="cotas_dados.js?v=20261022_03"></script>
+  <script src="app.js?v=20261022_03"></script>
 </body>
 </html>

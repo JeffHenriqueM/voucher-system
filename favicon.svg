@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#0f2922"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="40%" stop-color="#eab308"/>
+      <stop offset="100%" stop-color="#b45309"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.45"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Fundo Arredondado com borda dourada sutil -->
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#bgGrad)" stroke="url(#goldGrad)" stroke-width="2"/>
+
+  <!-- Pequeno Voucher / Estrela no topo -->
+  <g filter="url(#glow)">
+    <!-- Coroa / Estrela de 4 pontas no topo -->
+    <path d="M32 9 L34 14 L39 16 L34 18 L32 23 L30 18 L25 16 L30 14 Z" fill="url(#goldGrad)"/>
+
+    <!-- Monograma "V" sofisticado do Villamor Resort -->
+    <path d="M19 22 L26 22 L32 43 L38 22 L45 22 L35.5 49 L28.5 49 Z" fill="url(#goldGrad)"/>
+    
+    <!-- Detalhe da barra de voucher na base -->
+    <rect x="20" y="52" width="24" height="2.5" rx="1.25" fill="url(#goldGrad)" opacity="0.85"/>
+  </g>
+</svg>

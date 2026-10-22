@@ -1312,6 +1312,7 @@ async function sincronizarCotas() {
   // 6. Buscar usuários
   await carregarUsuarios();
 
+  popularDatalistSociosVoucher();
   renderStatsCotas();
   renderTabelaCotas();
   renderTabelaReservas();
@@ -2472,13 +2473,38 @@ function popularDatalistSociosVoucher() {
   const datalist = document.getElementById('datalistSociosVoucher');
   if (!datalist) return;
   const nomesUnicos = [...new Set(listaCotas.map(c => (c.nome_socio || '').trim()).filter(Boolean))].sort();
-  datalist.innerHTML = nomesUnicos.map(nome => `<option value="${escHtml(nome)}"></option>`).join('');
+  datalist.innerHTML = nomesUnicos.map(nome => `<option value="${escHtml(nome)}">${escHtml(nome)}</option>`).join('');
 }
+window.popularDatalistSociosVoucher = popularDatalistSociosVoucher;
+
+function selecionarSocioSugestao(nomeSocio) {
+  const inNome = document.getElementById('inputNome');
+  if (!inNome) return;
+  inNome.value = nomeSocio;
+  fecharSugestoesSocios();
+  atualizarDicaSocioVoucher(nomeSocio);
+}
+window.selecionarSocioSugestao = selecionarSocioSugestao;
+
+function fecharSugestoesSocios() {
+  const dropdown = document.getElementById('dropdownSugestoesSocios');
+  if (dropdown) dropdown.classList.add('hidden');
+}
+window.fecharSugestoesSocios = fecharSugestoesSocios;
 
 function atualizarDicaSocioVoucher(nomeDigitado) {
   const infoEl = document.getElementById('inputNomeInfoSocio');
+  const dropdown = document.getElementById('dropdownSugestoesSocios');
+
+  // Garante que o datalist esteja sempre populado
+  const datalist = document.getElementById('datalistSociosVoucher');
+  if (datalist && datalist.children.length === 0) {
+    popularDatalistSociosVoucher();
+  }
+
   if (!nomeDigitado || !nomeDigitado.trim()) {
     if (infoEl) infoEl.textContent = '';
+    fecharSugestoesSocios();
     return;
   }
 
@@ -2486,6 +2512,7 @@ function atualizarDicaSocioVoucher(nomeDigitado) {
   const cotaEncontrada = listaCotas.find(c => (c.nome_socio || '').trim().toUpperCase() === termo);
 
   if (cotaEncontrada) {
+    fecharSugestoesSocios();
     const cotasDoMesmoSocio = listaCotas.filter(c => (c.nome_socio || '').trim().toUpperCase() === termo);
     const produtos = cotasDoMesmoSocio.map(c => c.produto).join(', ');
     const diariasCalc = calcularDiariasSocio(cotaEncontrada.nome_socio);
@@ -2503,16 +2530,52 @@ function atualizarDicaSocioVoucher(nomeDigitado) {
     adequarTextosPorDiarias();
   } else {
     document.getElementById('cotaVinculadaId').value = '';
-    const sugestoes = listaCotas.filter(c => (c.nome_socio || '').toUpperCase().includes(termo));
+
+    // Buscar sócios que contenham o termo digitado
+    const sugestoesMap = new Map();
+    listaCotas.forEach(c => {
+      const nome = (c.nome_socio || '').trim();
+      if (nome && nome.toUpperCase().includes(termo)) {
+        if (!sugestoesMap.has(nome)) {
+          sugestoesMap.set(nome, c);
+        }
+      }
+    });
+
+    const sugestoes = Array.from(sugestoesMap.values());
+
     if (infoEl) {
       if (sugestoes.length > 0) {
-        infoEl.textContent = `🔍 ${sugestoes.length} sócio(s) na base com este termo. Selecione na lista.`;
+        infoEl.textContent = `🔍 ${sugestoes.length} sócio(s) na base com este termo. Selecione na lista abaixo.`;
         infoEl.style.color = '#0284c7';
       } else {
         infoEl.textContent = 'ℹ️ Nome não cadastrado na base de cotas (será emitido como convidado avulso).';
         infoEl.style.color = '#b45309';
       }
     }
+
+    // Renderiza a caixinha de sugestões visuais interativas
+    if (dropdown) {
+      if (sugestoes.length > 0) {
+        dropdown.innerHTML = sugestoes.slice(0, 8).map(c => {
+          const diarias = calcularDiariasSocio(c.nome_socio);
+          const escapedNome = escHtml(c.nome_socio).replace(/'/g, "\\'");
+          return `
+            <div class="sugestao-socio-item" onclick="selecionarSocioSugestao('${escapedNome}')">
+              <div>
+                <strong>${escHtml(c.nome_socio)}</strong>
+                <div style="font-size:.72rem;color:var(--text-3);">${escHtml(c.produto)} • Sala ${escHtml(c.sala_venda || 'VILLA')}</div>
+              </div>
+              <span class="badge badge-green" style="font-size:.7rem;padding:2px 6px;">${diarias} diárias</span>
+            </div>
+          `;
+        }).join('');
+        dropdown.classList.remove('hidden');
+      } else {
+        dropdown.classList.add('hidden');
+      }
+    }
+
     adequarTextosPorDiarias();
   }
 }
@@ -2626,6 +2689,8 @@ async function abrirModalEditar(id) {
     showToast('⚠️ Seu perfil não tem permissão para editar vouchers.', 'error');
     return;
   }
+  popularDatalistSociosVoucher();
+  fecharSugestoesSocios();
   carregarSelectModelos();
   const { data: v, error } = await db.from('vouchers').select('*').eq('id', id).single();
   if (error || !v) { showToast('Erro ao carregar voucher', 'error'); return; }
@@ -2640,6 +2705,8 @@ async function abrirModalEditar(id) {
   document.getElementById('editId').value = v.id;
   document.getElementById('cotaVinculadaId').value = '';
   document.getElementById('inputNome').value = v.nome_socio;
+  atualizarDicaSocioVoucher(v.nome_socio);
+  fecharSugestoesSocios();
   document.getElementById('inputSala').value = v.sala_venda || '';
   document.getElementById('inputValor').value = v.valor_hospedagem !== null ? v.valor_hospedagem : '';
   document.getElementById('inputDiarias').value = v.diarias_totais || v.diarias || 2;
@@ -2737,6 +2804,7 @@ window.aoMudarCheckinEmissao = aoMudarCheckinEmissao;
 
 function fecharModal() {
   snapshotModalVoucher = null;
+  fecharSugestoesSocios();
   document.getElementById('modalOverlay').classList.add('hidden');
 }
 
@@ -3601,7 +3669,21 @@ const inpNomeVoucher = document.getElementById('inputNome');
 if (inpNomeVoucher) {
   inpNomeVoucher.addEventListener('input', (e) => atualizarDicaSocioVoucher(e.target.value));
   inpNomeVoucher.addEventListener('change', (e) => atualizarDicaSocioVoucher(e.target.value));
+  inpNomeVoucher.addEventListener('focus', (e) => {
+    popularDatalistSociosVoucher();
+    if (e.target.value && e.target.value.trim()) {
+      atualizarDicaSocioVoucher(e.target.value);
+    }
+  });
 }
+
+document.addEventListener('click', (e) => {
+  const dropdown = document.getElementById('dropdownSugestoesSocios');
+  const inNome = document.getElementById('inputNome');
+  if (dropdown && !dropdown.contains(e.target) && e.target !== inNome) {
+    fecharSugestoesSocios();
+  }
+});
 
 const inpDiarias = document.getElementById('inputDiarias');
 if (inpDiarias) {

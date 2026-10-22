@@ -1,13 +1,19 @@
-// ── Forçar exibição imediata do Favicon oficial ─────────────────
+// ── Forçar exibição imediata do Favicon oficial de Voucher / Ticket ──
 (function garantirFavicon() {
-  const iconB64 = 'data:image/png;base64,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';
+  const iconB64 = 'data:image/png;base64,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';
   const existing = document.querySelectorAll("link[rel*='icon']");
   existing.forEach(el => el.parentNode && el.parentNode.removeChild(el));
-  const link = document.createElement('link');
-  link.type = 'image/png';
-  link.rel = 'icon';
-  link.href = iconB64;
-  document.head.appendChild(link);
+  const linkSvg = document.createElement('link');
+  linkSvg.type = 'image/svg+xml';
+  linkSvg.rel = 'icon';
+  linkSvg.href = 'favicon.svg?v=20261022_08';
+  document.head.appendChild(linkSvg);
+  const linkPng = document.createElement('link');
+  linkPng.type = 'image/png';
+  linkPng.rel = 'icon';
+  linkPng.sizes = '32x32';
+  linkPng.href = iconB64;
+  document.head.appendChild(linkPng);
 })();
 
 // ── Inicializa Supabase ────────────────────────────────────────
@@ -790,6 +796,64 @@ function renderBannerPosVenda() {
 }
 window.renderBannerPosVenda = renderBannerPosVenda;
 
+// Renderiza banner de vouchers aguardando assinatura do Márcio
+function renderBannerAguardandoAssinatura() {
+  const container = document.getElementById('bannerAlertaAguardandoAssinatura');
+  if (!container) return;
+
+  const aguardando = (listaVouchers || []).filter(v => !v.cancelado && v.status_fluxo === 'aguardando_assinatura');
+  const total = aguardando.length;
+
+  if (total === 0) {
+    container.classList.add('hidden');
+    container.innerHTML = '';
+    return;
+  }
+
+  const pluralVoucher = total === 1 ? 'voucher aguardando assinatura' : 'vouchers aguardando assinatura';
+  const isMarcio = perfilAtivo === 'admin';
+
+  const chipsHtml = aguardando.slice(0, 4).map(v => {
+    const tot = v.diarias_totais || v.diarias || 2;
+    return `
+      <span class="banner-posvenda-chip" style="background:#fef3c7;border-color:#fde68a;color:#92400e;" title="Emitido por ${v.pos_venda_nome || 'Pós Venda'}">
+        ✍️ <strong>#${v.numero || v.codigo}</strong> — ${escHtml(v.nome_socio)} (${tot}d)
+      </span>
+    `;
+  }).join('');
+  const maisQtd = total > 4 ? `<span class="banner-posvenda-chip" style="background:#fef3c7;border-color:#fde68a;color:#92400e;">+${total - 4} outro(s)</span>` : '';
+
+  container.classList.remove('hidden');
+  container.innerHTML = `
+    <div class="banner-aguarda-assinatura">
+      <div style="flex:1;min-width:280px;">
+        <div class="banner-aguarda-assinatura-title">
+          <span>✍️ VOUCHERS AGUARDANDO ASSINATURA DO MÁRCIO</span>
+          <span class="banner-posvenda-badge" style="background:#f59e0b;color:#fff;">${total} ${pluralVoucher}</span>
+        </div>
+        <div class="banner-aguarda-assinatura-desc">
+          ${isMarcio 
+            ? `Você possui <strong>${total} ${pluralVoucher}</strong> emitido(s) pelo Pós Venda aguardando sua assinatura e liberação oficial.` 
+            : `Constam no sistema <strong>${total} ${pluralVoucher}</strong> aguardando assinatura oficial do Márcio Pimenta.`}
+        </div>
+        <div class="banner-posvenda-chips" style="margin-top:.45rem;">
+          ${chipsHtml}
+          ${maisQtd}
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+        <button class="btn-notif-whatsapp" onclick="solicitarAssinaturaMarcioWhatsApp()" style="font-size:.82rem;padding:.45rem .95rem;">
+          📲 Solicitar Assinatura do Márcio (${total})
+        </button>
+        <button class="btn btn-ghost" onclick="filtrarVouchersStatusRapido('aguardando_assinatura')" style="font-size:.8rem;padding:.45rem .85rem;background:rgba(255,255,255,0.85);border:1px solid #fcd34d;color:#92400e;font-weight:700;">
+          🔍 Ver Vouchers (${total})
+        </button>
+      </div>
+    </div>
+  `;
+}
+window.renderBannerAguardandoAssinatura = renderBannerAguardandoAssinatura;
+
 // ── Vouchers com Check-out Realizado e Sem Baixa de Diárias ──────
 function obterVouchersCheckoutPassadoSemBaixa() {
   const hojeStr = new Date().toISOString().split('T')[0];
@@ -975,7 +1039,9 @@ function renderTabelaInconsistencias() {
 }
 window.renderTabelaInconsistencias = renderTabelaInconsistencias;
 
-// Notificações via WhatsApp para o Márcio Pimenta
+// Notificações via WhatsApp para o Márcio Pimenta (83 99315-4890)
+const TELEFONE_MARCIO_WHATSAPP = '5583993154890';
+
 function notificarMarcioInconsistencia(voucherCodigo) {
   const incs = auditarInconsistenciasVouchers();
   const inc = incs.find(i => i.voucher.codigo === voucherCodigo);
@@ -1007,7 +1073,7 @@ function notificarMarcioInconsistencia(voucherCodigo) {
     `Favor verificar e homologar a liberação no painel do sistema.`
   ].join('\n');
 
-  const urlWhats = `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
+  const urlWhats = `https://api.whatsapp.com/send?phone=${TELEFONE_MARCIO_WHATSAPP}&text=${encodeURIComponent(texto)}`;
   window.open(urlWhats, '_blank');
 }
 window.notificarMarcioInconsistencia = notificarMarcioInconsistencia;
@@ -1037,10 +1103,75 @@ function notificarMarcioWhatsAppGeral() {
     `Aguardamos suas instruções para homologação ou retificação.`
   ].join('\n');
 
-  const urlWhats = `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
+  const urlWhats = `https://api.whatsapp.com/send?phone=${TELEFONE_MARCIO_WHATSAPP}&text=${encodeURIComponent(texto)}`;
   window.open(urlWhats, '_blank');
 }
 window.notificarMarcioWhatsAppGeral = notificarMarcioWhatsAppGeral;
+
+function solicitarAssinaturaMarcioWhatsApp(voucherCodigoOpcional) {
+  const linkBase = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}`;
+
+  if (voucherCodigoOpcional) {
+    const v = (listaVouchers || []).find(item => item.codigo === voucherCodigoOpcional);
+    if (!v) {
+      showToast('Voucher não localizado', 'error');
+      return;
+    }
+    const tot = v.diarias_totais || v.diarias || 2;
+    const linkVoucherIndiv = `${linkBase}voucher.html?v=${v.codigo}`;
+    const texto = [
+      `✍️ *SOLICITAÇÃO DE ASSINATURA DE VOUCHER — VILLAMOR* ✍️`,
+      ``,
+      `Prezado Márcio Pimenta,`,
+      ``,
+      `O voucher abaixo foi emitido pelo Pós Venda e aguarda sua conferência e assinatura oficial:`,
+      `• *Voucher:* #${v.numero || '—'} (${v.codigo})`,
+      `• *Sócio / Convidado:* ${v.nome_socio}`,
+      `• *Diárias:* ${tot} diárias`,
+      `• *Sala de Venda:* ${v.sala_venda || 'VILLA'}`,
+      `• *Operador Emissor:* ${v.pos_venda_nome || 'Pós Venda'}`,
+      ``,
+      `🔗 *Acesse o Voucher:* ${linkVoucherIndiv}`,
+      `🔗 *Painel do Sistema:* ${linkBase}index.html`,
+      ``,
+      `Favor acessar o painel para homologar e assinar o voucher.`
+    ].join('\n');
+
+    const urlWhats = `https://api.whatsapp.com/send?phone=${TELEFONE_MARCIO_WHATSAPP}&text=${encodeURIComponent(texto)}`;
+    window.open(urlWhats, '_blank');
+    return;
+  }
+
+  // Notificação com todos os vouchers aguardando assinatura
+  const aguardando = (listaVouchers || []).filter(v => !v.cancelado && v.status_fluxo === 'aguardando_assinatura');
+  if (!aguardando.length) {
+    showToast('Nenhum voucher aguardando assinatura no momento!');
+    return;
+  }
+
+  const linhas = aguardando.map((v, idx) => {
+    const tot = v.diarias_totais || v.diarias || 2;
+    return `${idx + 1}. *#${v.numero || v.codigo}* — ${v.nome_socio} (${tot}d | Sala: ${v.sala_venda || 'VILLA'} | Emissor: ${v.pos_venda_nome || 'Pós Venda'})`;
+  }).join('\n');
+
+  const texto = [
+    `✍️ *SOLICITAÇÃO DE ASSINATURA DE VOUCHERS — VILLAMOR* ✍️`,
+    ``,
+    `Prezado Márcio Pimenta,`,
+    ``,
+    `Constam no sistema *${aguardando.length} voucher(s)* emitidos pelo Pós Venda aguardando sua assinatura oficial:`,
+    ``,
+    linhas,
+    ``,
+    `🔗 *Painel de Gestão e Assinatura:* ${linkBase}index.html`,
+    ``,
+    `Favor acessar o painel para homologar e assinar os vouchers pendentes.`
+  ].join('\n');
+
+  const urlWhats = `https://api.whatsapp.com/send?phone=${TELEFONE_MARCIO_WHATSAPP}&text=${encodeURIComponent(texto)}`;
+  window.open(urlWhats, '_blank');
+}
+window.solicitarAssinaturaMarcioWhatsApp = solicitarAssinaturaMarcioWhatsApp;
 
 function copiarRelatorioInconsistencias() {
   const incs = auditarInconsistenciasVouchers();
@@ -1082,7 +1213,7 @@ function notificarMarcioWhatsAppModal() {
     `Por favor, confirme se a liberação excepcional está autorizada.`
   ].join('\n');
 
-  const urlWhats = `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
+  const urlWhats = `https://api.whatsapp.com/send?phone=${TELEFONE_MARCIO_WHATSAPP}&text=${encodeURIComponent(texto)}`;
   window.open(urlWhats, '_blank');
 }
 window.notificarMarcioWhatsAppModal = notificarMarcioWhatsAppModal;
@@ -1566,6 +1697,7 @@ function aplicarPermissoesPerfil() {
   renderBannerAlertaInconsistencias();
   renderStatusLeituraInconsistencias();
   renderBannerPosVenda();
+  renderBannerAguardandoAssinatura();
   renderBannerCheckoutSemBaixa();
   renderBannerReservasVouchersAssinados();
 }
@@ -1647,6 +1779,7 @@ async function sincronizarCotas() {
   renderBannerAlertaInconsistencias();
   renderStatusLeituraInconsistencias();
   renderBannerPosVenda();
+  renderBannerAguardandoAssinatura();
   renderBannerCheckoutSemBaixa();
   renderBannerReservasVouchersAssinados();
 }
@@ -1924,8 +2057,21 @@ function renderStatsVouchers(dados) {
   renderBannerAlertaInconsistencias();
   renderStatusLeituraInconsistencias();
   renderBannerPosVenda();
+  renderBannerAguardandoAssinatura();
   renderBannerCheckoutSemBaixa();
   renderBannerReservasVouchersAssinados();
+
+  // Atualizar botão rápido no topo dos filtros da lista de vouchers
+  const btnTopo = document.getElementById('btnSolicitarAssinaturaMarcioTopo');
+  const countTopo = document.getElementById('countBtnSolicitarAssinatura');
+  if (btnTopo && countTopo) {
+    if (aguardando > 0) {
+      btnTopo.style.display = 'inline-flex';
+      countTopo.textContent = aguardando;
+    } else {
+      btnTopo.style.display = 'none';
+    }
+  }
 
   // Atualizar badge no menu superior
   const badgeV = document.getElementById('badgeTotalVouchers');
@@ -2110,6 +2256,10 @@ function renderTabelaVouchers(dados) {
             ${incDoVoucher && !isCancelado ? `
             <button class="btn btn-sm btn-notif-whatsapp" onclick="notificarMarcioInconsistencia('${escHtml(v.codigo)}')" title="Notificar Márcio no WhatsApp" style="padding:.25rem .5rem;font-size:.74rem;">
               📲 Márcio
+            </button>` : ''}
+            ${isPendenteAssinatura && !isCancelado ? `
+            <button class="btn btn-sm btn-notif-whatsapp" onclick="solicitarAssinaturaMarcioWhatsApp('${escHtml(v.codigo)}')" title="Enviar mensagem no WhatsApp do Márcio solicitando a assinatura deste voucher" style="padding:.28rem .55rem;font-size:.76rem;">
+              📲 Pedir Assinatura
             </button>` : ''}
             ${isPendenteAssinatura && perfilAtivo === 'admin' ? `
             <button class="btn btn-primary" style="padding:.28rem .6rem;font-size:.76rem;background:#0f766e;border-color:#0f766e;" onclick="abrirModalAssinarVoucher('${v.id}')" title="Conferir e assinar voucher">

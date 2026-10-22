@@ -36,7 +36,7 @@ if (!listaUsuarios || !Array.isArray(listaUsuarios) || !listaUsuarios.length) {
 }
 let usuarioLogado = JSON.parse(sessionStorage.getItem('rsm_usuario_logado') || 'null');
 let perfilAtivo = usuarioLogado ? usuarioLogado.perfil : (sessionStorage.getItem('rsm_perfil_ativo') || null);
-let abaAtiva = 'cotas'; // 'cotas', 'vouchers', 'solicitacoes', 'reservas', 'modelos', 'usuarios'
+let abaAtiva = 'vouchers'; // Tela principal padrão para todos: 'vouchers'
 let filtroStatusVouchers = '';
 let filtroCotas = 'todos';
 let buscaVouchersTimer = null;
@@ -1149,6 +1149,7 @@ function initControleAcesso() {
         showToast(`Bem-vindo(a), ${usr.nome}!`);
         aplicarPermissoesPerfil();
         sincronizarCotas();
+        mudarAba('vouchers');
       } else {
         showToast('Usuário ou senha incorretos.', 'error');
         if (sInput) { sInput.select(); sInput.focus(); }
@@ -1238,7 +1239,7 @@ function aplicarPermissoesPerfil() {
     tabModelos.style.display = 'inline-flex'; // Pós Venda pode acessar os modelos de voucher
     if (tabUsuarios) tabUsuarios.style.display = 'none';
     if (tabInconsistencias) tabInconsistencias.style.display = 'inline-flex';
-    if (abaAtiva === 'reservas' || abaAtiva === 'usuarios') mudarAba('cotas');
+    if (abaAtiva === 'reservas' || abaAtiva === 'usuarios') mudarAba('vouchers');
   } else if (perfilAtivo === 'reservas' || perfilAtivo === 'recepcao') {
     btnAssinatura.style.display = 'none';
     btnNovo.style.display = 'none';
@@ -1249,7 +1250,7 @@ function aplicarPermissoesPerfil() {
     tabModelos.style.display = 'none';
     if (tabUsuarios) tabUsuarios.style.display = 'none';
     if (tabInconsistencias) tabInconsistencias.style.display = 'none';
-    if (abaAtiva !== 'vouchers' && abaAtiva !== 'reservas' && abaAtiva !== 'solicitacoes') mudarAba('reservas');
+    if (abaAtiva !== 'vouchers' && abaAtiva !== 'reservas' && abaAtiva !== 'solicitacoes') mudarAba('vouchers');
   }
 
   atualizarBadgeSolicitacoes();
@@ -1329,6 +1330,9 @@ async function sincronizarCotas() {
   renderTabelaCotas();
   renderTabelaReservas();
   renderStatsVouchers(listaVouchers);
+  if (abaAtiva === 'vouchers') {
+    carregarVouchers();
+  }
   renderBannerAlertaInconsistencias();
   renderBannerPosVenda();
   renderBannerCheckoutSemBaixa();
@@ -4344,6 +4348,8 @@ carregarUsuarios();
 initControleAcesso();
 initCanvasAssinatura();
 carregarSelectModelos();
-sincronizarCotas();
+sincronizarCotas().then(() => {
+  mudarAba('vouchers');
+});
 
 

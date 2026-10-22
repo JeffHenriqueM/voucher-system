@@ -6,7 +6,7 @@
   const linkSvg = document.createElement('link');
   linkSvg.type = 'image/svg+xml';
   linkSvg.rel = 'icon';
-  linkSvg.href = 'favicon.svg?v=20261022_08';
+  linkSvg.href = 'favicon.svg?v=20261022_09';
   document.head.appendChild(linkSvg);
   const linkPng = document.createElement('link');
   linkPng.type = 'image/png';
@@ -49,6 +49,18 @@ let buscaVouchersTimer = null;
 let buscaCotasTimer = null;
 let buscaReservasTimer = null;
 let idParaDeletar = null;
+
+// ── Estado de Expansão / Diminuição dos Cards Responsivos ────────
+let vouchersCardsRecolhidos = new Set();
+let vouchersCardsExpandidos = new Set();
+let modoCardsVouchersRecolhidoGeral = localStorage.getItem('rsm_cards_collapsed_mode') === 'true';
+
+let solicsCardsRecolhidos = new Set();
+let solicsCardsExpandidos = new Set();
+let modoCardsSolicRecolhidoGeral = localStorage.getItem('rsm_cards_solic_collapsed_mode') === 'true';
+
+let reservasCardsRecolhidos = new Set();
+let reservasCardsExpandidos = new Set();
 
 // Modelos padrão de voucher
 const MODELOS_PADRAO = [
@@ -2089,6 +2101,186 @@ function renderStatsVouchers(dados) {
   }
 }
 
+// ── Funções de Expansão / Diminuição dos Cartões Responsivos ─────
+function toggleVoucherCard(id, event) {
+  if (event) event.stopPropagation();
+  const row = document.getElementById(`card-voucher-${id}`);
+  if (!row) return;
+
+  const willCollapse = !row.classList.contains('is-collapsed');
+  row.classList.toggle('is-collapsed', willCollapse);
+  row.classList.toggle('is-expanded', !willCollapse);
+
+  if (willCollapse) {
+    vouchersCardsRecolhidos.add(id);
+    vouchersCardsExpandidos.delete(id);
+  } else {
+    vouchersCardsExpandidos.add(id);
+    vouchersCardsRecolhidos.delete(id);
+  }
+
+  const btn = row.querySelector('.btn-card-toggle');
+  if (btn) {
+    btn.innerHTML = willCollapse 
+      ? `<span class="btn-card-toggle-text">Expandir</span><span class="btn-card-toggle-icon">▼</span>`
+      : `<span class="btn-card-toggle-text">Diminuir</span><span class="btn-card-toggle-icon">▲</span>`;
+    btn.setAttribute('aria-expanded', willCollapse ? 'false' : 'true');
+  }
+
+  atualizarBotaoToggleTodosVouchers();
+}
+window.toggleVoucherCard = toggleVoucherCard;
+
+function toggleTodosCardsVouchers() {
+  const rows = document.querySelectorAll('.voucher-card-row');
+  if (!rows.length) return;
+
+  const recolhidosCount = document.querySelectorAll('.voucher-card-row.is-collapsed').length;
+  const recolherTodos = recolhidosCount <= rows.length / 2;
+
+  modoCardsVouchersRecolhidoGeral = recolherTodos;
+  localStorage.setItem('rsm_cards_collapsed_mode', recolherTodos ? 'true' : 'false');
+  vouchersCardsRecolhidos.clear();
+  vouchersCardsExpandidos.clear();
+
+  rows.forEach(row => {
+    const id = row.getAttribute('data-voucher-id');
+    row.classList.toggle('is-collapsed', recolherTodos);
+    row.classList.toggle('is-expanded', !recolherTodos);
+    if (recolherTodos) {
+      if (id) vouchersCardsRecolhidos.add(id);
+    } else {
+      if (id) vouchersCardsExpandidos.add(id);
+    }
+    const btn = row.querySelector('.btn-card-toggle');
+    if (btn) {
+      btn.innerHTML = recolherTodos
+        ? `<span class="btn-card-toggle-text">Expandir</span><span class="btn-card-toggle-icon">▼</span>`
+        : `<span class="btn-card-toggle-text">Diminuir</span><span class="btn-card-toggle-icon">▲</span>`;
+      btn.setAttribute('aria-expanded', recolherTodos ? 'false' : 'true');
+    }
+  });
+
+  atualizarBotaoToggleTodosVouchers();
+}
+window.toggleTodosCardsVouchers = toggleTodosCardsVouchers;
+
+function atualizarBotaoToggleTodosVouchers() {
+  const lbl = document.getElementById('lblToggleTodosVouchers');
+  if (!lbl) return;
+  const rows = document.querySelectorAll('.voucher-card-row');
+  if (!rows.length) {
+    lbl.textContent = 'Diminuir Todos';
+    return;
+  }
+  const recolhidosCount = document.querySelectorAll('.voucher-card-row.is-collapsed').length;
+  if (recolhidosCount > rows.length / 2) {
+    lbl.textContent = 'Expandir Todos';
+  } else {
+    lbl.textContent = 'Diminuir Todos';
+  }
+}
+window.atualizarBotaoToggleTodosVouchers = atualizarBotaoToggleTodosVouchers;
+
+function toggleSolicCard(id, event) {
+  if (event) event.stopPropagation();
+  const row = document.getElementById(`card-solic-${id}`);
+  if (!row) return;
+
+  const willCollapse = !row.classList.contains('is-collapsed');
+  row.classList.toggle('is-collapsed', willCollapse);
+  row.classList.toggle('is-expanded', !willCollapse);
+
+  if (willCollapse) {
+    solicsCardsRecolhidos.add(id);
+    solicsCardsExpandidos.delete(id);
+  } else {
+    solicsCardsExpandidos.add(id);
+    solicsCardsRecolhidos.delete(id);
+  }
+
+  const btn = row.querySelector('.btn-card-toggle');
+  if (btn) {
+    btn.innerHTML = willCollapse 
+      ? `<span class="btn-card-toggle-text">Expandir</span><span class="btn-card-toggle-icon">▼</span>`
+      : `<span class="btn-card-toggle-text">Diminuir</span><span class="btn-card-toggle-icon">▲</span>`;
+    btn.setAttribute('aria-expanded', willCollapse ? 'false' : 'true');
+  }
+
+  atualizarBotaoToggleTodosSolic();
+}
+window.toggleSolicCard = toggleSolicCard;
+
+function toggleTodosCardsSolic() {
+  const rows = document.querySelectorAll('.solic-card-row');
+  if (!rows.length) return;
+
+  const recolhidosCount = document.querySelectorAll('.solic-card-row.is-collapsed').length;
+  const recolherTodos = recolhidosCount <= rows.length / 2;
+
+  modoCardsSolicRecolhidoGeral = recolherTodos;
+  localStorage.setItem('rsm_cards_solic_collapsed_mode', recolherTodos ? 'true' : 'false');
+  solicsCardsRecolhidos.clear();
+  solicsCardsExpandidos.clear();
+
+  rows.forEach(row => {
+    const id = row.getAttribute('data-solic-id');
+    row.classList.toggle('is-collapsed', recolherTodos);
+    row.classList.toggle('is-expanded', !recolherTodos);
+    if (recolherTodos) {
+      if (id) solicsCardsRecolhidos.add(id);
+    } else {
+      if (id) solicsCardsExpandidos.add(id);
+    }
+    const btn = row.querySelector('.btn-card-toggle');
+    if (btn) {
+      btn.innerHTML = recolherTodos
+        ? `<span class="btn-card-toggle-text">Expandir</span><span class="btn-card-toggle-icon">▼</span>`
+        : `<span class="btn-card-toggle-text">Diminuir</span><span class="btn-card-toggle-icon">▲</span>`;
+      btn.setAttribute('aria-expanded', recolherTodos ? 'false' : 'true');
+    }
+  });
+
+  atualizarBotaoToggleTodosSolic();
+}
+window.toggleTodosCardsSolic = toggleTodosCardsSolic;
+
+function atualizarBotaoToggleTodosSolic() {
+  const lbl = document.getElementById('lblToggleTodosSolic');
+  if (!lbl) return;
+  const rows = document.querySelectorAll('.solic-card-row');
+  if (!rows.length) {
+    lbl.textContent = 'Diminuir Todas';
+    return;
+  }
+  const recolhidosCount = document.querySelectorAll('.solic-card-row.is-collapsed').length;
+  if (recolhidosCount > rows.length / 2) {
+    lbl.textContent = 'Expandir Todas';
+  } else {
+    lbl.textContent = 'Diminuir Todas';
+  }
+}
+window.atualizarBotaoToggleTodosSolic = atualizarBotaoToggleTodosSolic;
+
+function toggleReservaCard(id, event) {
+  if (event) event.stopPropagation();
+  const row = document.getElementById(`card-reserva-${id}`);
+  if (!row) return;
+
+  const willCollapse = !row.classList.contains('is-collapsed');
+  row.classList.toggle('is-collapsed', willCollapse);
+  row.classList.toggle('is-expanded', !willCollapse);
+
+  const btn = row.querySelector('.btn-card-toggle');
+  if (btn) {
+    btn.innerHTML = willCollapse 
+      ? `<span class="btn-card-toggle-text">Expandir</span><span class="btn-card-toggle-icon">▼</span>`
+      : `<span class="btn-card-toggle-text">Diminuir</span><span class="btn-card-toggle-icon">▲</span>`;
+    btn.setAttribute('aria-expanded', willCollapse ? 'false' : 'true');
+  }
+}
+window.toggleReservaCard = toggleReservaCard;
+
 function renderTabelaVouchers(dados) {
   const tbody = document.getElementById('tbodyVouchers');
 
@@ -2175,38 +2367,55 @@ function renderTabelaVouchers(dados) {
     const obsReal = obterObservacaoReal(v);
     const temObs = Boolean(obsReal);
     const incDoVoucher = auditarInconsistenciasVouchers().find(i => i.voucher.codigo === v.codigo);
+    const isCardRecolhido = modoCardsVouchersRecolhidoGeral
+      ? !vouchersCardsExpandidos.has(v.id)
+      : vouchersCardsRecolhidos.has(v.id);
 
     return `
-      <tr class="voucher-card-row ${isCancelado ? 'voucher-row-cancelado' : ''}" style="${isCancelado ? 'background:rgba(254,226,226,0.18);' : ''}">
-        <td class="col-card-top" data-label="Número">
+      <tr class="voucher-card-row ${isCardRecolhido ? 'is-collapsed' : 'is-expanded'} ${isCancelado ? 'voucher-row-cancelado' : ''}" id="card-voucher-${v.id}" data-voucher-id="${v.id}" style="${isCancelado ? 'background:rgba(254,226,226,0.18);' : ''}">
+        <td class="col-card-top" data-label="Número" onclick="toggleVoucherCard('${v.id}')">
           <div class="card-num-wrap">
             <strong class="card-voucher-num">#${v.numero || '—'}</strong>
-            ${temObs ? `<span class="badge-obs-alerta" onclick="abrirModalObservacaoVoucher('${v.id}')" style="cursor:pointer;" title="Clique para ler a observação completa">⚠️ OBS</span>` : ''}
+            ${temObs ? `<span class="badge-obs-alerta" onclick="event.stopPropagation(); abrirModalObservacaoVoucher('${v.id}')" style="cursor:pointer;" title="Clique para ler a observação completa">⚠️ OBS</span>` : ''}
             ${incDoVoucher ? `
-              <span class="badge-inconsistente" onclick="mudarAba('inconsistencias')" style="cursor:pointer;" title="${escHtml(incDoVoucher.motivo)}">
+              <span class="badge-inconsistente" onclick="event.stopPropagation(); mudarAba('inconsistencias')" style="cursor:pointer;" title="${escHtml(incDoVoucher.motivo)}">
                 ⚠️ Fora da regra
               </span>` : ''}
           </div>
-          <div class="mobile-only-status">
-            ${statusBadge}
+          <div class="card-top-right-wrap">
+            <div class="mobile-only-status">
+              ${statusBadge}
+            </div>
+            <button type="button" class="btn-card-toggle" onclick="event.stopPropagation(); toggleVoucherCard('${v.id}')" title="Expandir ou diminuir detalhes do voucher" aria-expanded="${!isCardRecolhido}">
+              <span class="btn-card-toggle-text">${isCardRecolhido ? 'Expandir' : 'Diminuir'}</span>
+              <span class="btn-card-toggle-icon">${isCardRecolhido ? '▼' : '▲'}</span>
+            </button>
           </div>
         </td>
-        <td class="col-card-socio" data-label="Sócio">
-          <div class="card-socio-name">${escHtml(v.nome_socio)}</div>
-          ${v.sala_venda ? `<div class="card-socio-sala">Sala: ${escHtml(v.sala_venda)}</div>` : ''}
+        <td class="col-card-socio" data-label="Sócio" onclick="toggleVoucherCard('${v.id}')">
+          <div class="card-socio-header-flex">
+            <div>
+              <div class="card-socio-name">${escHtml(v.nome_socio)}</div>
+              ${v.sala_venda ? `<div class="card-socio-sala">Sala: ${escHtml(v.sala_venda)}</div>` : ''}
+            </div>
+            <div class="card-mini-summary-pill">
+              <span class="diarias-pill ${isCancelado ? 'diarias-usadas' : 'diarias-saldo'}" style="font-size:.72rem;">${isCancelado ? 'Cancelado' : `${saldo}d saldo`}</span>
+              <a href="${linkVoucher(v.codigo)}" target="_blank" class="card-quick-ver-btn" onclick="event.stopPropagation();" title="Abrir Voucher">👁️ Ver</a>
+            </div>
+          </div>
           ${incDoVoucher ? `
             <div class="card-socio-inc-warning" style="font-size:.72rem;color:#b91c1c;margin-top:2px;">
               ⚠️ Limite Cota: ${incDoVoucher.diarias_permitidas}d | Total Concedido: ${incDoVoucher.diarias_emitidas_total}d
             </div>
           ` : ''}
           ${isCancelado ? `
-            <div class="voucher-cancelado-strip" onclick="abrirModalVerMotivoCancelamentoVoucher('${v.id}')" style="cursor:pointer;margin-top:4px;padding:3px 8px;background:#fee2e2;border-radius:4px;border:1px solid #fecaca;display:inline-flex;align-items:center;gap:5px;font-size:.72rem;color:#991b1b;" title="Clique para ver motivo completo do cancelamento">
+            <div class="voucher-cancelado-strip" onclick="event.stopPropagation(); abrirModalVerMotivoCancelamentoVoucher('${v.id}')" style="cursor:pointer;margin-top:4px;padding:3px 8px;background:#fee2e2;border-radius:4px;border:1px solid #fecaca;display:inline-flex;align-items:center;gap:5px;font-size:.72rem;color:#991b1b;" title="Clique para ver motivo completo do cancelamento">
               <span>🚫 <strong>Cancelado:</strong> ${escHtml(dadosCancelamento ? dadosCancelamento.motivo : 'Sem motivo informado')}</span>
               <span style="text-decoration:underline;font-size:.68rem;">🔍 Ver</span>
             </div>
           ` : ''}
           ${temObs ? `
-            <div class="voucher-obs-strip" onclick="abrirModalObservacaoVoucher('${v.id}')" style="cursor:pointer;" title="Clique para ler a observação completa">
+            <div class="voucher-obs-strip" onclick="event.stopPropagation(); abrirModalObservacaoVoucher('${v.id}')" style="cursor:pointer;" title="Clique para ler a observação completa">
               <span class="voucher-obs-icon">📝</span>
               <span class="voucher-obs-label">OBS</span>
               <span class="voucher-obs-text">${escHtml(obsReal)}</span>
@@ -2214,11 +2423,11 @@ function renderTabelaVouchers(dados) {
             </div>
           ` : ''}
         </td>
-        <td class="col-card-vencimento" data-label="Vencimento">
+        <td class="col-card-vencimento card-collapsible-detail" data-label="Vencimento">
           <div class="card-cell-label">📅 Validade</div>
           <div class="card-cell-content">${vencimentoHtml}</div>
         </td>
-        <td class="col-card-diarias" data-label="Diárias">
+        <td class="col-card-diarias card-collapsible-detail" data-label="Diárias">
           <div class="card-cell-label">🏨 Diárias</div>
           <div class="card-cell-content">
             <span class="diarias-pill ${isCancelado ? 'diarias-usadas' : 'diarias-disponiveis'}" title="Concedidas">${tot} tot</span> /
@@ -2226,7 +2435,7 @@ function renderTabelaVouchers(dados) {
             <span class="diarias-pill ${isCancelado ? 'diarias-usadas' : 'diarias-saldo'}" title="Saldo">${isCancelado ? 0 : saldo} saldo</span>
           </div>
         </td>
-        <td class="col-card-trilha" data-label="Auditoria">
+        <td class="col-card-trilha card-collapsible-detail" data-label="Auditoria">
           <div class="card-cell-label">📋 Trilha & Auditoria</div>
           <div class="card-cell-content">${trilhaHtml}</div>
         </td>
@@ -2239,7 +2448,7 @@ function renderTabelaVouchers(dados) {
             Copiar link
           </button>
         </td>
-        <td class="col-card-acoes" data-label="Ações">
+        <td class="col-card-acoes card-collapsible-detail" data-label="Ações">
           <div class="actions card-actions-flex">
             <a href="${linkVoucher(v.codigo)}" target="_blank" class="btn btn-sm btn-primary-card" title="Visualizar / Imprimir Voucher">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
@@ -2293,6 +2502,8 @@ function renderTabelaVouchers(dados) {
       </tr>
     `;
   }).join('');
+
+  atualizarBotaoToggleTodosVouchers();
 }
 
 // ── Renderização da Aba de Baixa de Reservas ────────────────────
@@ -2430,20 +2641,33 @@ function renderTabelaReservas() {
     const temObs = Boolean(obsReal);
 
     return `
-      <tr class="reserva-card-row">
-        <td class="col-card-top" data-label="Voucher">
+      <tr class="reserva-card-row is-expanded" id="card-reserva-${v.id}" data-reserva-id="${v.id}">
+        <td class="col-card-top" data-label="Voucher" onclick="toggleReservaCard('${v.id}')">
           <div class="card-num-wrap">
             <strong class="card-voucher-num">#${v.numero || v.codigo}</strong>
-            ${temObs ? `<span class="badge-obs-alerta" onclick="abrirModalObservacaoVoucher('${v.id}')" style="cursor:pointer;" title="Clique para ler a observação completa">⚠️ OBS</span>` : ''}
+            ${temObs ? `<span class="badge-obs-alerta" onclick="event.stopPropagation(); abrirModalObservacaoVoucher('${v.id}')" style="cursor:pointer;" title="Clique para ler a observação completa">⚠️ OBS</span>` : ''}
           </div>
-          <div class="mobile-only-status">
-            ${isCancelado ? '<span class="badge badge-red">🚫 Cancelado</span>' : (isUsadoTotal ? '<span class="badge">✓ Baixado</span>' : (isCheckoutPassadoSemBaixa ? '<span class="badge" style="background:#ffedd5;color:#c2410c;font-weight:700;">🛎️ Checkout Pendente</span>' : (isSemAssinatura ? '<span class="badge badge-yellow">✍️ Sem Assinatura</span>' : (isVencido ? '<span class="badge badge-red">⚠️ Vencido</span>' : '<span class="badge badge-green">✓ Disponível</span>'))))}
+          <div class="card-top-right-wrap">
+            <div class="mobile-only-status">
+              ${isCancelado ? '<span class="badge badge-red">🚫 Cancelado</span>' : (isUsadoTotal ? '<span class="badge">✓ Baixado</span>' : (isCheckoutPassadoSemBaixa ? '<span class="badge" style="background:#ffedd5;color:#c2410c;font-weight:700;">🛎️ Checkout Pendente</span>' : (isSemAssinatura ? '<span class="badge badge-yellow">✍️ Sem Assinatura</span>' : (isVencido ? '<span class="badge badge-red">⚠️ Vencido</span>' : '<span class="badge badge-green">✓ Disponível</span>'))))}
+            </div>
+            <button type="button" class="btn-card-toggle" onclick="event.stopPropagation(); toggleReservaCard('${v.id}')" title="Expandir ou diminuir detalhes">
+              <span class="btn-card-toggle-text">Diminuir</span>
+              <span class="btn-card-toggle-icon">▲</span>
+            </button>
           </div>
         </td>
-        <td class="col-card-socio" data-label="Sócio">
-          <div class="card-socio-name">${escHtml(v.nome_socio)}</div>
+        <td class="col-card-socio" data-label="Sócio" onclick="toggleReservaCard('${v.id}')">
+          <div class="card-socio-header-flex">
+            <div>
+              <div class="card-socio-name">${escHtml(v.nome_socio)}</div>
+            </div>
+            <div class="card-mini-summary-pill">
+              <span class="diarias-pill ${saldo > 0 ? 'diarias-disponiveis' : 'diarias-usadas'}" style="font-size:.72rem;">${saldo}d saldo</span>
+            </div>
+          </div>
           ${temObs ? `
-            <div class="voucher-obs-strip" onclick="abrirModalObservacaoVoucher('${v.id}')" style="cursor:pointer;" title="Clique para ler a observação completa">
+            <div class="voucher-obs-strip" onclick="event.stopPropagation(); abrirModalObservacaoVoucher('${v.id}')" style="cursor:pointer;" title="Clique para ler a observação completa">
               <span class="voucher-obs-icon">📝</span>
               <span class="voucher-obs-label">OBS</span>
               <span class="voucher-obs-text">${escHtml(obsReal)}</span>
@@ -2451,19 +2675,19 @@ function renderTabelaReservas() {
             </div>
           ` : ''}
         </td>
-        <td class="col-card-vencimento" data-label="Vencimento">
+        <td class="col-card-vencimento card-collapsible-detail" data-label="Vencimento">
           <div class="card-cell-label">📅 Vencimento</div>
           <div class="card-cell-content">${vencimentoHtml}</div>
         </td>
-        <td class="col-card-diarias" data-label="Concedidas">
+        <td class="col-card-diarias card-collapsible-detail" data-label="Concedidas">
           <div class="card-cell-label">🏨 Concedidas</div>
           <div class="card-cell-content">${tot} diária(s)</div>
         </td>
-        <td class="col-card-diarias-usd" data-label="Utilizadas">
+        <td class="col-card-diarias-usd card-collapsible-detail" data-label="Utilizadas">
           <div class="card-cell-label">🏨 Utilizadas</div>
           <div class="card-cell-content"><span style="color:#dc2626;font-weight:700;">${usd} diária(s)</span></div>
         </td>
-        <td class="col-card-saldo" data-label="Saldo">
+        <td class="col-card-saldo card-collapsible-detail" data-label="Saldo">
           <div class="card-cell-label">🏨 Saldo Restante</div>
           <div class="card-cell-content">
             <span class="diarias-pill ${saldo > 0 ? 'diarias-disponiveis' : 'diarias-usadas'}">${saldo} restante(s)</span>
@@ -2471,11 +2695,11 @@ function renderTabelaReservas() {
             ${isUsadoTotal ? '<div style="font-size:.7rem;color:#475569;font-weight:600;margin-top:3px;">✓ Utilizado</div>' : (isVencido ? '<div style="font-size:.7rem;color:#dc2626;font-weight:600;margin-top:3px;">⚠️ Vencido</div>' : '')}
           </div>
         </td>
-        <td class="col-card-historico" data-label="Histórico">
+        <td class="col-card-historico card-collapsible-detail" data-label="Histórico">
           <div class="card-cell-label">📖 Estadias Realizadas</div>
           <div class="card-cell-content">${histResumo}</div>
         </td>
-        <td class="col-card-acoes" data-label="Ação">
+        <td class="col-card-acoes card-collapsible-detail" data-label="Ação">
           <div class="actions card-actions-flex">
             ${botaoAcao}
           </div>
@@ -3765,45 +3989,61 @@ function renderTabelaSolicitacoes() {
       .replace(/\[CONFIRMADO_RESERVAS_EM:[^\]]*\]/gi, '')
       .trim();
     const leituraReservaInfo = extrairLeituraReservas(s);
+    const isCardRecolhido = modoCardsSolicRecolhidoGeral
+      ? !solicsCardsExpandidos.has(s.id)
+      : solicsCardsRecolhidos.has(s.id);
 
     return `
-      <tr class="solic-card-row ${isRecusada ? 'solic-row-recusada' : ''}" style="${isRecusada ? 'background:rgba(254,226,226,0.18);' : ''}">
-        <td class="col-card-top" data-label="Data">
+      <tr class="solic-card-row ${isCardRecolhido ? 'is-collapsed' : 'is-expanded'} ${isRecusada ? 'solic-row-recusada' : ''}" id="card-solic-${s.id}" data-solic-id="${s.id}" style="${isRecusada ? 'background:rgba(254,226,226,0.18);' : ''}">
+        <td class="col-card-top" data-label="Data" onclick="toggleSolicCard('${s.id}')">
           <div class="card-num-wrap">
             <span style="font-size:.8rem;color:var(--text-3);font-weight:600;">📅 ${fmtDateTime(s.created_at)}</span>
           </div>
-          <div class="mobile-only-status">
-            ${statusBadge}
+          <div class="card-top-right-wrap">
+            <div class="mobile-only-status">
+              ${statusBadge}
+            </div>
+            <button type="button" class="btn-card-toggle" onclick="event.stopPropagation(); toggleSolicCard('${s.id}')" title="Expandir ou diminuir detalhes" aria-expanded="${!isCardRecolhido}">
+              <span class="btn-card-toggle-text">${isCardRecolhido ? 'Expandir' : 'Diminuir'}</span>
+              <span class="btn-card-toggle-icon">${isCardRecolhido ? '▼' : '▲'}</span>
+            </button>
           </div>
         </td>
-        <td class="col-card-socio" data-label="Sócio">
-          <div class="card-socio-name">${escHtml(s.nome_socio)}</div>
-          <div style="font-size:.76rem;color:var(--text-3);margin-top:2px;">Solicitante: <strong>${escHtml(s.solicitante_nome || s.solicitante || 'Reservas')}</strong></div>
+        <td class="col-card-socio" data-label="Sócio" onclick="toggleSolicCard('${s.id}')">
+          <div class="card-socio-header-flex">
+            <div>
+              <div class="card-socio-name">${escHtml(s.nome_socio)}</div>
+              <div style="font-size:.76rem;color:var(--text-3);margin-top:2px;">Solicitante: <strong>${escHtml(s.solicitante_nome || s.solicitante || 'Reservas')}</strong></div>
+            </div>
+            <div class="card-mini-summary-pill">
+              <span class="diarias-pill ${isRecusada ? 'diarias-usadas' : 'diarias-saldo'}" style="font-size:.72rem;">${diariasSolic}d solicitadas</span>
+            </div>
+          </div>
           ${leituraReservaInfo ? `
             <div style="font-size:.72rem;color:#15803d;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#f0fdf4;padding:1px 6px;border-radius:4px;border:1px solid #bbf7d0;">
               <span>✓ Ciente por <strong>${escHtml(leituraReservaInfo.usuario)}</strong> em ${fmtDateTime(leituraReservaInfo.data)}</span>
             </div>
           ` : ''}
         </td>
-        <td class="col-card-periodo" data-label="Período">
+        <td class="col-card-periodo card-collapsible-detail" data-label="Período">
           <div class="card-cell-label">Período Pretendido</div>
           <div style="font-size:.82rem;font-weight:600;color:var(--primary);">${periodoStr}</div>
         </td>
-        <td class="col-card-diarias" data-label="Diárias">
+        <td class="col-card-diarias card-collapsible-detail" data-label="Diárias">
           <div class="card-cell-label">Diárias</div>
           <span class="diarias-pill ${isRecusada ? 'diarias-usadas' : 'diarias-saldo'}" style="font-size:.76rem;font-weight:700;">
             ${diariasSolic} diária(s)
           </span>
         </td>
-        <td class="col-card-modelo" data-label="Modelo">
+        <td class="col-card-modelo card-collapsible-detail" data-label="Modelo">
           <div class="card-cell-label">Modelo</div>
           <span class="badge badge-blue" style="font-size:.75rem;">${escHtml(s.modelo_nome || s.modelo_id || 'Padrão')}</span>
         </td>
-        <td class="col-card-motivo" data-label="Motivo">
+        <td class="col-card-motivo card-collapsible-detail" data-label="Motivo">
           <div class="card-cell-label">Motivo / Observação</div>
           <div style="font-size:.82rem;">${escHtml(motivoExibicao || '—')}</div>
           ${isRecusada ? `
-            <div onclick="abrirModalVerMotivoRecusa('${s.id}')" style="cursor:pointer;margin-top:4px;padding:3px 6px;background:#fee2e2;border-radius:4px;border:1px solid #fecaca;font-size:.72rem;color:#991b1b;display:inline-flex;align-items:center;gap:4px;" title="Clique para ver motivo completo">
+            <div onclick="event.stopPropagation(); abrirModalVerMotivoRecusa('${s.id}')" style="cursor:pointer;margin-top:4px;padding:3px 6px;background:#fee2e2;border-radius:4px;border:1px solid #fecaca;font-size:.72rem;color:#991b1b;display:inline-flex;align-items:center;gap:4px;" title="Clique para ver motivo completo">
               <span>⛔ <strong>Recusada:</strong> ${escHtml(dadosRecusa ? dadosRecusa.motivo : 'Sem justificativa')}</span>
               <span style="text-decoration:underline;">🔍 Ver</span>
             </div>
@@ -3815,12 +4055,14 @@ function renderTabelaSolicitacoes() {
         <td class="col-card-status desktop-only-cell" data-label="Status">
           ${statusBadge}
         </td>
-        <td class="col-card-acoes" data-label="Ações">
+        <td class="col-card-acoes card-collapsible-detail" data-label="Ações">
           <div class="actions card-actions-flex">${acoesHtml}</div>
         </td>
       </tr>
     `;
   }).join('');
+
+  atualizarBotaoToggleTodosSolic();
 }
 
 function abrirModalSolicitarVoucher(nomeSocioPreenchido = '') {

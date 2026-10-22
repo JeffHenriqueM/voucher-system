@@ -7,11 +7,11 @@
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
   <title>Villamor Vouchers — Gestão de Vouchers & Cotas</title>
-  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=20261022_08" />
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png?v=20261022_08" />
-  <link rel="shortcut icon" href="favicon.ico?v=20261022_08" />
-  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261022_08" />
-  <link rel="stylesheet" href="style.css?v=20261022_08" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=20261022_09" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon.png?v=20261022_09" />
+  <link rel="shortcut icon" href="favicon.ico?v=20261022_09" />
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261022_09" />
+  <link rel="stylesheet" href="style.css?v=20261022_09" />
 </head>
 <body>
 
@@ -340,6 +340,9 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M10 2a8 8 0 1 1 0 16A8 8 0 0 1 10 2zm0 2a6 6 0 1 0 0 12A6 6 0 0 0 10 4zm8.293 12.293 3.414 3.414-1.414 1.414-3.414-3.414 1.414-1.414z"/></svg>
           <input type="text" id="inputBusca" placeholder="Buscar por sócio, número ou código..." />
         </div>
+        <button type="button" class="btn-toggle-all-cards" id="btnToggleTodosCardsVouchers" onclick="toggleTodosCardsVouchers()" title="Expandir ou diminuir todos os cartões de vouchers">
+          ↕️ <span id="lblToggleTodosVouchers">Diminuir Todos</span>
+        </button>
         <div class="filter-tabs">
           <button class="tab active" data-status="">Todos</button>
           <button class="tab" data-status="aguardando_assinatura" id="tabFiltroAguardando">✍️ Aguardando Assinatura</button>
@@ -396,6 +399,9 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M10 2a8 8 0 1 1 0 16A8 8 0 0 1 10 2zm0 2a6 6 0 1 0 0 12A6 6 0 0 0 10 4zm8.293 12.293 3.414 3.414-1.414 1.414-3.414-3.414 1.414-1.414z"/></svg>
           <input type="text" id="inputBuscaSolicitacoes" placeholder="Buscar por sócio, motivo..." />
         </div>
+        <button type="button" class="btn-toggle-all-cards" id="btnToggleTodosCardsSolic" onclick="toggleTodosCardsSolic()" title="Expandir ou diminuir todas as solicitações">
+          ↕️ <span id="lblToggleTodosSolic">Diminuir Todas</span>
+        </button>
         <div class="filter-tabs">
           <button class="tab active" data-solic-filtro="pendente">1. Pendentes (Pós Venda)</button>
           <button class="tab" data-solic-filtro="aguardando_assinatura">2. Aguarda Assinatura (Admin)</button>
@@ -1232,8 +1238,8 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-  <script src="config.js?v=20261022_08"></script>
-  <script src="cotas_dados.js?v=20261022_08"></script>
-  <script src="app.js?v=20261022_08"></script>
+  <script src="config.js?v=20261022_09"></script>
+  <script src="cotas_dados.js?v=20261022_09"></script>
+  <script src="app.js?v=20261022_09"></script>
 </body>
 </html>

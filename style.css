@@ -1240,7 +1240,36 @@ body.dark-mode .obs-field-badge {
   background: var(--primary-dark);
 }
 
-@media (max-width: 768px) {
+/* Botão Global de Expandir / Diminuir Todos os Cartões */
+.btn-toggle-all-cards {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: .78rem;
+  font-weight: 700;
+  padding: .45rem .8rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .2s;
+}
+.btn-toggle-all-cards:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn-card-toggle {
+  display: none;
+}
+.card-mini-summary-pill {
+  display: none;
+}
+
+@media (max-width: 900px) {
   /* Header Mobile Compacto & Organizado */
   .header-inner {
     flex-direction: column;
@@ -1466,10 +1495,43 @@ body.dark-mode .obs-field-badge {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    flex-wrap: wrap !important;
+    flex-wrap: nowrap !important;
     gap: .4rem !important;
     padding-bottom: .45rem !important;
     border-bottom: 1px dashed var(--border) !important;
+    cursor: pointer !important;
+    user-select: none;
+  }
+  .card-top-right-wrap {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex-shrink: 0;
+  }
+  .btn-card-toggle {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    background: var(--bg) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text-2) !important;
+    padding: .24rem .55rem !important;
+    border-radius: 6px !important;
+    font-size: .72rem !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    transition: all .2s ease !important;
+    white-space: nowrap;
+  }
+  .btn-card-toggle:hover {
+    background: var(--primary-light) !important;
+    border-color: var(--primary) !important;
+    color: var(--primary) !important;
+  }
+  .btn-card-toggle-icon {
+    font-size: .65rem !important;
+    font-weight: 800 !important;
+    color: var(--primary) !important;
   }
   .card-num-wrap {
     display: inline-flex !important;
@@ -1480,6 +1542,60 @@ body.dark-mode .obs-field-badge {
     font-size: 1.05rem !important;
     font-weight: 800 !important;
     color: var(--primary) !important;
+  }
+
+  /* Sócio e Detalhes */
+  .card-socio-header-flex {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    gap: .5rem !important;
+    width: 100% !important;
+    cursor: pointer !important;
+  }
+  .card-mini-summary-pill {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    flex-shrink: 0;
+  }
+  .card-quick-ver-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    padding: .2rem .5rem !important;
+    font-size: .72rem !important;
+    border-radius: 5px !important;
+    background: var(--primary-light) !important;
+    color: var(--primary) !important;
+    border: 1px solid var(--primary) !important;
+    font-weight: 700 !important;
+    text-decoration: none !important;
+    line-height: 1.2 !important;
+  }
+  .card-quick-ver-btn:hover {
+    background: var(--primary) !important;
+    color: #fff !important;
+  }
+
+  /* Estado Diminuído / Recolhido (.is-collapsed) */
+  .table-responsive-cards > table > tbody > tr.is-collapsed .card-collapsible-detail {
+    display: none !important;
+  }
+  .table-responsive-cards > table > tbody > tr.is-collapsed {
+    padding: .65rem .85rem !important;
+    gap: .3rem !important;
+    cursor: pointer !important;
+  }
+  .table-responsive-cards > table > tbody > tr.is-collapsed .col-card-top {
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+  }
+  .table-responsive-cards > table > tbody > tr.is-collapsed:hover {
+    border-color: var(--primary) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+  }
+  .table-responsive-cards > table > tbody > tr:not(.is-collapsed) .card-quick-ver-btn {
+    display: none !important;
   }
 
   /* Sócio e Detalhes */

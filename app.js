@@ -395,31 +395,83 @@ function auditarInconsistenciasVouchers() {
 }
 window.auditarInconsistenciasVouchers = auditarInconsistenciasVouchers;
 
-// ── Gestão de Leitura de Inconsistências (Márcio / Admin / Gestão) ────
-function obterRegistroLeituraInconsistencias() {
-  try {
-    return JSON.parse(localStorage.getItem('rsm_inconsistencias_lidas') || 'null');
-  } catch (e) {
-    return null;
+// ── Funções Auxiliares de Identificação de Usuário para Ciência Individual ──
+function obterChaveUsuarioAtual() {
+  if (usuarioLogado) {
+    if (usuarioLogado.id) return String(usuarioLogado.id).trim().toLowerCase();
+    if (usuarioLogado.usuario) return String(usuarioLogado.usuario).trim().toLowerCase();
+    if (usuarioLogado.nome) return String(usuarioLogado.nome).trim().toLowerCase();
   }
+  if (perfilAtivo) return `perfil_${String(perfilAtivo).trim().toLowerCase()}`;
+  return 'usuario_anonimo';
 }
 
-function saoInconsistenciasLidas(incs) {
+function matchUsuarioLeitura(chaveOuNome, uKey, uNome) {
+  if (!chaveOuNome) return false;
+  const str = String(chaveOuNome).trim().toLowerCase();
+  const k = String(uKey || '').trim().toLowerCase();
+  const n = String(uNome || '').trim().toLowerCase();
+  return (k && str === k) || (n && str === n) || (k && str.includes(k)) || (n && str.includes(n));
+}
+
+// ── Gestão de Leitura de Inconsistências (Individual por Usuário / Admin) ────
+function obterRegistroLeituraInconsistencias(userKeyParam = null) {
+  const uKey = (userKeyParam || obterChaveUsuarioAtual()).trim().toLowerCase();
+  const uNome = (usuarioLogado ? usuarioLogado.nome : '').trim().toLowerCase();
+
+  // 1. Mapa em localStorage particionado por usuário
+  try {
+    const mapa = JSON.parse(localStorage.getItem('rsm_inconsistencias_lidas_usuarios') || '{}');
+    if (mapa && typeof mapa === 'object') {
+      if (mapa[uKey]) return mapa[uKey];
+      // Tentar correspondência por login ou nome
+      for (const [k, reg] of Object.entries(mapa)) {
+        if (matchUsuarioLeitura(k, uKey, uNome) || (reg && reg.usuario && matchUsuarioLeitura(reg.usuario, uKey, uNome))) {
+          return reg;
+        }
+      }
+    }
+  } catch (e) {}
+
+  // 2. Fallback de auditoria histórica no Supabase caso acesse de outro dispositivo
+  if (Array.isArray(listaHistoricoReservas)) {
+    const histUser = listaHistoricoReservas.find(h => {
+      if (h.voucher_codigo !== 'AUDITORIA_INCONSISTENCIAS') return false;
+      const obs = h.observacoes || '';
+      return obs.includes(`[CIENCIA_INCONSISTENCIAS:${uKey}]`) || matchUsuarioLeitura(h.usuario_registro, uKey, uNome);
+    });
+    if (histUser) {
+      return {
+        data: histUser.created_at,
+        usuario: histUser.usuario_registro || uNome || 'Administrador',
+        codigos: [],
+        desdeHistorico: true
+      };
+    }
+  }
+
+  return null;
+}
+
+function saoInconsistenciasLidas(incs, userKeyParam = null) {
   if (!incs || !incs.length) return true;
-  const reg = obterRegistroLeituraInconsistencias();
-  if (!reg || !reg.data || !Array.isArray(reg.codigos)) return false;
+  const reg = obterRegistroLeituraInconsistencias(userKeyParam);
+  if (!reg || !reg.data) return false;
 
   const dataReg = new Date(reg.data).getTime();
-  const setCodigos = new Set(reg.codigos);
+  const setCodigos = Array.isArray(reg.codigos) ? new Set(reg.codigos) : null;
 
   // Se houver qualquer inconsistência cujo voucher foi emitido APÓS a data da ciência
-  // ou cujo código não estava na lista lida, ela deve ser alertada!
+  // ou cujo código não estava na lista lida pelo usuário, ela deve ser alertada!
   return incs.every(item => {
     const v = item.voucher;
     if (!v) return false;
     const criadoEm = v.created_at ? new Date(v.created_at).getTime() : 0;
-    const jaFoiLido = setCodigos.has(v.codigo);
-    return jaFoiLido && (criadoEm <= dataReg + 2000); // margem de segurança de 2s
+    if (setCodigos && setCodigos.size > 0) {
+      const jaFoiLido = setCodigos.has(v.codigo);
+      return jaFoiLido && (criadoEm <= dataReg + 2000); // margem de segurança de 2s
+    }
+    return criadoEm <= dataReg + 2000;
   });
 }
 
@@ -430,39 +482,51 @@ function marcarInconsistenciasComoLidas() {
     return;
   }
 
+  const uKey = obterChaveUsuarioAtual();
   const agoraIso = new Date().toISOString();
-  const quemLeu = usuarioLogado ? usuarioLogado.nome : 'Administrador';
+  const quemLeu = usuarioLogado ? usuarioLogado.nome : (perfilAtivo === 'admin' ? 'Administrador' : 'Gestão');
   const codigos = incs.map(i => i.voucher.codigo);
 
   const registro = {
     data: agoraIso,
     usuario: quemLeu,
+    userKey: uKey,
     codigos: codigos,
     qtd: incs.length
   };
 
-  localStorage.setItem('rsm_inconsistencias_lidas', JSON.stringify(registro));
+  try {
+    const mapa = JSON.parse(localStorage.getItem('rsm_inconsistencias_lidas_usuarios') || '{}');
+    mapa[uKey] = registro;
+    localStorage.setItem('rsm_inconsistencias_lidas_usuarios', JSON.stringify(mapa));
+  } catch (e) {}
 
-  // Registrar auditoria persistente no Supabase
+  // Registrar auditoria persistente no Supabase associando a este usuário específico
   try {
     db.from('voucher_historico_uso').insert([{
       voucher_codigo: 'AUDITORIA_INCONSISTENCIAS',
       diarias_utilizadas: 0,
       usuario_registro: quemLeu,
-      observacoes: `[CIENCIA_INCONSISTENCIAS] Marcado como ciente em ${fmtDateTime(agoraIso)} por ${quemLeu}. Vouchers analisados: ${codigos.join(', ')}`,
+      observacoes: `[CIENCIA_INCONSISTENCIAS:${uKey}] Marcado como ciente em ${fmtDateTime(agoraIso)} por ${quemLeu}. Vouchers analisados: ${codigos.join(', ')}`,
       created_at: agoraIso
     }]).then(() => {});
   } catch (e) {}
 
-  showToast(`✓ Inconsistências marcadas como cientes em ${fmtDateTime(agoraIso)} por ${quemLeu}. O alerta não aparecerá na tela principal.`);
+  showToast(`✓ Inconsistências marcadas como cientes para seu usuário (${quemLeu}). O alerta foi ocultado da sua tela.`);
   renderBannerAlertaInconsistencias();
   renderStatusLeituraInconsistencias();
 }
 window.marcarInconsistenciasComoLidas = marcarInconsistenciasComoLidas;
 
 function reexibirAlertaInconsistenciasTelaPrincipal() {
-  localStorage.removeItem('rsm_inconsistencias_lidas');
-  showToast('O alerta de inconsistências voltará a ser exibido na tela principal.');
+  const uKey = obterChaveUsuarioAtual();
+  try {
+    const mapa = JSON.parse(localStorage.getItem('rsm_inconsistencias_lidas_usuarios') || '{}');
+    delete mapa[uKey];
+    localStorage.setItem('rsm_inconsistencias_lidas_usuarios', JSON.stringify(mapa));
+    localStorage.removeItem('rsm_inconsistencias_lidas');
+  } catch (e) {}
+  showToast('O alerta de inconsistências voltará a ser exibido para o seu usuário na tela principal.');
   renderBannerAlertaInconsistencias();
   renderStatusLeituraInconsistencias();
 }
@@ -483,13 +547,13 @@ function renderStatusLeituraInconsistencias() {
         <div style="font-size:.83rem;color:#14532d;display:flex;align-items:center;gap:8px;">
           <span>✓</span>
           <div>
-            <strong>Inconsistências marcadas como lidas:</strong>
+            <strong>Inconsistências marcadas como lidas para seu usuário:</strong>
             Confirmado por <strong>${escHtml(reg.usuario)}</strong> em <strong>${fmtDateTime(reg.data)}</strong>.
-            <span style="color:#64748b;font-size:.78rem;display:block;">O banner foi ocultado da tela principal para não poluir o fluxo diário.</span>
+            <span style="color:#64748b;font-size:.78rem;display:block;">O banner foi ocultado apenas para você, mantendo o aviso ativo para outros administradores até que confirmem.</span>
           </div>
         </div>
         <button class="btn btn-ghost" onclick="reexibirAlertaInconsistenciasTelaPrincipal()" style="font-size:.76rem;padding:.3rem .65rem;color:#b45309;border-color:#fde68a;background:rgba(255,255,255,0.7);" title="Voltar a mostrar o aviso no topo da tela principal">
-          🔄 Reexibir alerta na tela principal
+          🔄 Reexibir alerta para mim
         </button>
       </div>
     `;
@@ -512,7 +576,7 @@ function renderBannerAlertaInconsistencias() {
     return;
   }
 
-  // Se o usuário já marcou as inconsistências atuais como lidas, NÃO exibe na tela principal!
+  // Se o usuário atual já marcou as inconsistências atuais como lidas, NÃO exibe na tela principal dele!
   if (saoInconsistenciasLidas(incs)) {
     container.classList.add('hidden');
     container.innerHTML = '';
@@ -547,7 +611,7 @@ function renderBannerAlertaInconsistencias() {
         <button class="btn-notif-whatsapp" onclick="notificarMarcioWhatsAppGeral()" style="font-size:.8rem;">
           📲 Notificar Márcio (WhatsApp)
         </button>
-        <button class="btn btn-ghost" onclick="marcarInconsistenciasComoLidas()" style="font-size:.8rem;padding:.4rem .85rem;background:rgba(255,255,255,0.85);border:1px solid #fca5a5;color:#991b1b;font-weight:700;" title="Marcar como lido para não poluir a tela principal">
+        <button class="btn btn-ghost" onclick="marcarInconsistenciasComoLidas()" style="font-size:.8rem;padding:.4rem .85rem;background:rgba(255,255,255,0.85);border:1px solid #fca5a5;color:#991b1b;font-weight:700;" title="Marcar como lido apenas para o seu usuário">
           ✓ Marcar como Lido / Ciente
         </button>
       </div>
@@ -556,77 +620,172 @@ function renderBannerAlertaInconsistencias() {
 }
 window.renderBannerAlertaInconsistencias = renderBannerAlertaInconsistencias;
 
-// ── Gestão de Confirmação de Leitura de Vouchers Assinados (Reservas) ─
-function extrairLeituraReservas(solic) {
-  if (!solic) return null;
-  // 1. Verificar mapa em localStorage
+// ── Gestão de Confirmação de Leitura de Vouchers Assinados (Individual por Usuário) ─
+function extrairLeiturasSolicitacao(solic) {
+  if (!solic) return [];
+  const leituras = [];
+  const motivo = String(solic.motivo || '');
+
+  // 1. Tags multi-usuário no motivo: [CIENCIA_USUARIO:uKey|dataIso|Nome]
+  const regexMulti = /\[CIENCIA_USUARIO:\s*([^|\]]+)\|([^|\]]+)\|([^\]]+)\]/gi;
+  let match;
+  while ((match = regexMulti.exec(motivo)) !== null) {
+    leituras.push({
+      userKey: match[1].trim().toLowerCase(),
+      data: match[2].trim(),
+      usuario: match[3].trim()
+    });
+  }
+
+  // 2. Tag legada: [CONFIRMADO_RESERVAS_EM: data POR: Nome] (atribuída apenas ao usuário que confirmou)
+  const matchLegado = motivo.match(/\[CONFIRMADO_RESERVAS_EM:\s*([^\]\s]+)\s*POR:\s*([^\]]+)\]/i);
+  if (matchLegado) {
+    const usuarioLegado = matchLegado[2].trim();
+    const jaTem = leituras.some(l => l.usuario.toLowerCase() === usuarioLegado.toLowerCase());
+    if (!jaTem) {
+      leituras.push({
+        userKey: usuarioLegado.toLowerCase(),
+        data: matchLegado[1].trim(),
+        usuario: usuarioLegado
+      });
+    }
+  }
+
+  // 3. Propriedades diretas legadas no objeto
+  if (solic.lido_reservas_em && solic.lido_reservas_por) {
+    const jaTem = leituras.some(l => l.usuario.toLowerCase() === solic.lido_reservas_por.toLowerCase());
+    if (!jaTem) {
+      leituras.push({
+        userKey: solic.lido_reservas_por.toLowerCase(),
+        data: solic.lido_reservas_em,
+        usuario: solic.lido_reservas_por
+      });
+    }
+  }
+
+  // 4. Mapa local indexado por usuário
   try {
-    const mapaLocal = JSON.parse(localStorage.getItem('rsm_solicitacoes_lidas_reservas') || '{}');
-    if (mapaLocal[solic.id]) return mapaLocal[solic.id];
-    if (solic.voucher_codigo && mapaLocal[solic.voucher_codigo]) return mapaLocal[solic.voucher_codigo];
+    const mapaUsuarios = JSON.parse(localStorage.getItem('rsm_solicitacoes_lidas_usuarios') || '{}');
+    for (const [uKey, solicsDoUser] of Object.entries(mapaUsuarios)) {
+      if (solicsDoUser && typeof solicsDoUser === 'object') {
+        const item = solicsDoUser[solic.id] || (solic.voucher_codigo && solicsDoUser[solic.voucher_codigo]);
+        if (item) {
+          const itemUsuario = item.usuario || uKey;
+          const jaTem = leituras.some(l => l.userKey === uKey.toLowerCase() || (itemUsuario && l.usuario.toLowerCase() === itemUsuario.toLowerCase()));
+          if (!jaTem) {
+            leituras.push({
+              userKey: uKey.toLowerCase(),
+              data: item.data || new Date().toISOString(),
+              usuario: itemUsuario
+            });
+          }
+        }
+      }
+    }
   } catch (e) {}
 
-  // 2. Propriedade direta no objeto
-  if (solic.lido_reservas_em) {
-    return { data: solic.lido_reservas_em, usuario: solic.lido_reservas_por || 'Reservas' };
-  }
-
-  // 3. Tag no motivo persistido no Supabase: [CONFIRMADO_RESERVAS_EM: ... POR: ...]
-  const motivo = String(solic.motivo || '');
-  const match = motivo.match(/\[CONFIRMADO_RESERVAS_EM:\s*([^\]\s]+)\s*POR:\s*([^\]]+)\]/i);
-  if (match) {
-    return { data: match[1], usuario: match[2].trim() };
-  }
-
-  return null;
+  return leituras;
 }
 
+function isSolicitacaoLidaPorUsuario(solic, userKeyParam = null, usuarioNomeParam = null) {
+  if (!solic) return false;
+  const uKey = (userKeyParam || obterChaveUsuarioAtual()).trim().toLowerCase();
+  const uNome = (usuarioNomeParam || (usuarioLogado ? usuarioLogado.nome : (perfilAtivo || ''))).trim().toLowerCase();
+
+  // 1. Checagem rápida no localStorage para o usuário atual
+  try {
+    const mapaUsuarios = JSON.parse(localStorage.getItem('rsm_solicitacoes_lidas_usuarios') || '{}');
+    const solicsDoUser = mapaUsuarios[uKey];
+    if (solicsDoUser && (solicsDoUser[solic.id] || (solic.voucher_codigo && solicsDoUser[solic.voucher_codigo]))) {
+      return true;
+    }
+  } catch (e) {}
+
+  // 2. Checagem nas leituras salvas (motivo Supabase / tags)
+  const leituras = extrairLeiturasSolicitacao(solic);
+  return leituras.some(l => {
+    const lKey = (l.userKey || '').toLowerCase();
+    const lNome = (l.usuario || '').toLowerCase();
+    return lKey === uKey || (uNome && lNome === uNome) || (uKey && lNome.includes(uKey)) || (uNome && lKey.includes(uNome));
+  });
+}
+
+function extrairLeituraDoUsuarioAtual(solic) {
+  if (!solic) return null;
+  const uKey = obterChaveUsuarioAtual().trim().toLowerCase();
+  const uNome = (usuarioLogado ? usuarioLogado.nome : (perfilAtivo || '')).trim().toLowerCase();
+
+  try {
+    const mapaUsuarios = JSON.parse(localStorage.getItem('rsm_solicitacoes_lidas_usuarios') || '{}');
+    const solicsDoUser = mapaUsuarios[uKey];
+    if (solicsDoUser) {
+      if (solicsDoUser[solic.id]) return solicsDoUser[solic.id];
+      if (solic.voucher_codigo && solicsDoUser[solic.voucher_codigo]) return solicsDoUser[solic.voucher_codigo];
+    }
+  } catch (e) {}
+
+  const leituras = extrairLeiturasSolicitacao(solic);
+  return leituras.find(l => {
+    const lKey = (l.userKey || '').toLowerCase();
+    const lNome = (l.usuario || '').toLowerCase();
+    return lKey === uKey || (uNome && lNome === uNome);
+  }) || null;
+}
+
+// Mantido para compatibilidade, agora validando estritamente para o usuário atual
 function isSolicitacaoLidaPorReservas(solic) {
-  return Boolean(extrairLeituraReservas(solic));
+  return isSolicitacaoLidaPorUsuario(solic);
 }
+
+function extrairLeituraReservas(solic) {
+  return extrairLeituraDoUsuarioAtual(solic) || (extrairLeiturasSolicitacao(solic)[0] || null);
+}
+
 window.isSolicitacaoLidaPorReservas = isSolicitacaoLidaPorReservas;
+window.isSolicitacaoLidaPorUsuario = isSolicitacaoLidaPorUsuario;
+window.extrairLeiturasSolicitacao = extrairLeiturasSolicitacao;
+window.extrairLeituraDoUsuarioAtual = extrairLeituraDoUsuarioAtual;
 window.extrairLeituraReservas = extrairLeituraReservas;
 
 async function confirmarLeituraVoucherAssinado(idSolicitacao) {
   const agoraIso = new Date().toISOString();
-  const quemLeu = usuarioLogado ? usuarioLogado.nome : 'Equipe de Reservas';
+  const uKey = obterChaveUsuarioAtual();
+  const quemLeu = usuarioLogado ? usuarioLogado.nome : (perfilAtivo === 'admin' ? 'Administrador' : 'Equipe de Reservas');
 
-  // 1. Salvar no mapa local
+  // 1. Salvar no mapa local indexado por usuário (não apaga de outros usuários)
   try {
-    const mapaLocal = JSON.parse(localStorage.getItem('rsm_solicitacoes_lidas_reservas') || '{}');
-    mapaLocal[idSolicitacao] = { data: agoraIso, usuario: quemLeu };
+    const mapaUsuarios = JSON.parse(localStorage.getItem('rsm_solicitacoes_lidas_usuarios') || '{}');
+    if (!mapaUsuarios[uKey]) mapaUsuarios[uKey] = {};
+    mapaUsuarios[uKey][idSolicitacao] = { data: agoraIso, usuario: quemLeu, userKey: uKey };
+    
     const solic = (listaSolicitacoes || []).find(s => s.id === idSolicitacao);
     if (solic && solic.voucher_codigo) {
-      mapaLocal[solic.voucher_codigo] = { data: agoraIso, usuario: quemLeu };
+      mapaUsuarios[uKey][solic.voucher_codigo] = { data: agoraIso, usuario: quemLeu, userKey: uKey };
     }
-    localStorage.setItem('rsm_solicitacoes_lidas_reservas', JSON.stringify(mapaLocal));
+    localStorage.setItem('rsm_solicitacoes_lidas_usuarios', JSON.stringify(mapaUsuarios));
   } catch (e) {}
 
-  // 2. Atualizar objeto em memória
+  // 2. Atualizar objeto em memória e gravar tag do usuário no motivo no Supabase
   const solic = (listaSolicitacoes || []).find(s => s.id === idSolicitacao);
   if (solic) {
-    solic.lido_reservas_em = agoraIso;
-    solic.lido_reservas_por = quemLeu;
-    const tagConfirmado = `[CONFIRMADO_RESERVAS_EM: ${agoraIso} POR: ${quemLeu}]`;
-    const motivoBase = (solic.motivo || '').replace(/\[CONFIRMADO_RESERVAS_EM:[^\]]*\]/gi, '').trim();
-    solic.motivo = `${motivoBase} ${tagConfirmado}`.trim();
+    const tagUsuario = `[CIENCIA_USUARIO:${uKey}|${agoraIso}|${quemLeu}]`;
+    const regexUsuario = new RegExp(`\\[CIENCIA_USUARIO:\\s*${uKey}\\|[^\\]]+\\]`, 'gi');
+    let motivoLimpo = (solic.motivo || '').replace(regexUsuario, '').trim();
+
+    solic.motivo = `${motivoLimpo} ${tagUsuario}`.trim();
     localStorage.setItem('rsm_solicitacoes', JSON.stringify(listaSolicitacoes));
 
-    // 3. Persistir no Supabase
+    // Persistir no Supabase sem sobrescrever confirmações de outros usuários
     try {
       await db.from('voucher_solicitacoes').update({
-        motivo: solic.motivo,
-        lido_reservas_em: agoraIso,
-        lido_reservas_por: quemLeu
+        motivo: solic.motivo
       }).eq('id', idSolicitacao);
     } catch (err) {
-      try {
-        await db.from('voucher_solicitacoes').update({ motivo: solic.motivo }).eq('id', idSolicitacao);
-      } catch (e) {}
+      console.warn('Erro ao atualizar motivo no Supabase:', err);
     }
   }
 
-  showToast(`✓ Confirmação registrada com sucesso! Este aviso não será mais exibido.`);
+  showToast(`✓ Confirmação registrada para seu usuário (${quemLeu}). O aviso não aparecerá mais para você.`);
   renderBannerReservasVouchersAssinados();
   if (abaAtiva === 'solicitacoes') renderTabelaSolicitacoes();
 }
@@ -638,7 +797,7 @@ async function confirmarLeituraTodosVouchersAssinados() {
     const v = listaVouchers.find(item => item.codigo === s.voucher_codigo);
     const isVoucherAssinado = (s.status === 'gerado' || (v && v.assinado_em && v.status_fluxo !== 'aguardando_assinatura' && v.status_fluxo !== 'cancelado'));
     if (!isVoucherAssinado) return false;
-    return !isSolicitacaoLidaPorReservas(s);
+    return !isSolicitacaoLidaPorUsuario(s);
   });
 
   if (!assinadasNaoLidas.length) return;
@@ -661,12 +820,13 @@ function renderBannerReservasVouchersAssinados() {
     return;
   }
 
+  // Filtrar apenas vouchers assinados que O USUÁRIO ATUAL ainda NÃO confirmou leitura
   const assinadasNaoLidas = (listaSolicitacoes || []).filter(s => {
     if (s.status === 'recusada' || s.status === 'cancelado') return false;
     const v = listaVouchers.find(item => item.codigo === s.voucher_codigo);
     const isVoucherAssinado = (s.status === 'gerado' || (v && v.assinado_em && v.status_fluxo !== 'aguardando_assinatura' && v.status_fluxo !== 'cancelado'));
     if (!isVoucherAssinado) return false;
-    return !isSolicitacaoLidaPorReservas(s);
+    return !isSolicitacaoLidaPorUsuario(s);
   });
 
   if (assinadasNaoLidas.length === 0) {
@@ -717,7 +877,7 @@ function renderBannerReservasVouchersAssinados() {
           <span class="badge badge-green" style="font-size:.72rem;font-weight:700;">${total} liberado(s)</span>
         </div>
         <div class="banner-reservas-desc">
-          O Administrador assinou a minuta do voucher solicitado pela equipe de Reservas. Você já pode consultar o documento oficial ou enviar para o hóspede. <strong>Confirme que leu abaixo para não exibir mais este alerta.</strong>
+          O Administrador assinou a minuta do voucher solicitado pela equipe de Reservas. Você já pode consultar o documento oficial ou enviar para o hóspede. <strong>Confirme que leu abaixo para ocultar este aviso para o seu usuário.</strong>
         </div>
         <div style="margin-top:.5rem;">
           ${cardsHtml}
@@ -3971,10 +4131,10 @@ function renderTabelaSolicitacoes() {
           👁️ Ver Voucher
         </a>
       `;
-      const leituraReserva = extrairLeituraReservas(s);
-      if (!leituraReserva && (perfilAtivo === 'reservas' || perfilAtivo === 'admin' || perfilAtivo === 'recepcao')) {
+      const jaLeu = isSolicitacaoLidaPorUsuario(s);
+      if (!jaLeu && (perfilAtivo === 'reservas' || perfilAtivo === 'admin' || perfilAtivo === 'recepcao')) {
         acoesHtml += `
-          <button class="btn btn-sm btn-primary" onclick="confirmarLeituraVoucherAssinado('${s.id}')" style="background:#16a34a;border-color:#16a34a;font-size:.74rem;padding:.25rem .55rem;font-weight:700;" title="Confirmar ciência da assinatura para remover alertas">
+          <button class="btn btn-sm btn-primary" onclick="confirmarLeituraVoucherAssinado('${s.id}')" style="background:#16a34a;border-color:#16a34a;font-size:.74rem;padding:.25rem .55rem;font-weight:700;" title="Confirmar ciência da assinatura para remover seus alertas">
             ✓ Confirmar Leitura
           </button>
         `;
@@ -3987,8 +4147,10 @@ function renderTabelaSolicitacoes() {
     const motivoExibicao = (s.motivo || '')
       .replace(/\[RECUSADA[^\]]*\]/gi, '')
       .replace(/\[CONFIRMADO_RESERVAS_EM:[^\]]*\]/gi, '')
+      .replace(/\[CIENCIA_USUARIO:[^\]]*\]/gi, '')
       .trim();
-    const leituraReservaInfo = extrairLeituraReservas(s);
+    const todasLeituras = extrairLeiturasSolicitacao(s);
+    const leituraAtual = extrairLeituraDoUsuarioAtual(s);
     const isCardRecolhido = modoCardsSolicRecolhidoGeral
       ? !solicsCardsExpandidos.has(s.id)
       : solicsCardsRecolhidos.has(s.id);
@@ -4019,9 +4181,12 @@ function renderTabelaSolicitacoes() {
               <span class="diarias-pill ${isRecusada ? 'diarias-usadas' : 'diarias-saldo'}" style="font-size:.72rem;">${diariasSolic}d solicitadas</span>
             </div>
           </div>
-          ${leituraReservaInfo ? `
-            <div style="font-size:.72rem;color:#15803d;margin-top:3px;display:inline-flex;align-items:center;gap:3px;background:#f0fdf4;padding:1px 6px;border-radius:4px;border:1px solid #bbf7d0;">
-              <span>✓ Ciente por <strong>${escHtml(leituraReservaInfo.usuario)}</strong> em ${fmtDateTime(leituraReservaInfo.data)}</span>
+          ${todasLeituras.length > 0 ? `
+            <div style="font-size:.72rem;color:#15803d;margin-top:4px;display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;background:#f0fdf4;padding:2px 6px;border-radius:4px;border:1px solid #bbf7d0;">
+              <span>✓ Ciente por: <strong>${escHtml(todasLeituras.map(l => l.usuario).join(', '))}</strong></span>
+              ${leituraAtual 
+                ? `<span style="background:#dcfce7;color:#166534;padding:1px 5px;border-radius:3px;font-weight:600;font-size:.68rem;">(Você já confirmou)</span>` 
+                : `<span style="background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:3px;font-weight:600;font-size:.68rem;">(Aguardando seu ciente)</span>`}
             </div>
           ` : ''}
         </td>

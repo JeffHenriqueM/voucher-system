@@ -51,13 +51,18 @@ let buscaReservasTimer = null;
 let idParaDeletar = null;
 
 // ── Estado de Expansão / Diminuição dos Cards Responsivos ────────
+// Por padrão, todos os cartões começam minimizados (recolhidos) para melhor visualização
 let vouchersCardsRecolhidos = new Set();
 let vouchersCardsExpandidos = new Set();
-let modoCardsVouchersRecolhidoGeral = localStorage.getItem('rsm_cards_collapsed_mode') === 'true';
+let modoCardsVouchersRecolhidoGeral = true;
 
 let solicsCardsRecolhidos = new Set();
 let solicsCardsExpandidos = new Set();
-let modoCardsSolicRecolhidoGeral = localStorage.getItem('rsm_cards_solic_collapsed_mode') === 'true';
+let modoCardsSolicRecolhidoGeral = true;
+
+let cotasCardsRecolhidos = new Set();
+let cotasCardsExpandidos = new Set();
+let modoCardsCotasRecolhidoGeral = true;
 
 let reservasCardsRecolhidos = new Set();
 let reservasCardsExpandidos = new Set();
@@ -2038,9 +2043,15 @@ function renderTabelaCotas() {
     const totalDiariasEmitidas = vouchersDoSocio.reduce((acc, v) => acc + (Number(v.diarias_totais || v.diarias) || 0), 0);
     const isInconsistente = totalDiariasEmitidas > diariasTotais;
 
+    const isCardRecolhido = modoCardsCotasRecolhidoGeral
+      ? !cotasCardsExpandidos.has(c.id)
+      : cotasCardsRecolhidos.has(c.id);
+
     let acaoHtml = '';
+    let quickBtn = '';
     if (qtdVouchers > 0) {
       const vPrincipal = vouchersDoSocio[0];
+      quickBtn = `<a href="${linkVoucher(vPrincipal.codigo)}" target="_blank" class="card-quick-ver-btn" onclick="event.stopPropagation();" title="Abrir Voucher">👁️ Ver</a>`;
       acaoHtml = `
         <div class="actions" style="flex-wrap:wrap;gap:4px;">
           <a href="${linkVoucher(vPrincipal.codigo)}" target="_blank" class="btn btn-ghost" style="padding:.28rem .55rem;font-size:.75rem;" title="${qtdVouchers > 1 ? `Visualizar Voucher principal (${qtdVouchers} vouchers emitidos para este sócio)` : 'Visualizar Voucher'}">
@@ -2056,6 +2067,9 @@ function renderTabelaCotas() {
         </div>
       `;
     } else {
+      if (perfilAtivo !== 'reservas') {
+        quickBtn = `<button type="button" class="card-quick-ver-btn" onclick="event.stopPropagation(); abrirModalEmitirParaCota('${escHtml(c.id)}')" style="background:#ccfbf1;color:#0f766e;border-color:#14b8a6;" title="Emitir Voucher">⚡ Emitir</button>`;
+      }
       acaoHtml = (perfilAtivo === 'reservas' ? '—' : `
         <button class="btn-emitir" onclick="abrirModalEmitirParaCota('${escHtml(c.id)}')">
           ⚡ Emitir Voucher
@@ -2063,35 +2077,53 @@ function renderTabelaCotas() {
     }
 
     return `
-      <tr class="cota-card-row">
-        <td class="col-cota-socio" data-label="Sócio">
+      <tr class="cota-card-row ${isCardRecolhido ? 'is-collapsed' : 'is-expanded'}" id="card-cota-${c.id}" data-cota-id="${c.id}">
+        <td class="col-card-top" data-label="Sócio" onclick="toggleCotaCard('${c.id}')">
+          <div class="card-num-wrap">
+            <strong class="card-voucher-num" style="font-size:.92rem;color:var(--text-1);">👤 ${escHtml(c.nome_socio)}</strong>
+            ${isInconsistente ? `<span class="badge-inconsistente" title="Cliente possui ${totalDiariasEmitidas} diárias emitidas, mas a cota permite ${diariasTotais}">⚠️ Fora da regra</span>` : ''}
+          </div>
+          <div class="card-top-right-wrap">
+            <div class="mobile-only-status">
+              ${badgeCota}
+            </div>
+            ${quickBtn}
+            <button type="button" class="btn-card-toggle" onclick="event.stopPropagation(); toggleCotaCard('${c.id}')" title="Expandir ou diminuir detalhes da cota" aria-expanded="${!isCardRecolhido}">
+              <span class="btn-card-toggle-text">${isCardRecolhido ? 'Expandir' : 'Diminuir'}</span>
+              <span class="btn-card-toggle-icon">${isCardRecolhido ? '▼' : '▲'}</span>
+            </button>
+          </div>
+        </td>
+        <td class="col-cota-socio desktop-only-cell" data-label="Sócio" onclick="toggleCotaCard('${c.id}')">
           <div class="cota-socio-name">
             <strong>${escHtml(c.nome_socio)}</strong>
             ${isInconsistente ? `<span class="badge-inconsistente" title="Cliente possui ${totalDiariasEmitidas} diárias emitidas, mas a cota permite ${diariasTotais}">⚠️ Fora da regra (${totalDiariasEmitidas}/${diariasTotais}d)</span>` : ''}
           </div>
         </td>
-        <td class="col-cota-produto" data-label="Produto">
+        <td class="col-cota-produto card-collapsible-detail" data-label="Produto">
           <div class="card-cell-label">Unidade / Cota</div>
           <code>${escHtml(c.produto)}</code>
         </td>
-        <td class="col-cota-data" data-label="Aquisição">
+        <td class="col-cota-data card-collapsible-detail" data-label="Aquisição">
           <div class="card-cell-label">Data Aquisição</div>
           <span>${fmtDate(c.data_aquisicao)}</span>
         </td>
-        <td class="col-cota-tipo" data-label="Situação">
+        <td class="col-cota-tipo card-collapsible-detail" data-label="Situação">
           <div class="card-cell-label">Situação</div>
           ${badgeCota}
         </td>
-        <td class="col-cota-diarias" data-label="Diárias">
+        <td class="col-cota-diarias card-collapsible-detail" data-label="Diárias">
           <div class="card-cell-label">Diárias Anuais</div>
           <span class="diarias-pill ${isInconsistente ? 'diarias-usadas' : 'diarias-saldo'}">
             ${diariasTotais} diárias anuais ${qtdVouchers > 0 ? `(${totalDiariasEmitidas} emitidas)` : ''}
           </span>
         </td>
-        <td class="col-cota-acao" data-label="Ação">${acaoHtml}</td>
+        <td class="col-cota-acao card-collapsible-detail" data-label="Ação">${acaoHtml}</td>
       </tr>
     `;
   }).join('');
+
+  atualizarBotaoToggleTodosCotas();
 }
 
 // ── Renderização dos Vouchers Emitidos ──────────────────────────
@@ -2330,7 +2362,7 @@ function atualizarBotaoToggleTodosVouchers() {
   if (!lbl) return;
   const rows = document.querySelectorAll('.voucher-card-row');
   if (!rows.length) {
-    lbl.textContent = 'Diminuir Todos';
+    lbl.textContent = 'Expandir Todos';
     return;
   }
   const recolhidosCount = document.querySelectorAll('.voucher-card-row.is-collapsed').length;
@@ -2410,7 +2442,7 @@ function atualizarBotaoToggleTodosSolic() {
   if (!lbl) return;
   const rows = document.querySelectorAll('.solic-card-row');
   if (!rows.length) {
-    lbl.textContent = 'Diminuir Todas';
+    lbl.textContent = 'Expandir Todas';
     return;
   }
   const recolhidosCount = document.querySelectorAll('.solic-card-row.is-collapsed').length;
@@ -2421,6 +2453,86 @@ function atualizarBotaoToggleTodosSolic() {
   }
 }
 window.atualizarBotaoToggleTodosSolic = atualizarBotaoToggleTodosSolic;
+
+function toggleCotaCard(id, event) {
+  if (event) event.stopPropagation();
+  const row = document.getElementById(`card-cota-${id}`);
+  if (!row) return;
+
+  const willCollapse = !row.classList.contains('is-collapsed');
+  row.classList.toggle('is-collapsed', willCollapse);
+  row.classList.toggle('is-expanded', !willCollapse);
+
+  if (willCollapse) {
+    cotasCardsRecolhidos.add(id);
+    cotasCardsExpandidos.delete(id);
+  } else {
+    cotasCardsExpandidos.add(id);
+    cotasCardsRecolhidos.delete(id);
+  }
+
+  const btn = row.querySelector('.btn-card-toggle');
+  if (btn) {
+    btn.innerHTML = willCollapse 
+      ? `<span class="btn-card-toggle-text">Expandir</span><span class="btn-card-toggle-icon">▼</span>`
+      : `<span class="btn-card-toggle-text">Diminuir</span><span class="btn-card-toggle-icon">▲</span>`;
+    btn.setAttribute('aria-expanded', willCollapse ? 'false' : 'true');
+  }
+
+  atualizarBotaoToggleTodosCotas();
+}
+window.toggleCotaCard = toggleCotaCard;
+
+function toggleTodosCardsCotas() {
+  const rows = document.querySelectorAll('.cota-card-row');
+  if (!rows.length) return;
+
+  const recolhidosCount = document.querySelectorAll('.cota-card-row.is-collapsed').length;
+  const recolherTodos = recolhidosCount <= rows.length / 2;
+
+  modoCardsCotasRecolhidoGeral = recolherTodos;
+  localStorage.setItem('rsm_cards_cotas_collapsed_mode', recolherTodos ? 'true' : 'false');
+  cotasCardsRecolhidos.clear();
+  cotasCardsExpandidos.clear();
+
+  rows.forEach(row => {
+    const id = row.getAttribute('data-cota-id');
+    row.classList.toggle('is-collapsed', recolherTodos);
+    row.classList.toggle('is-expanded', !recolherTodos);
+    if (recolherTodos) {
+      if (id) cotasCardsRecolhidos.add(id);
+    } else {
+      if (id) cotasCardsExpandidos.add(id);
+    }
+    const btn = row.querySelector('.btn-card-toggle');
+    if (btn) {
+      btn.innerHTML = recolherTodos
+        ? `<span class="btn-card-toggle-text">Expandir</span><span class="btn-card-toggle-icon">▼</span>`
+        : `<span class="btn-card-toggle-text">Diminuir</span><span class="btn-card-toggle-icon">▲</span>`;
+      btn.setAttribute('aria-expanded', recolherTodos ? 'false' : 'true');
+    }
+  });
+
+  atualizarBotaoToggleTodosCotas();
+}
+window.toggleTodosCardsCotas = toggleTodosCardsCotas;
+
+function atualizarBotaoToggleTodosCotas() {
+  const lbl = document.getElementById('lblToggleTodosCotas');
+  if (!lbl) return;
+  const rows = document.querySelectorAll('.cota-card-row');
+  if (!rows.length) {
+    lbl.textContent = 'Expandir Todas';
+    return;
+  }
+  const recolhidosCount = document.querySelectorAll('.cota-card-row.is-collapsed').length;
+  if (recolhidosCount > rows.length / 2) {
+    lbl.textContent = 'Expandir Todas';
+  } else {
+    lbl.textContent = 'Diminuir Todas';
+  }
+}
+window.atualizarBotaoToggleTodosCotas = atualizarBotaoToggleTodosCotas;
 
 function toggleReservaCard(id, event) {
   if (event) event.stopPropagation();

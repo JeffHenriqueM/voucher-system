@@ -53,10 +53,17 @@ ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS solicitante_nome TEXT;
 ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS pos_venda_nome TEXT;
 ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS admin_assinante_nome TEXT;
 ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS assinado_em TIMESTAMPTZ;
+ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS tipo_voucher TEXT DEFAULT 'diarias';
+ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS valor_credito NUMERIC(10,2) DEFAULT 0;
+ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS valor_utilizado NUMERIC(10,2) DEFAULT 0;
+ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS cpf_beneficiario TEXT;
+ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS is_socio BOOLEAN DEFAULT true;
 
 CREATE INDEX IF NOT EXISTS idx_vouchers_codigo ON vouchers(codigo);
 CREATE INDEX IF NOT EXISTS idx_vouchers_socio ON vouchers(nome_socio);
 CREATE INDEX IF NOT EXISTS idx_vouchers_status ON vouchers(status_fluxo);
+CREATE INDEX IF NOT EXISTS idx_vouchers_tipo ON vouchers(tipo_voucher);
+CREATE INDEX IF NOT EXISTS idx_vouchers_cpf ON vouchers(cpf_beneficiario);
 
 ALTER TABLE vouchers ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Acesso publico vouchers select" ON vouchers;
@@ -116,12 +123,17 @@ CREATE TABLE IF NOT EXISTS voucher_historico_uso (
   voucher_codigo     TEXT NOT NULL,
   nome_socio         TEXT,
   diarias_utilizadas INTEGER NOT NULL DEFAULT 1,
+  valor_utilizado    NUMERIC(10,2) DEFAULT 0,
+  tipo_uso           TEXT DEFAULT 'diaria', -- 'diaria', 'consumo', 'misto'
   data_checkin       DATE,
   data_checkout      DATE,
   operador           TEXT DEFAULT 'Reservas',
   observacoes        TEXT,
   created_at         TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE voucher_historico_uso ADD COLUMN IF NOT EXISTS valor_utilizado NUMERIC(10,2) DEFAULT 0;
+ALTER TABLE voucher_historico_uso ADD COLUMN IF NOT EXISTS tipo_uso TEXT DEFAULT 'diaria';
 
 CREATE INDEX IF NOT EXISTS idx_hist_voucher ON voucher_historico_uso(voucher_codigo);
 

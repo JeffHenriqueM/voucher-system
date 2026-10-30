@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png?v=20261022_09" />
   <link rel="shortcut icon" href="favicon.ico?v=20261022_09" />
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261022_09" />
-  <link rel="stylesheet" href="style.css?v=20261022_09" />
+  <link rel="stylesheet" href="style.css?v=20261030_01" />
 </head>
 <body>
 
@@ -350,6 +350,7 @@
           <button class="tab active" data-status="">Todos</button>
           <button class="tab" data-status="aguardando_assinatura" id="tabFiltroAguardando">✍️ Aguardando Assinatura</button>
           <button class="tab" data-status="disponivel">✓ Ativos / Disponíveis</button>
+          <button class="tab" data-status="credito" id="tabFiltroCreditos" style="color:#047857;font-weight:700;">💰 Créditos & Reembolso (<span id="countFiltroCreditos">0</span>)</button>
           <button class="tab" data-status="usado">✗ Utilizados</button>
           <button class="tab" data-status="checkout_sem_baixa" id="tabFiltroCheckoutSemBaixa" style="color:#c2410c;font-weight:700;">🛎️ Checkout sem Baixa (<span id="countFiltroCheckoutSemBaixa">0</span>)</button>
           <button class="tab" data-status="inconsistente" id="tabFiltroInconsistentes" style="color:#b91c1c;font-weight:700;">⚠️ Inconsistentes (<span id="countFiltroInconsistentes">0</span>)</button>
@@ -641,6 +642,60 @@
           </p>
         </div>
 
+        <!-- Seletor de Categoria do Voucher (Diárias Contratuais vs Crédito Financeiro) -->
+        <div class="categoria-voucher-selector" style="margin-bottom:1.15rem;padding:.75rem .95rem;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;">
+          <label style="font-size:.78rem;font-weight:800;color:var(--text-1);display:block;margin-bottom:.55rem;letter-spacing:0.02em;">
+            CATEGORIA DO VOUCHER :
+          </label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <label class="radio-card-tipo is-active" id="labelTipoDiarias">
+              <input type="radio" name="tipoVoucherRadio" value="diarias" checked onchange="aoAlternarCategoriaVoucher('diarias')" />
+              <span>🎟️ Diárias Contratuais (Hospedagem)</span>
+            </label>
+            <label class="radio-card-tipo" id="labelTipoCredito">
+              <input type="radio" name="tipoVoucherRadio" value="credito" onchange="aoAlternarCategoriaVoucher('credito')" />
+              <span>💰 Crédito em R$ (Reembolso / Diárias & Consumo)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Bloco Específico para Voucher de Crédito / Reembolso -->
+        <div id="boxCamposVoucherCredito" class="hidden" style="margin-bottom:1.15rem;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:.85rem 1rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:.65rem;">
+            <strong style="color:#166534;font-size:.84rem;display:flex;align-items:center;gap:6px;">
+              <span>💰 Configurações do Crédito Financeiro (Hospedagem & Consumo)</span>
+            </strong>
+            <span class="badge badge-green" style="font-size:.7rem;">Reembolso / Crédito</span>
+          </div>
+
+          <div style="display:flex;gap:12px;margin-bottom:.75rem;flex-wrap:wrap;">
+            <label style="display:inline-flex;align-items:center;gap:6px;font-size:.8rem;font-weight:700;color:#166534;cursor:pointer;">
+              <input type="radio" name="tipoClienteVoucher" value="socio" checked onchange="aoAlternarTipoClienteVoucher('socio')" />
+              <span>👤 Sócio da Base (Reembolso de Cota)</span>
+            </label>
+            <label style="display:inline-flex;align-items:center;gap:6px;font-size:.8rem;font-weight:700;color:#166534;cursor:pointer;">
+              <input type="radio" name="tipoClienteVoucher" value="avulso" onchange="aoAlternarTipoClienteVoucher('avulso')" />
+              <span>⭐ Cliente Não-Sócio (Concessão de Crédito Avulso)</span>
+            </label>
+          </div>
+
+          <div class="form-row" style="margin-bottom:0;">
+            <div class="form-group" style="flex:1;margin-bottom:0;">
+              <label for="inputCpfBeneficiario" style="font-size:.78rem;font-weight:700;color:#166534;">
+                CPF do Beneficiário * <small style="font-weight:normal;color:#15803d;">(constará no documento oficial)</small>
+              </label>
+              <input type="text" id="inputCpfBeneficiario" placeholder="000.000.000-00" maxlength="14" oninput="mascaraCpf(this)" style="background:#fff;border-color:#86efac;" />
+            </div>
+            <div class="form-group" style="flex:1;margin-bottom:0;">
+              <label for="inputValorCredito" style="font-size:.78rem;font-weight:700;color:#166534;">
+                Valor Total do Crédito (R$) *
+              </label>
+              <input type="number" id="inputValorCredito" min="1" step="0.01" placeholder="Ex: 1000.00" oninput="aoMudarValorCreditoModal()" style="background:#fff;border-color:#86efac;font-weight:700;color:#166534;" />
+              <small id="lblValorCreditoExtenso" style="font-weight:700;color:#047857;display:block;margin-top:3px;font-size:.74rem;"></small>
+            </div>
+          </div>
+        </div>
+
         <div class="form-grid-2col">
           <!-- Coluna 1: Dados do Voucher & Sócio -->
           <div class="form-col">
@@ -762,74 +817,113 @@
     </div>
   </div>
 
-  <!-- ── Modal Baixa de Diárias (Reservas) ─────────────────────── -->
+  <!-- ── Modal Baixa de Diárias / Abatimento de Crédito ─────────────────────── -->
   <div class="modal-overlay hidden" id="modalBaixaReserva">
     <div class="modal">
       <div class="modal-header">
-        <h2>🛎️ Registrar Hospedagem / Baixa de Diárias</h2>
+        <h2 id="baixaModalTitulo">🛎️ Registrar Hospedagem / Baixa de Diárias</h2>
         <button class="modal-close" id="btnFecharBaixa">✕</button>
       </div>
       <form id="formBaixaReserva">
         <input type="hidden" id="baixaVoucherId" />
         <input type="hidden" id="baixaVoucherCodigo" />
         <input type="hidden" id="baixaSocioNome" />
+        <input type="hidden" id="baixaIsCredito" value="false" />
 
-        <div class="modal-info-card">
+        <div class="modal-info-card" id="baixaModalInfoCard">
           <h3 id="baixaTituloSocio" style="font-size:1rem;margin-bottom:.25rem;">—</h3>
           <p id="baixaInfoSaldo" style="font-size:.85rem;color:var(--text-2);">Diárias Concedidas: <strong>—</strong> | Restantes: <strong>—</strong></p>
         </div>
 
-        <!-- Orientações do Sucesso do Cliente -->
-        <div class="regras-sucesso-box">
+        <!-- Orientações do Sucesso do Cliente (Vouchers de Diárias) -->
+        <div class="regras-sucesso-box" id="baixaRegrasSucessoDiarias">
           <strong>🎟️ Regras de Utilização (Sucesso do Cliente):</strong><br>
           • <strong>Domingo a quinta-feira:</strong> 1 diária por dia (apto LUXO).<br>
           • <strong>Período Especial (Sexta, Sábado ou dia de evento):</strong> contabiliza <strong>2 diárias por dia</strong> (mediante autorização prévia).<br>
           <span style="font-size:.72rem;opacity:.9;">Ex: Sexta = 2 diárias | Sábado = 2 diárias | Dia de evento = 2 diárias.</span>
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label for="baixaDiariasQtd">Diárias a Utilizar nesta Hospedagem *</label>
-            <input type="number" id="baixaDiariasQtd" required min="1" step="1" value="1" />
+        <!-- Orientações de Utilização de Crédito (Vouchers de Crédito & Consumo) -->
+        <div class="regras-sucesso-box hidden" id="baixaRegrasSucessoCredito" style="background:#ecfdf5;border-color:#a7f3d0;border-left:4px solid #10b981;color:#065f46;">
+          <strong>💰 Regras de Abatimento do Crédito Financeiro:</strong><br>
+          • O saldo pode ser utilizado tanto para <strong>diárias de hospedagem</strong> quanto para <strong>consumo (restaurante, bar e serviços)</strong>.<br>
+          • Cada lançamento desconta o valor em R$ em tempo real até o esgotamento do crédito.<br>
+          <span style="font-size:.72rem;opacity:.95;">Exemplo: Saldo R$ 1.000 ➔ Diária R$ 500 ➔ Sobra R$ 500 para nova diária ou consumo.</span>
+        </div>
+
+        <!-- Seção 1: Campos para Vouchers de Diárias Tradicionais -->
+        <div id="baixaSecaoDiarias">
+          <div class="form-row">
+            <div class="form-group" style="flex:1;">
+              <label for="baixaDiariasQtd">Diárias a Utilizar nesta Hospedagem *</label>
+              <input type="number" id="baixaDiariasQtd" min="1" step="1" value="1" />
+            </div>
+            <div class="form-group" style="flex:1;">
+              <label for="baixaOperador">Operador de Reservas</label>
+              <input type="text" id="baixaOperador" value="Equipe de Reservas" />
+            </div>
           </div>
-          <div class="form-group">
-            <label for="baixaOperador">Operador de Reservas</label>
-            <input type="text" id="baixaOperador" value="Equipe de Reservas" />
+        </div>
+
+        <!-- Seção 2: Campos para Vouchers de Crédito Financeiro (R$) -->
+        <div id="baixaSecaoCredito" class="hidden" style="background:#f8fafc;border:1px solid #cbd5e1;padding:.85rem;border-radius:8px;margin-bottom:1rem;">
+          <div class="form-row" style="margin-bottom:.5rem;">
+            <div class="form-group" style="flex:1;margin-bottom:0;">
+              <label for="baixaTipoGasto" style="font-weight:700;">Finalidade do Abatimento *</label>
+              <select id="baixaTipoGasto" onchange="aoMudarTipoGastoCredito()" style="width:100%;padding:.45rem;border:1px solid var(--border);border-radius:6px;background:#fff;font-weight:600;">
+                <option value="diaria">🏨 Diária(s) de Hospedagem</option>
+                <option value="consumo">🍽️ Consumo no Resort (Restaurante / Bar / Serviços)</option>
+                <option value="misto">🏨🍽️ Misto (Diárias + Consumo)</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:1;margin-bottom:0;">
+              <label for="baixaValorAbaterCredito" style="font-weight:700;color:#047857;">Valor a Abater do Saldo (R$) *</label>
+              <input type="number" id="baixaValorAbaterCredito" min="0.01" step="0.01" placeholder="Ex: 500.00" oninput="calcularSaldoAposAbatimentoCredito()" style="border-color:#10b981;font-weight:700;color:#047857;" />
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem .6rem;background:#ecfdf5;border-radius:6px;margin-top:.4rem;border:1px solid #a7f3d0;">
+            <span style="font-size:.78rem;color:#065f46;font-weight:600;">Previsão de Saldo Restante:</span>
+            <strong id="lblSaldoAposAbatimento" style="font-size:.88rem;color:#047857;">R$ 0,00</strong>
           </div>
         </div>
 
         <!-- Período da Hospedagem (Check-in e Check-out) -->
-        <div class="date-field-card">
+        <div class="date-field-card" id="baixaWrapDatasHospedagem">
           <div class="date-field-header">
             <span class="date-field-title">
               <span>🏨 Período Efetivo da Hospedagem *</span>
             </span>
-            <span class="badge" style="font-size:.68rem;padding:.15rem .5rem;background:#fee2e2;color:#991b1b;font-weight:700;">
+            <span class="badge" style="font-size:.68rem;padding:.15rem .5rem;background:#fee2e2;color:#991b1b;font-weight:700;" id="badgeObrigatorioDatas">
               Obrigatório
             </span>
           </div>
           <div class="form-row" style="margin-bottom:0;">
             <div class="form-group" style="margin-bottom:0;">
               <label for="baixaCheckin" style="font-size:.75rem;font-weight:600;">Data de Check-in *</label>
-              <input type="date" id="baixaCheckin" required />
+              <input type="date" id="baixaCheckin" />
             </div>
             <div class="form-group" style="margin-bottom:0;">
               <label for="baixaCheckout" style="font-size:.75rem;font-weight:600;">Data de Check-out *</label>
-              <input type="date" id="baixaCheckout" required />
+              <input type="date" id="baixaCheckout" />
             </div>
           </div>
         </div>
 
+        <div class="form-group" id="baixaWrapOperadorCredito" style="display:none;">
+          <label for="baixaOperadorCredito">Operador Responsável</label>
+          <input type="text" id="baixaOperadorCredito" value="Equipe de Reservas" />
+        </div>
+
         <div class="form-group">
-          <label for="baixaObs">Observações da Hospedagem</label>
-          <input type="text" id="baixaObs" placeholder="Ex: Apartamento Luxo 204, casal, quarto comfort" />
+          <label for="baixaObs" id="lblBaixaObs">Observações / Detalhes</label>
+          <input type="text" id="baixaObs" placeholder="Ex: Apto Luxo 204 ou Comanda Restaurante #142" />
         </div>
 
         <!-- Histórico anterior do voucher -->
         <div id="baixaHistoricoContainer" style="margin-top:1rem;">
-          <label style="font-weight:600;font-size:.78rem;color:var(--text-2);text-transform:uppercase;">Histórico de Estadias Anteriores:</label>
+          <label style="font-weight:600;font-size:.78rem;color:var(--text-2);text-transform:uppercase;" id="lblTituloHistoricoAnterior">Histórico de Utilizações Anteriores:</label>
           <div class="historico-timeline" id="baixaHistoricoLista">
-            <p style="color:var(--text-3);">Nenhuma estadia anterior registrada.</p>
+            <p style="color:var(--text-3);">Nenhuma utilização anterior registrada.</p>
           </div>
         </div>
 
@@ -837,6 +931,9 @@
           <button type="button" class="btn btn-ghost" id="btnCancelarBaixa">Cancelar</button>
           <button type="submit" class="btn btn-primary" id="btnConfirmarBaixa">Confirmar Baixa de Diárias</button>
         </div>
+      </form>
+    </div>
+  </div>
       </form>
     </div>
   </div>
@@ -1243,6 +1340,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="config.js?v=20261025_01"></script>
   <script src="cotas_dados.js?v=20261025_01"></script>
-  <script src="app.js?v=20261025_01"></script>
+  <script src="app.js?v=20261030_01"></script>
 </body>
 </html>

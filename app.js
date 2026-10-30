@@ -107,6 +107,19 @@ Diárias sujeitas à disponibilidade com agendamento prévio.
 Café da manhã incluso nas diárias.
 Diárias em apartamento LUXO.
 Exceto feriados, datas comemorativas e alta temporada.`
+  },
+  {
+    id: 'credito-reembolso',
+    nome: 'Voucher de Crédito — Diárias & Consumo (Reembolso)',
+    titulo_documento: 'RSM EMPREENDIMENTO — VOUCHER DE CRÉDITO & REEMBOLSO',
+    especificacao_padrao: 'Voucher de crédito financeiro no valor de R$ {valor} ({valor_extenso}) para utilização em diárias de hospedagem e/ou consumo no Villamor Tambaba Resort.',
+    regras_uso: `🎟️ Utilização do Crédito — Diárias & Consumo Villamor:
+- Este voucher concede crédito financeiro no valor indicado, utilizável para pagamento de diárias de hospedagem e/ou consumo no hotel (restaurante, bar e serviços);
+- O saldo pode ser utilizado de forma integral ou fracionada em diferentes estadias ou consumos até o término do saldo;
+- Válido para o titular cadastrado mediante apresentação de documento oficial com foto e CPF;
+- As reservas de hospedagem estão sujeitas à disponibilidade de vagas no período pretendido;
+- Cada abatimento de diária ou consumo será registrado no sistema e emitido o comprovante correspondente;
+- Para agendamentos, reservas e saldo ligar (83) 98834-0045, no Villamor Tambaba Resort.`
   }
 ];
 
@@ -119,7 +132,7 @@ if (!listaModelos || !Array.isArray(listaModelos) || listaModelos.length === 0) 
     const idx = listaModelos.findIndex(m => m.id === mp.id);
     if (idx === -1) {
       listaModelos.push(JSON.parse(JSON.stringify(mp)));
-    } else if (mp.id === 'padrao-rsm') {
+    } else if (mp.id === 'padrao-rsm' || mp.id === 'credito-reembolso') {
       listaModelos[idx] = JSON.parse(JSON.stringify(mp));
     }
   });
@@ -147,6 +160,306 @@ function fmt(val) {
   if (isNaN(num)) return '—';
   return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
+
+function fmtMoeda(val) {
+  return fmt(val);
+}
+window.fmtMoeda = fmtMoeda;
+
+function formatarCPF(v) {
+  if (!v) return '';
+  const num = String(v).replace(/\D/g, '').slice(0, 11);
+  return num
+    .replace(/^(\d{3})(\d)/, '$1.$2')
+    .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+    .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4');
+}
+window.formatarCPF = formatarCPF;
+
+function mascaraCpf(input) {
+  if (!input) return;
+  input.value = formatarCPF(input.value);
+}
+window.mascaraCpf = mascaraCpf;
+
+function numeroPorExtensoReais(valor) {
+  const v = Math.round(Number(valor) * 100) / 100;
+  if (isNaN(v) || v <= 0) return 'zero real';
+  const inteira = Math.floor(v);
+  const centavos = Math.round((v - inteira) * 100);
+
+  function extensoAte999(n) {
+    const unidades = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove'];
+    const especiais = ['dez', 'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
+    const dezenas = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
+    const centenas = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
+
+    if (n === 0) return '';
+    if (n === 100) return 'cem';
+    let res = [];
+    const c = Math.floor(n / 100);
+    const restoC = n % 100;
+    if (c > 0) res.push(centenas[c]);
+    if (restoC >= 10 && restoC <= 19) {
+      res.push(especiais[restoC - 10]);
+    } else {
+      const d = Math.floor(restoC / 10);
+      const u = restoC % 10;
+      if (d > 0) res.push(dezenas[d]);
+      if (u > 0) res.push(unidades[u]);
+    }
+    return res.join(' e ');
+  }
+
+  let partes = [];
+  if (inteira > 0) {
+    if (inteira >= 1000000) {
+      const milhoes = Math.floor(inteira / 1000000);
+      partes.push(`${extensoAte999(milhoes)} ${milhoes === 1 ? 'milhão' : 'milhões'}`);
+    }
+    const milhar = Math.floor((inteira % 1000000) / 1000);
+    if (milhar > 0) {
+      partes.push(`${milhar === 1 ? 'um mil' : extensoAte999(milhar) + ' mil'}`);
+    }
+    const resto = inteira % 1000;
+    if (resto > 0) {
+      partes.push(extensoAte999(resto));
+    }
+    const textoReais = partes.join(' e ') + (inteira === 1 ? ' real' : ' reais');
+    if (centavos > 0) {
+      return `${textoReais} e ${extensoAte999(centavos)} ${centavos === 1 ? 'centavo' : 'centavos'}`;
+    }
+    return textoReais;
+  } else {
+    return `${extensoAte999(centavos)} ${centavos === 1 ? 'centavo' : 'centavos'}`;
+  }
+}
+window.numeroPorExtensoReais = numeroPorExtensoReais;
+
+// ── Helpers Específicos para Voucher de Crédito (Reembolso / Consumo) ────
+function isVoucherCredito(v) {
+  if (!v) return false;
+  if (v.tipo_voucher === 'credito') return true;
+  if (v.modelo_id === 'credito-reembolso') return true;
+  const modNome = String(v.modelo_nome || '').toLowerCase();
+  if (modNome.includes('crédito') || modNome.includes('credito') || modNome.includes('reembolso')) return true;
+  const obs = String(v.observacoes || '');
+  const esp = String(v.especificacoes_uso || '');
+  if (obs.includes('[TIPO_VOUCHER: CREDITO]') || esp.includes('[TIPO_VOUCHER: CREDITO]')) return true;
+  return false;
+}
+window.isVoucherCredito = isVoucherCredito;
+
+function extrairDadosCredito(v) {
+  if (!v || !isVoucherCredito(v)) return null;
+
+  // 1. Valor total concedido
+  let valorTotal = Number(v.valor_credito || v.valor_hospedagem || 0);
+  const matchTotal = String(v.observacoes || '').match(/\[VALOR_TOTAL:\s*([\d.,]+)\]/i) ||
+                     String(v.especificacoes_uso || '').match(/\[VALOR_TOTAL:\s*([\d.,]+)\]/i);
+  if (matchTotal && !valorTotal) {
+    valorTotal = Number(matchTotal[1].replace(',', '.')) || 0;
+  }
+
+  // 2. CPF do beneficiário
+  let cpf = v.cpf_beneficiario || '';
+  if (!cpf) {
+    const matchCpf = String(v.observacoes || '').match(/\[CPF:\s*([^\]]+)\]/i) ||
+                     String(v.especificacoes_uso || '').match(/\[CPF:\s*([^\]]+)\]/i);
+    if (matchCpf) cpf = matchCpf[1].trim();
+  }
+
+  // 3. É sócio ou cliente avulso
+  let isSocio = v.is_socio !== false;
+  if (String(v.observacoes || '').includes('[CLIENTE: Nao-Socio]') || String(v.especificacoes_uso || '').includes('[CLIENTE: Nao-Socio]')) {
+    isSocio = false;
+  }
+
+  // 4. Valor utilizado até o momento
+  let valorUtilizado = Number(v.valor_utilizado || 0);
+
+  // Calcular também somando o histórico caso o voucher não tenha sido atualizado diretamente
+  if (Array.isArray(listaHistoricoReservas)) {
+    const histVoucher = listaHistoricoReservas.filter(h => h.voucher_codigo === v.codigo);
+    if (histVoucher.length > 0) {
+      const somaHist = histVoucher.reduce((acc, h) => {
+        let val = Number(h.valor_utilizado || 0);
+        if (!val && h.observacoes) {
+          const m = String(h.observacoes).match(/\[ABATIMENTO_R\$?:\s*([\d.,]+)\]/i) ||
+                    String(h.observacoes).match(/\[VALOR_ABATIDO:\s*([\d.,]+)\]/i);
+          if (m) val = Number(m[1].replace(',', '.')) || 0;
+        }
+        return acc + val;
+      }, 0);
+      if (somaHist > valorUtilizado) {
+        valorUtilizado = somaHist;
+      }
+    }
+  }
+
+  const saldo = Math.max(0, valorTotal - valorUtilizado);
+
+  return {
+    isCredito: true,
+    valorTotal,
+    valorUtilizado,
+    saldo,
+    cpf,
+    isSocio
+  };
+}
+window.extrairDadosCredito = extrairDadosCredito;
+
+function aoAlternarCategoriaVoucher(cat) {
+  const lblDiarias = document.getElementById('labelTipoDiarias');
+  const lblCredito = document.getElementById('labelTipoCredito');
+  const boxCredito = document.getElementById('boxCamposVoucherCredito');
+  const inDiarias = document.getElementById('inputDiarias');
+  const grpDiarias = inDiarias ? inDiarias.closest('.form-group') : null;
+  const selectModelo = document.getElementById('selectModelo');
+  const radioDiarias = document.querySelector('input[name="tipoVoucherRadio"][value="diarias"]');
+  const radioCredito = document.querySelector('input[name="tipoVoucherRadio"][value="credito"]');
+
+  if (cat === 'credito') {
+    if (radioCredito) radioCredito.checked = true;
+    if (lblDiarias) lblDiarias.classList.remove('is-active');
+    if (lblCredito) lblCredito.classList.add('is-active');
+    if (boxCredito) boxCredito.classList.remove('hidden');
+    if (grpDiarias) grpDiarias.style.display = 'none';
+
+    // Selecionar modelo de crédito automaticamente se disponível
+    if (selectModelo) {
+      const optCredito = Array.from(selectModelo.options).find(o => o.value === 'credito-reembolso');
+      if (optCredito) {
+        selectModelo.value = 'credito-reembolso';
+        aoMudarModeloVoucher();
+      }
+    }
+    aoMudarValorCreditoModal();
+  } else {
+    if (radioDiarias) radioDiarias.checked = true;
+    if (lblDiarias) lblDiarias.classList.add('is-active');
+    if (lblCredito) lblCredito.classList.remove('is-active');
+    if (boxCredito) boxCredito.classList.add('hidden');
+    if (grpDiarias) grpDiarias.style.display = 'block';
+
+    if (selectModelo && selectModelo.value === 'credito-reembolso') {
+      selectModelo.value = 'padrao-rsm';
+      aoMudarModeloVoucher();
+    }
+    adequarTextosPorDiarias();
+  }
+}
+window.aoAlternarCategoriaVoucher = aoAlternarCategoriaVoucher;
+
+function aoAlternarTipoClienteVoucher(tipo) {
+  const inputNome = document.getElementById('inputNome');
+  const infoSocio = document.getElementById('inputNomeInfoSocio');
+  if (!inputNome) return;
+
+  if (tipo === 'avulso') {
+    inputNome.placeholder = 'Digite o nome completo do cliente / beneficiário avulso...';
+    inputNome.removeAttribute('list');
+    if (infoSocio) {
+      infoSocio.textContent = '⭐ Cliente não-sócio cadastrado para crédito';
+      infoSocio.style.color = '#6d28d9';
+    }
+  } else {
+    inputNome.placeholder = 'Digite para buscar na base de sócios...';
+    inputNome.setAttribute('list', 'datalistSociosVoucher');
+    if (infoSocio) {
+      infoSocio.textContent = '';
+      infoSocio.style.color = 'var(--primary)';
+    }
+  }
+}
+window.aoAlternarTipoClienteVoucher = aoAlternarTipoClienteVoucher;
+
+function aoMudarValorCreditoModal() {
+  const inVal = document.getElementById('inputValorCredito');
+  const lblExtenso = document.getElementById('lblValorCreditoExtenso');
+  const inBrinde = document.getElementById('inputBrinde');
+  const inValorHosp = document.getElementById('inputValor');
+  const inEspec = document.getElementById('inputEspecUso');
+
+  const val = Number(inVal?.value || 0);
+  if (val > 0) {
+    const extenso = numeroPorExtensoReais(val);
+    if (lblExtenso) lblExtenso.textContent = `✓ ${fmt(val)} (${extenso})`;
+    if (inBrinde) inBrinde.value = `CRÉDITO DE ${fmt(val).toUpperCase()} (DIÁRIAS & CONSUMO)`;
+    if (inValorHosp) inValorHosp.value = val.toFixed(2);
+
+    if (inEspec && (!inEspec.value || inEspec.value.includes('Voucher de crédito financeiro') || inEspec.value.includes('{valor}'))) {
+      inEspec.value = `Voucher de crédito financeiro no valor de ${fmt(val)} (${extenso}) para utilização em diárias de hospedagem e/ou consumo no Villamor Tambaba Resort.`;
+    }
+  } else {
+    if (lblExtenso) lblExtenso.textContent = '';
+  }
+}
+window.aoMudarValorCreditoModal = aoMudarValorCreditoModal;
+
+function aoMudarTipoGastoCredito() {
+  const tipo = document.getElementById('baixaTipoGasto')?.value || 'diaria';
+  const wrapDatas = document.getElementById('baixaWrapDatasHospedagem');
+  const badgeObr = document.getElementById('badgeObrigatorioDatas');
+  const inCheckin = document.getElementById('baixaCheckin');
+  const inCheckout = document.getElementById('baixaCheckout');
+  const inObs = document.getElementById('baixaObs');
+
+  if (tipo === 'consumo') {
+    if (badgeObr) {
+      badgeObr.textContent = 'Opcional (Consumo)';
+      badgeObr.style.background = '#e2e8f0';
+      badgeObr.style.color = '#475569';
+    }
+    if (inCheckin) inCheckin.removeAttribute('required');
+    if (inCheckout) inCheckout.removeAttribute('required');
+    if (inObs && (!inObs.value || inObs.value.startsWith('Apartamento'))) {
+      inObs.placeholder = 'Ex: Consumo Restaurante Tambaba - Comanda #142';
+    }
+  } else {
+    if (badgeObr) {
+      badgeObr.textContent = 'Obrigatório';
+      badgeObr.style.background = '#fee2e2';
+      badgeObr.style.color = '#991b1b';
+    }
+    if (inCheckin) inCheckin.setAttribute('required', 'required');
+    if (inCheckout) inCheckout.setAttribute('required', 'required');
+    if (inObs && (!inObs.value || inObs.value.startsWith('Consumo'))) {
+      inObs.placeholder = 'Ex: Apartamento Luxo 204, casal, diária abatida do crédito';
+    }
+  }
+}
+window.aoMudarTipoGastoCredito = aoMudarTipoGastoCredito;
+
+function calcularSaldoAposAbatimentoCredito() {
+  const inVal = document.getElementById('baixaValorAbaterCredito');
+  const lblSaldo = document.getElementById('lblSaldoAposAbatimento');
+  const btn = document.getElementById('btnConfirmarBaixa');
+  if (!inVal || !lblSaldo) return;
+
+  const voucherId = document.getElementById('baixaVoucherId')?.value;
+  const v = listaVouchers.find(item => item.id === voucherId);
+  const dadosCredito = v ? extrairDadosCredito(v) : null;
+  const saldoAtual = dadosCredito ? dadosCredito.saldo : 0;
+
+  const valAbater = Number(inVal.value || 0);
+  const novoSaldo = Math.max(0, saldoAtual - valAbater);
+
+  if (valAbater > saldoAtual) {
+    lblSaldo.innerHTML = `<span style="color:#dc2626;">⚠️ Valor excede o saldo disponível de ${fmt(saldoAtual)}!</span>`;
+    if (btn) btn.disabled = true;
+  } else {
+    lblSaldo.innerHTML = `<strong style="color:#047857;">${fmt(novoSaldo)}</strong> ${novoSaldo === 0 ? '<span class="badge" style="background:#cbd5e1;color:#1e293b;font-size:.68rem;">(Saldo Zerado)</span>' : ''}`;
+    if (btn) btn.disabled = false;
+    if (btn && valAbater > 0) {
+      btn.textContent = `Confirmar Abatimento de ${fmt(valAbater)}`;
+    } else if (btn) {
+      btn.textContent = 'Confirmar Abatimento de Crédito';
+    }
+  }
+}
+window.calcularSaldoAposAbatimentoCredito = calcularSaldoAposAbatimentoCredito;
 
 function fmtDate(iso) {
   if (!iso) return '—';
@@ -2161,7 +2474,8 @@ async function carregarVouchers() {
       const matchNome = (v.nome_socio || '').toLowerCase().includes(busca);
       const matchNum = String(v.numero || '').includes(busca);
       const matchCod = (v.codigo || '').toLowerCase().includes(busca);
-      if (!matchNome && !matchNum && !matchCod) return false;
+      const matchCpf = (v.cpf_beneficiario || '').replace(/\D/g, '').includes(busca.replace(/\D/g, ''));
+      if (!matchNome && !matchNum && !matchCod && !matchCpf) return false;
     }
 
     const isCancelado = Boolean(extrairDadosCancelamento(v) || v.cancelado || v.status_fluxo === 'cancelado');
@@ -2179,6 +2493,8 @@ async function carregarVouchers() {
       return !isCancelado && v.status_fluxo === 'aguardando_assinatura';
     } else if (filtroStatusVouchers === 'disponivel') {
       return !isCancelado && !v.usado && v.status_fluxo !== 'aguardando_assinatura';
+    } else if (filtroStatusVouchers === 'credito') {
+      return !isCancelado && isVoucherCredito(v);
     } else if (filtroStatusVouchers === 'usado') {
       return !isCancelado && v.usado;
     } else if (filtroStatusVouchers === 'checkout_sem_baixa') {
@@ -2206,10 +2522,16 @@ function renderStatsVouchers(dados) {
   const disponiveis = dados.filter(v => !v.cancelado && v.status_fluxo !== 'cancelado' && !v.usado && v.status_fluxo !== 'aguardando_assinatura').length;
 
   let totalDiariasDisponiveis = 0;
+  let totalCreditoDisponivel = 0;
   dados.filter(v => !v.cancelado && v.status_fluxo !== 'cancelado' && !v.usado && v.status_fluxo !== 'aguardando_assinatura').forEach(v => {
-    const tot = v.diarias_totais || v.diarias || 2;
-    const usd = v.diarias_usadas || 0;
-    totalDiariasDisponiveis += Math.max(0, tot - usd);
+    if (isVoucherCredito(v)) {
+      const dc = extrairDadosCredito(v);
+      if (dc) totalCreditoDisponivel += dc.saldo;
+    } else {
+      const tot = v.diarias_totais || v.diarias || 2;
+      const usd = v.diarias_usadas || 0;
+      totalDiariasDisponiveis += Math.max(0, tot - usd);
+    }
   });
 
   const elTot = document.getElementById('statTotal');
@@ -2221,7 +2543,18 @@ function renderStatsVouchers(dados) {
   const elUsd = document.getElementById('statUsados');
   if (elUsd) elUsd.textContent = usados;
   const elDiar = document.getElementById('statDiariasRestantes');
-  if (elDiar) elDiar.textContent = `${totalDiariasDisponiveis} diárias`;
+  if (elDiar) {
+    if (totalCreditoDisponivel > 0) {
+      elDiar.textContent = `${totalDiariasDisponiveis}d + ${fmt(totalCreditoDisponivel)}`;
+      elDiar.title = `Saldo disponível: ${totalDiariasDisponiveis} diárias e ${fmt(totalCreditoDisponivel)} em créditos`;
+    } else {
+      elDiar.textContent = `${totalDiariasDisponiveis} diárias`;
+    }
+  }
+
+  // Contador da aba de créditos & reembolso
+  const elCountCred = document.getElementById('countFiltroCreditos');
+  if (elCountCred) elCountCred.textContent = dados.filter(v => isVoucherCredito(v)).length;
 
   // Contador da aba de cancelados
   const elCountCanc = document.getElementById('countFiltroCancelados');
@@ -2564,16 +2897,18 @@ function renderTabelaVouchers(dados) {
   const hojeStr = new Date().toISOString().split('T')[0];
 
   tbody.innerHTML = dados.map(v => {
-    const tot = v.diarias_totais || v.diarias || 2;
-    const usd = v.diarias_usadas || (v.usado ? tot : 0);
-    const saldo = Math.max(0, tot - usd);
+    const ehCredito = isVoucherCredito(v);
+    const dadosCred = ehCredito ? extrairDadosCredito(v) : null;
+    const tot = ehCredito ? dadosCred.valorTotal : (v.diarias_totais || v.diarias || 2);
+    const usd = ehCredito ? dadosCred.valorUtilizado : (v.diarias_usadas || (v.usado ? tot : 0));
+    const saldo = ehCredito ? dadosCred.saldo : Math.max(0, tot - usd);
     const dadosCancelamento = extrairDadosCancelamento(v);
     const isCancelado = Boolean(dadosCancelamento || v.cancelado || v.status_fluxo === 'cancelado');
     const isUsadoTotal = Boolean(v.usado || saldo === 0);
     const isPendenteAssinatura = !isCancelado && v.status_fluxo === 'aguardando_assinatura';
     // Se o voucher já foi dado baixa (usado) ou cancelado, ele NÃO é vencido!
     const isVencido = !isCancelado && !isUsadoTotal && v.validade ? (v.validade < hojeStr) : false;
-    const isCheckoutPassadoSemBaixa = Boolean(!isCancelado && !isUsadoTotal && v.periodo_checkout && v.periodo_checkout < hojeStr && saldo > 0);
+    const isCheckoutPassadoSemBaixa = Boolean(!ehCredito && !isCancelado && !isUsadoTotal && v.periodo_checkout && v.periodo_checkout < hojeStr && saldo > 0);
 
     let statusBadge = '';
     if (isCancelado) {
@@ -2581,11 +2916,17 @@ function renderTabelaVouchers(dados) {
     } else if (isPendenteAssinatura) {
       statusBadge = '<span class="badge badge-yellow" style="background:#fef3c7;color:#b45309;font-weight:700;">✍️ Aguarda Assinatura</span>';
     } else if (isUsadoTotal) {
-      statusBadge = '<span class="badge" style="background:#e2e8f0;color:#334155;border:1px solid #cbd5e1;font-weight:700;">✓ Utilizado</span>';
+      statusBadge = ehCredito
+        ? '<span class="badge" style="background:#e2e8f0;color:#334155;border:1px solid #cbd5e1;font-weight:700;">✓ Saldo Utilizado</span>'
+        : '<span class="badge" style="background:#e2e8f0;color:#334155;border:1px solid #cbd5e1;font-weight:700;">✓ Utilizado</span>';
     } else if (isCheckoutPassadoSemBaixa) {
       statusBadge = `<span class="badge" style="background:#ffedd5;color:#c2410c;border:1px solid #fdba74;font-weight:700;" title="Check-out ocorreu em ${fmtDate(v.periodo_checkout)}. As diárias ainda não foram baixadas.">🛎️ Checkout Vencido (Sem Baixa)</span>`;
     } else if (isVencido) {
       statusBadge = '<span class="badge badge-red" style="background:#fee2e2;color:#dc2626;font-weight:700;">⚠️ Vencido / Expirado</span>';
+    } else if (ehCredito) {
+      statusBadge = usd > 0
+        ? `<span class="badge badge-credito" title="Crédito com utilização parcial">💰 Saldo ${fmtMoeda(saldo)}</span>`
+        : `<span class="badge badge-credito" title="Crédito integral disponível">💰 Crédito ${fmtMoeda(tot)}</span>`;
     } else {
       statusBadge = usd > 0
         ? `<span class="badge badge-yellow" style="background:#fef9c3;color:#854d0e;">Parcial (${saldo} restam)</span>`
@@ -2667,11 +3008,18 @@ function renderTabelaVouchers(dados) {
         <td class="col-card-socio" data-label="Sócio" onclick="toggleVoucherCard('${v.id}')">
           <div class="card-socio-header-flex">
             <div>
-              <div class="card-socio-name">${escHtml(v.nome_socio)}</div>
+              <div class="card-socio-name">
+                ${escHtml(v.nome_socio)}
+                ${ehCredito ? `
+                  <span class="badge ${dadosCred.isSocio ? 'badge-credito' : 'badge-nao-socio'}" style="font-size:.65rem;margin-left:4px;vertical-align:middle;">
+                    ${dadosCred.isSocio ? '💰 Sócio Crédito' : '👤 Não-Sócio'}
+                  </span>` : ''}
+              </div>
+              ${ehCredito && dadosCred.cpf ? `<div style="font-size:.72rem;color:var(--text-2);margin-top:1px;">CPF: <strong>${escHtml(formatarCPF(dadosCred.cpf))}</strong></div>` : ''}
               ${v.sala_venda ? `<div class="card-socio-sala">Sala: ${escHtml(v.sala_venda)}</div>` : ''}
             </div>
             <div class="card-mini-summary-pill">
-              <span class="diarias-pill ${isCancelado ? 'diarias-usadas' : 'diarias-saldo'}" style="font-size:.72rem;">${isCancelado ? 'Cancelado' : `${saldo}d saldo`}</span>
+              <span class="diarias-pill ${isCancelado ? 'diarias-usadas' : 'diarias-saldo'}" style="font-size:.72rem;">${isCancelado ? 'Cancelado' : (ehCredito ? `${fmtMoeda(saldo)} saldo` : `${saldo}d saldo`)}</span>
               <a href="${linkVoucher(v.codigo)}" target="_blank" class="card-quick-ver-btn" onclick="event.stopPropagation();" title="Abrir Voucher">👁️ Ver</a>
             </div>
           </div>
@@ -2699,12 +3047,18 @@ function renderTabelaVouchers(dados) {
           <div class="card-cell-label">📅 Validade</div>
           <div class="card-cell-content">${vencimentoHtml}</div>
         </td>
-        <td class="col-card-diarias card-collapsible-detail" data-label="Diárias">
-          <div class="card-cell-label">🏨 Diárias</div>
+        <td class="col-card-diarias card-collapsible-detail" data-label="${ehCredito ? 'Crédito' : 'Diárias'}">
+          <div class="card-cell-label">${ehCredito ? '💰 Crédito / Saldo' : '🏨 Diárias'}</div>
           <div class="card-cell-content">
-            <span class="diarias-pill ${isCancelado ? 'diarias-usadas' : 'diarias-disponiveis'}" title="Concedidas">${tot} tot</span> /
-            <span class="diarias-pill diarias-usadas" title="Utilizadas">${usd} usd</span> /
-            <span class="diarias-pill ${isCancelado ? 'diarias-usadas' : 'diarias-saldo'}" title="Saldo">${isCancelado ? 0 : saldo} saldo</span>
+            ${ehCredito ? `
+              <span class="diarias-pill ${isCancelado ? 'diarias-usadas' : 'diarias-disponiveis'}" title="Valor Concedido">${fmtMoeda(tot)} tot</span> /
+              <span class="diarias-pill diarias-usadas" title="Valor Utilizado">${fmtMoeda(usd)} usd</span> /
+              <span class="diarias-pill ${isCancelado ? 'diarias-usadas' : 'diarias-saldo'}" title="Saldo">${isCancelado ? fmtMoeda(0) : fmtMoeda(saldo)} saldo</span>
+            ` : `
+              <span class="diarias-pill ${isCancelado ? 'diarias-usadas' : 'diarias-disponiveis'}" title="Concedidas">${tot} tot</span> /
+              <span class="diarias-pill diarias-usadas" title="Utilizadas">${usd} usd</span> /
+              <span class="diarias-pill ${isCancelado ? 'diarias-usadas' : 'diarias-saldo'}" title="Saldo">${isCancelado ? 0 : saldo} saldo</span>
+            `}
           </div>
         </td>
         <td class="col-card-trilha card-collapsible-detail" data-label="Auditoria">
@@ -2753,9 +3107,9 @@ function renderTabelaVouchers(dados) {
             <button class="btn btn-sm" style="padding:.28rem .6rem;font-size:.76rem;background:#ea580c;color:#fff;border-color:#ea580c;font-weight:700;" onclick="abrirModalBaixa('${v.id}')" title="Regularizar baixa do check-out realizado em ${fmtDate(v.periodo_checkout)}">
               🛎️ Baixar
             </button>` : ''}
-            ${perfilAtivo !== 'pos_venda' && !isPendenteAssinatura && !isVencido && !isCheckoutPassadoSemBaixa && !isCancelado ? `
-            <button class="btn btn-sm btn-ghost" title="Registrar Hospedagem / Baixa" onclick="abrirModalBaixa('${v.id}')" style="padding:.28rem .5rem;font-size:.76rem;color:#0d9488;border-color:#99f6e4;">
-              🛎️ Baixar
+            ${perfilAtivo !== 'pos_venda' && !isPendenteAssinatura && !isVencido && !isCheckoutPassadoSemBaixa && !isCancelado && !isUsadoTotal ? `
+            <button class="btn btn-sm btn-ghost" title="${ehCredito ? 'Abater Crédito (Diárias ou Consumo)' : 'Registrar Hospedagem / Baixa'}" onclick="abrirModalBaixa('${v.id}')" style="padding:.28rem .5rem;font-size:.76rem;color:${ehCredito ? '#047857' : '#0d9488'};border-color:${ehCredito ? '#86efac' : '#99f6e4'};font-weight:600;">
+              ${ehCredito ? '💰 Abater' : '🛎️ Baixar'}
             </button>` : ''}
             ${(perfilAtivo === 'admin' || perfilAtivo === 'pos_venda') && (!v.assinado_em || v.status_fluxo === 'aguardando_assinatura') && !isCancelado ? `
             <button class="btn btn-sm btn-ghost" title="Editar Voucher (Aguardando Assinatura)" onclick="abrirModalEditar('${v.id}')" style="padding:.28rem .5rem;font-size:.76rem;">
@@ -2791,7 +3145,8 @@ function renderTabelaReservas() {
     const matchNome = (v.nome_socio || '').toLowerCase().includes(busca);
     const matchNum = String(v.numero || '').includes(busca);
     const matchCod = (v.codigo || '').toLowerCase().includes(busca);
-    return matchNome || matchNum || matchCod;
+    const matchCpf = (v.cpf_beneficiario || '').toLowerCase().includes(busca);
+    return matchNome || matchNum || matchCod || matchCpf;
   });
 
   if (!filtrados.length) {
@@ -2804,26 +3159,28 @@ function renderTabelaReservas() {
     const aTot = a.diarias_totais || a.diarias || 0;
     const aUsd = a.diarias_usadas || (a.usado ? aTot : 0);
     const aSaldo = Math.max(0, aTot - aUsd);
-    const aCheckPassou = (a.periodo_checkout && a.periodo_checkout < hojeStr && aSaldo > 0 && !a.usado) ? 1 : 0;
+    const aCheckPassou = (!isVoucherCredito(a) && a.periodo_checkout && a.periodo_checkout < hojeStr && aSaldo > 0 && !a.usado) ? 1 : 0;
 
     const bTot = b.diarias_totais || b.diarias || 0;
     const bUsd = b.diarias_usadas || (b.usado ? bTot : 0);
     const bSaldo = Math.max(0, bTot - bUsd);
-    const bCheckPassou = (b.periodo_checkout && b.periodo_checkout < hojeStr && bSaldo > 0 && !b.usado) ? 1 : 0;
+    const bCheckPassou = (!isVoucherCredito(b) && b.periodo_checkout && b.periodo_checkout < hojeStr && bSaldo > 0 && !b.usado) ? 1 : 0;
 
     return bCheckPassou - aCheckPassou;
   });
 
   tbody.innerHTML = filtrados.map(v => {
-    const tot = v.diarias_totais || v.diarias || 2;
-    const usd = v.diarias_usadas || (v.usado ? tot : 0);
-    const saldo = Math.max(0, tot - usd);
+    const ehCredito = isVoucherCredito(v);
+    const dadosCred = ehCredito ? extrairDadosCredito(v) : null;
+    const tot = ehCredito ? dadosCred.valorTotal : (v.diarias_totais || v.diarias || 2);
+    const usd = ehCredito ? dadosCred.valorUtilizado : (v.diarias_usadas || (v.usado ? tot : 0));
+    const saldo = ehCredito ? dadosCred.saldo : Math.max(0, tot - usd);
     const isCancelado = Boolean(extrairDadosCancelamento(v) || v.cancelado || v.status_fluxo === 'cancelado');
     const isUsadoTotal = Boolean(v.usado || saldo === 0);
     const isSemAssinatura = !isCancelado && (v.status_fluxo === 'aguardando_assinatura' || !v.assinado_em);
     // Se o voucher já foi dado baixa (usado), ele NÃO é vencido!
     const isVencido = !isCancelado && !isUsadoTotal && v.validade ? (v.validade < hojeStr) : false;
-    const isCheckoutPassadoSemBaixa = Boolean(!isCancelado && !isUsadoTotal && v.periodo_checkout && v.periodo_checkout < hojeStr && saldo > 0);
+    const isCheckoutPassadoSemBaixa = Boolean(!ehCredito && !isCancelado && !isUsadoTotal && v.periodo_checkout && v.periodo_checkout < hojeStr && saldo > 0);
 
     // Coluna Vencimento
     let vencimentoHtml = '';
@@ -2867,8 +3224,15 @@ function renderTabelaReservas() {
     // Buscar histórico deste voucher
     const historico = listaHistoricoReservas.filter(h => h.voucher_codigo === v.codigo);
     const histResumo = historico.length
-      ? historico.map(h => `<div style="font-size:.75rem;">📅 <strong>${h.diarias_utilizadas}d</strong> (${fmtDate(h.data_checkin)} a ${fmtDate(h.data_checkout)})</div>`).join('')
-      : '<span style="color:#94a3b8;font-size:.75rem;">Nenhuma estadia realizada</span>';
+      ? historico.map(h => {
+          if (ehCredito) {
+            const tipoLabel = h.tipo_uso === 'consumo' ? 'Consumo' : (h.tipo_uso === 'misto' ? 'Misto' : 'Diária');
+            const valorAbatido = h.valor_utilizado ? fmtMoeda(h.valor_utilizado) : (h.diarias_utilizadas ? `${h.diarias_utilizadas}d` : '—');
+            return `<div style="font-size:.75rem;">💰 <strong>${valorAbatido}</strong> (${tipoLabel}${h.data_checkin ? ` · ${fmtDate(h.data_checkin)}` : ''})</div>`;
+          }
+          return `<div style="font-size:.75rem;">📅 <strong>${h.diarias_utilizadas}d</strong> (${fmtDate(h.data_checkin)} a ${fmtDate(h.data_checkout)})</div>`;
+        }).join('')
+      : '<span style="color:#94a3b8;font-size:.75rem;">Nenhuma utilização realizada</span>';
 
     let botaoAcao = '';
     if (isCancelado) {
@@ -2886,7 +3250,7 @@ function renderTabelaReservas() {
     } else if (isUsadoTotal) {
       botaoAcao = `
         <button class="btn btn-ghost" disabled style="padding:.35rem .65rem;font-size:.78rem;background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;cursor:not-allowed;font-weight:600;">
-          ✓ Diárias Baixadas
+          ${ehCredito ? '✓ Saldo Utilizado' : '✓ Diárias Baixadas'}
         </button>
       `;
     } else if (isCheckoutPassadoSemBaixa) {
@@ -2899,6 +3263,12 @@ function renderTabelaReservas() {
       botaoAcao = `
         <button class="btn btn-ghost" disabled style="padding:.35rem .65rem;font-size:.76rem;color:#dc2626;background:#fee2e2;border:1px dashed #ef4444;cursor:not-allowed;font-weight:600;" title="Voucher expirou a validade em ${fmtDate(v.validade)}.">
           ⚠️ Vencido
+        </button>
+      `;
+    } else if (ehCredito) {
+      botaoAcao = `
+        <button class="btn btn-primary" style="padding:.35rem .75rem;font-size:.8rem;background:#059669;border-color:#059669;" onclick="abrirModalBaixa('${v.id}')">
+          💰 Abater Crédito
         </button>
       `;
     } else {
@@ -2932,10 +3302,17 @@ function renderTabelaReservas() {
         <td class="col-card-socio" data-label="Sócio" onclick="toggleReservaCard('${v.id}')">
           <div class="card-socio-header-flex">
             <div>
-              <div class="card-socio-name">${escHtml(v.nome_socio)}</div>
+              <div class="card-socio-name">
+                ${escHtml(v.nome_socio)}
+                ${ehCredito ? `
+                  <span class="badge ${dadosCred.isSocio ? 'badge-credito' : 'badge-nao-socio'}" style="font-size:.65rem;margin-left:4px;vertical-align:middle;">
+                    ${dadosCred.isSocio ? '💰 Sócio Crédito' : '👤 Não-Sócio'}
+                  </span>` : ''}
+              </div>
+              ${ehCredito && dadosCred.cpf ? `<div style="font-size:.72rem;color:var(--text-2);margin-top:1px;">CPF: <strong>${escHtml(formatarCPF(dadosCred.cpf))}</strong></div>` : ''}
             </div>
             <div class="card-mini-summary-pill">
-              <span class="diarias-pill ${saldo > 0 ? 'diarias-disponiveis' : 'diarias-usadas'}" style="font-size:.72rem;">${saldo}d saldo</span>
+              <span class="diarias-pill ${saldo > 0 ? 'diarias-disponiveis' : 'diarias-usadas'}" style="font-size:.72rem;">${ehCredito ? `${fmtMoeda(saldo)} saldo` : `${saldo}d saldo`}</span>
             </div>
           </div>
           ${temObs ? `
@@ -2951,24 +3328,24 @@ function renderTabelaReservas() {
           <div class="card-cell-label">📅 Vencimento</div>
           <div class="card-cell-content">${vencimentoHtml}</div>
         </td>
-        <td class="col-card-diarias card-collapsible-detail" data-label="Concedidas">
-          <div class="card-cell-label">🏨 Concedidas</div>
-          <div class="card-cell-content">${tot} diária(s)</div>
+        <td class="col-card-diarias card-collapsible-detail" data-label="${ehCredito ? 'Concedido' : 'Concedidas'}">
+          <div class="card-cell-label">${ehCredito ? '💰 Concedido' : '🏨 Concedidas'}</div>
+          <div class="card-cell-content">${ehCredito ? fmtMoeda(tot) : `${tot} diária(s)`}</div>
         </td>
-        <td class="col-card-diarias-usd card-collapsible-detail" data-label="Utilizadas">
-          <div class="card-cell-label">🏨 Utilizadas</div>
-          <div class="card-cell-content"><span style="color:#dc2626;font-weight:700;">${usd} diária(s)</span></div>
+        <td class="col-card-diarias-usd card-collapsible-detail" data-label="${ehCredito ? 'Utilizado' : 'Utilizadas'}">
+          <div class="card-cell-label">${ehCredito ? '💰 Utilizado' : '🏨 Utilizadas'}</div>
+          <div class="card-cell-content"><span style="color:#dc2626;font-weight:700;">${ehCredito ? fmtMoeda(usd) : `${usd} diária(s)`}</span></div>
         </td>
         <td class="col-card-saldo card-collapsible-detail" data-label="Saldo">
           <div class="card-cell-label">🏨 Saldo Restante</div>
           <div class="card-cell-content">
-            <span class="diarias-pill ${saldo > 0 ? 'diarias-disponiveis' : 'diarias-usadas'}">${saldo} restante(s)</span>
+            <span class="diarias-pill ${saldo > 0 ? 'diarias-disponiveis' : 'diarias-usadas'}">${ehCredito ? `${fmtMoeda(saldo)} restante` : `${saldo} restante(s)`}</span>
             ${isSemAssinatura ? '<div style="font-size:.7rem;color:#b45309;font-weight:600;margin-top:3px;">✍️ Aguarda Assinatura</div>' : ''}
-            ${isUsadoTotal ? '<div style="font-size:.7rem;color:#475569;font-weight:600;margin-top:3px;">✓ Utilizado</div>' : (isVencido ? '<div style="font-size:.7rem;color:#dc2626;font-weight:600;margin-top:3px;">⚠️ Vencido</div>' : '')}
+            ${isUsadoTotal ? '<div style="font-size:.7rem;color:#475569;font-weight:600;margin-top:3px;">✓ Saldo Utilizado</div>' : (isVencido ? '<div style="font-size:.7rem;color:#dc2626;font-weight:600;margin-top:3px;">⚠️ Vencido</div>' : '')}
           </div>
         </td>
         <td class="col-card-historico card-collapsible-detail" data-label="Histórico">
-          <div class="card-cell-label">📖 Estadias Realizadas</div>
+          <div class="card-cell-label">📖 Utilizações / Estadias</div>
           <div class="card-cell-content">${histResumo}</div>
         </td>
         <td class="col-card-acoes card-collapsible-detail" data-label="Ação">
@@ -2987,11 +3364,13 @@ function abrirModalBaixa(voucherId) {
   if (!v) return;
 
   const hojeStr = new Date().toISOString().split('T')[0];
-  const tot = v.diarias_totais || v.diarias || 2;
-  const usd = v.diarias_usadas || (v.usado ? tot : 0);
-  const saldo = Math.max(0, tot - usd);
+  const ehCredito = isVoucherCredito(v);
+  const dadosCred = ehCredito ? extrairDadosCredito(v) : null;
+  const tot = ehCredito ? dadosCred.valorTotal : (v.diarias_totais || v.diarias || 2);
+  const usd = ehCredito ? dadosCred.valorUtilizado : (v.diarias_usadas || (v.usado ? tot : 0));
+  const saldo = ehCredito ? dadosCred.saldo : Math.max(0, tot - usd);
   const isVencido = v.validade && (v.validade < hojeStr);
-  const isCheckoutPassado = Boolean(v.periodo_checkout && v.periodo_checkout < hojeStr && saldo > 0);
+  const isCheckoutPassado = Boolean(!ehCredito && v.periodo_checkout && v.periodo_checkout < hojeStr && saldo > 0);
 
   // Requisito: um voucher sem assinatura não pode ser utilizado
   if (v.status_fluxo === 'aguardando_assinatura' || !v.assinado_em) {
@@ -3009,17 +3388,55 @@ function abrirModalBaixa(voucherId) {
   document.getElementById('baixaVoucherCodigo').value = v.codigo;
   document.getElementById('baixaSocioNome').value = v.nome_socio;
 
-  document.getElementById('baixaTituloSocio').textContent = `Voucher #${v.numero || v.codigo} — ${v.nome_socio}`;
-  document.getElementById('baixaInfoSaldo').innerHTML = `
-    Diárias Concedidas: <strong>${tot}</strong> | 
-    Já Utilizadas: <strong style="color:#dc2626;">${usd}</strong> | 
-    Saldo Restante: <strong style="color:#16a34a;">${saldo} diárias</strong> | 
-    Vencimento: <strong style="color:${isVencido ? '#dc2626' : 'var(--text-1)'};">${v.validade ? fmtDate(v.validade) : 'A definir'}</strong>
-    ${isCheckoutPassado ? ` | <span class="badge" style="background:#ffedd5;color:#c2410c;font-weight:700;">🛎️ Check-out ocorrido em ${fmtDate(v.periodo_checkout)}</span>` : ''}
-  `;
+  const secaoDiarias = document.getElementById('baixaSecaoDiarias');
+  const secaoCredito = document.getElementById('baixaSecaoCredito');
+  const tituloModal = document.getElementById('baixaTituloModal');
+  const lblHist = document.getElementById('lblTituloHistoricoAnterior');
 
-  document.getElementById('baixaDiariasQtd').max = saldo > 0 ? saldo : 1;
-  document.getElementById('baixaDiariasQtd').value = saldo > 0 ? saldo : 1;
+  if (ehCredito) {
+    if (secaoDiarias) secaoDiarias.classList.add('hidden');
+    if (secaoCredito) secaoCredito.classList.remove('hidden');
+    if (tituloModal) tituloModal.innerHTML = '<span>💰 Abater Crédito — Diárias & Consumo</span>';
+    if (lblHist) lblHist.textContent = 'Histórico de Abatimentos Anteriores:';
+
+    document.getElementById('baixaTituloSocio').textContent = `Voucher #${v.numero || v.codigo} — ${v.nome_socio}${dadosCred.isSocio ? ' (Sócio)' : ' (Não-Sócio)'}`;
+    document.getElementById('baixaInfoSaldo').innerHTML = `
+      Valor Concedido: <strong>${fmtMoeda(dadosCred.valorTotal)}</strong> | 
+      Já Utilizado: <strong style="color:#dc2626;">${fmtMoeda(dadosCred.valorUtilizado)}</strong> | 
+      Saldo Disponível: <strong style="color:#047857;">${fmtMoeda(dadosCred.saldo)}</strong> | 
+      CPF: <strong>${formatarCPF(dadosCred.cpf) || '—'}</strong> | 
+      Vencimento: <strong style="color:${isVencido ? '#dc2626' : 'var(--text-1)'};">${v.validade ? fmtDate(v.validade) : 'A definir'}</strong>
+    `;
+
+    const inValAbater = document.getElementById('baixaValorAbaterCredito');
+    if (inValAbater) {
+      inValAbater.max = dadosCred.saldo;
+      inValAbater.value = dadosCred.saldo > 0 ? dadosCred.saldo : 0;
+    }
+    const selTipoGasto = document.getElementById('baixaTipoGasto');
+    if (selTipoGasto) selTipoGasto.value = 'diaria';
+    aoMudarTipoGastoCredito();
+    calcularSaldoAposAbatimentoCredito();
+  } else {
+    if (secaoDiarias) secaoDiarias.classList.remove('hidden');
+    if (secaoCredito) secaoCredito.classList.add('hidden');
+    if (tituloModal) tituloModal.innerHTML = '<span>🏨 Registrar Estadia / Baixa de Diárias</span>';
+    if (lblHist) lblHist.textContent = 'Histórico de Estadias Anteriores:';
+
+    document.getElementById('baixaTituloSocio').textContent = `Voucher #${v.numero || v.codigo} — ${v.nome_socio}`;
+    document.getElementById('baixaInfoSaldo').innerHTML = `
+      Diárias Concedidas: <strong>${tot}</strong> | 
+      Já Utilizadas: <strong style="color:#dc2626;">${usd}</strong> | 
+      Saldo Restante: <strong style="color:#16a34a;">${saldo} diárias</strong> | 
+      Vencimento: <strong style="color:${isVencido ? '#dc2626' : 'var(--text-1)'};">${v.validade ? fmtDate(v.validade) : 'A definir'}</strong>
+      ${isCheckoutPassado ? ` | <span class="badge" style="background:#ffedd5;color:#c2410c;font-weight:700;">🛎️ Check-out ocorrido em ${fmtDate(v.periodo_checkout)}</span>` : ''}
+    `;
+
+    document.getElementById('baixaDiariasQtd').max = saldo > 0 ? saldo : 1;
+    document.getElementById('baixaDiariasQtd').value = saldo > 0 ? saldo : 1;
+    const btn = document.getElementById('btnConfirmarBaixa');
+    if (btn) btn.textContent = 'Confirmar Baixa de Diárias';
+  }
 
   // Datas padrão: se check-out já ocorreu, preenche com as datas da estadia prevista
   const hoje = new Date().toISOString().split('T')[0];
@@ -3037,17 +3454,32 @@ function abrirModalBaixa(voucherId) {
   const historico = listaHistoricoReservas.filter(h => h.voucher_codigo === v.codigo);
 
   if (historico.length) {
-    container.innerHTML = historico.map((h, i) => `
-      <div class="historico-item">
-        <div>
-          <div class="historico-periodo">Estadia ${i+1}: ${h.diarias_utilizadas} diária(s)</div>
-          <div class="historico-info">Período: ${fmtDate(h.data_checkin)} até ${fmtDate(h.data_checkout)} | Operador: ${escHtml(h.operador || 'Reservas')}</div>
-          ${h.observacoes ? `<div style="font-size:.72rem;color:#475569;margin-top:2px;">Obs: ${escHtml(h.observacoes)}</div>` : ''}
+    container.innerHTML = historico.map((h, i) => {
+      if (ehCredito) {
+        const tipoLabel = h.tipo_uso === 'consumo' ? 'Consumo' : (h.tipo_uso === 'misto' ? 'Misto' : 'Diária');
+        const valorAbatido = h.valor_utilizado ? fmtMoeda(h.valor_utilizado) : (h.diarias_utilizadas ? `${h.diarias_utilizadas}d` : '—');
+        return `
+          <div class="historico-item">
+            <div>
+              <div class="historico-periodo">Abatimento #${i+1}: <strong>${valorAbatido}</strong> (${tipoLabel})</div>
+              <div class="historico-info">${h.data_checkin ? `Período: ${fmtDate(h.data_checkin)} ${h.data_checkout ? `até ${fmtDate(h.data_checkout)}` : ''} | ` : ''}Operador: ${escHtml(h.operador || 'Reservas')} | Data: ${fmtDateTime(h.created_at)}</div>
+              ${h.observacoes ? `<div style="font-size:.72rem;color:#475569;margin-top:2px;">Obs: ${escHtml(h.observacoes)}</div>` : ''}
+            </div>
+          </div>
+        `;
+      }
+      return `
+        <div class="historico-item">
+          <div>
+            <div class="historico-periodo">Estadia ${i+1}: ${h.diarias_utilizadas} diária(s)</div>
+            <div class="historico-info">Período: ${fmtDate(h.data_checkin)} até ${fmtDate(h.data_checkout)} | Operador: ${escHtml(h.operador || 'Reservas')}</div>
+            ${h.observacoes ? `<div style="font-size:.72rem;color:#475569;margin-top:2px;">Obs: ${escHtml(h.observacoes)}</div>` : ''}
+          </div>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
   } else {
-    container.innerHTML = '<p style="color:var(--text-3);font-size:.78rem;">Nenhuma estadia anterior registrada neste voucher.</p>';
+    container.innerHTML = `<p style="color:var(--text-3);font-size:.78rem;">Nenhuma utilização anterior registrada neste voucher.</p>`;
   }
 
   document.getElementById('modalBaixaReserva').classList.remove('hidden');
@@ -3132,7 +3564,6 @@ document.getElementById('formBaixaReserva').addEventListener('submit', async (e)
   const voucherId = document.getElementById('baixaVoucherId').value;
   const voucherCodigo = document.getElementById('baixaVoucherCodigo').value;
   const socioNome = document.getElementById('baixaSocioNome').value;
-  const qtdBaixa = Number(document.getElementById('baixaDiariasQtd').value);
   const checkin = document.getElementById('baixaCheckin').value;
   const checkout = document.getElementById('baixaCheckout').value;
   const operador = document.getElementById('baixaOperador').value.trim() || 'Reservas';
@@ -3149,9 +3580,109 @@ document.getElementById('formBaixaReserva').addEventListener('submit', async (e)
   if (voucher.status_fluxo === 'aguardando_assinatura' || !voucher.assinado_em) {
     showToast('Operação bloqueada: vouchers sem assinatura oficial não podem ser utilizados.', 'error');
     btn.disabled = false;
-    btn.textContent = 'Confirmar Baixa de Diárias';
+    btn.textContent = 'Confirmar Baixa';
     return;
   }
+
+  const ehCredito = isVoucherCredito(voucher);
+  const dadosCredito = ehCredito ? extrairDadosCredito(voucher) : null;
+
+  // ── FLUXO ESPECÍFICO PARA VOUCHER DE CRÉDITO (DIÁRIAS & CONSUMO) ────────
+  if (ehCredito) {
+    const valAbater = Number(document.getElementById('baixaValorAbaterCredito')?.value || 0);
+    const tipoGasto = document.getElementById('baixaTipoGasto')?.value || 'diaria';
+
+    if (valAbater <= 0) {
+      showToast('⚠️ Informe um valor válido em R$ para abater do crédito.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Confirmar Abatimento';
+      return;
+    }
+    if (valAbater > (dadosCredito.saldo + 0.01)) {
+      showToast(`⚠️ O valor informado (${fmtMoeda(valAbater)}) é maior que o saldo disponível (${fmtMoeda(dadosCredito.saldo)}).`, 'error');
+      btn.disabled = false;
+      btn.textContent = 'Confirmar Abatimento';
+      return;
+    }
+
+    if (tipoGasto === 'diaria' && (!checkin || !checkout)) {
+      showToast('⚠️ Para abatimento referente a diárias, informe a data de check-in e check-out.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Confirmar Abatimento';
+      return;
+    }
+
+    const novoUsado = (dadosCredito.valorUtilizado || 0) + valAbater;
+    const saldoFinal = Math.max(0, dadosCredito.valorTotal - novoUsado);
+    const isTotalmenteUsado = saldoFinal <= 0.01;
+
+    try {
+      const updateData = {
+        valor_utilizado: novoUsado,
+        usado: isTotalmenteUsado,
+        data_uso: isTotalmenteUsado ? new Date().toISOString() : voucher.data_uso
+      };
+
+      const tagMov = `[ABATIMENTO: R$ ${valAbater.toFixed(2)} (${tipoGasto}) em ${fmtDate(new Date().toISOString())} por ${operador} | SALDO_RESTANTE: R$ ${saldoFinal.toFixed(2)}]`;
+      updateData.observacoes = voucher.observacoes ? `${voucher.observacoes}\n${tagMov}` : tagMov;
+
+      try {
+        await db.from('vouchers').update(updateData).eq('id', voucherId);
+      } catch (errDb) {
+        delete updateData.valor_utilizado;
+        await db.from('vouchers').update(updateData).eq('id', voucherId);
+      }
+
+      const novoRegistroHist = {
+        voucher_id: voucherId,
+        voucher_codigo: voucherCodigo,
+        nome_socio: socioNome,
+        diarias_utilizadas: tipoGasto === 'diaria' ? 1 : 0,
+        valor_utilizado: valAbater,
+        tipo_uso: tipoGasto,
+        data_checkin: checkin || null,
+        data_checkout: checkout || null,
+        operador: operador,
+        observacoes: obs ? `${obs} — [ABATIMENTO_R$: ${valAbater.toFixed(2)} | TIPO: ${tipoGasto} | SALDO: ${saldoFinal.toFixed(2)}]` : `[ABATIMENTO_R$: ${valAbater.toFixed(2)} | TIPO: ${tipoGasto} | SALDO: ${saldoFinal.toFixed(2)}]`,
+        created_at: new Date().toISOString()
+      };
+
+      try {
+        await db.from('voucher_historico_uso').insert([novoRegistroHist]);
+      } catch (eHist) {
+        const histSimples = { ...novoRegistroHist };
+        delete histSimples.valor_utilizado;
+        delete histSimples.tipo_uso;
+        try {
+          await db.from('voucher_historico_uso').insert([histSimples]);
+        } catch (e2) {}
+      }
+
+      voucher.valor_utilizado = novoUsado;
+      voucher.usado = isTotalmenteUsado;
+      voucher.observacoes = updateData.observacoes;
+      localStorage.setItem('rsm_vouchers_cache', JSON.stringify(listaVouchers));
+
+      listaHistoricoReservas.unshift(novoRegistroHist);
+      localStorage.setItem('rsm_historico_reservas', JSON.stringify(listaHistoricoReservas));
+
+      showToast(`💰 Abatimento de ${fmtMoeda(valAbater)} (${tipoGasto}) registrado com sucesso! Saldo restante: ${fmtMoeda(saldoFinal)}.`);
+      fecharModalBaixa();
+      sincronizarCotas();
+      if (abaAtiva === 'vouchers') carregarVouchers();
+      if (abaAtiva === 'reservas') renderTabelaReservas();
+    } catch (err) {
+      console.error('Erro ao abater crédito:', err);
+      showToast('Erro ao gravar abatimento do voucher de crédito', 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Confirmar Baixa';
+    }
+    return;
+  }
+
+  // ── FLUXO REGULAR DE DIÁRIAS ───────────────────────────────────────────
+  const qtdBaixa = Number(document.getElementById('baixaDiariasQtd').value);
 
   // Validação: voucher vencido não pode ter diárias baixadas, exceto para regularizar check-out já ocorrido
   const hojeSubmit = new Date().toISOString().split('T')[0];
@@ -3183,6 +3714,8 @@ document.getElementById('formBaixaReserva').addEventListener('submit', async (e)
       voucher_codigo: voucherCodigo,
       nome_socio: socioNome,
       diarias_utilizadas: qtdBaixa,
+      valor_utilizado: 0,
+      tipo_uso: 'diaria',
       data_checkin: checkin,
       data_checkout: checkout,
       operador: operador,
@@ -3663,6 +4196,12 @@ function abrirModalEmitirParaCota(cotaId, isNovoVoucherAdicional = false) {
 
   adequarTextosPorDiarias();
 
+  // Inicializar modo diárias padrão
+  aoAlternarCategoriaVoucher('diarias');
+  aoAlternarTipoClienteVoucher('socio');
+  if (document.getElementById('inputCpfBeneficiario')) document.getElementById('inputCpfBeneficiario').value = '';
+  if (document.getElementById('inputValorCredito')) document.getElementById('inputValorCredito').value = '';
+
   document.getElementById('wrapAdminAssinanteEdit')?.classList.add('hidden');
   if (document.getElementById('inputAdminAssinanteEdit')) document.getElementById('inputAdminAssinanteEdit').value = '';
 
@@ -3689,6 +4228,12 @@ function abrirModalNovo() {
   document.getElementById('inputDiarias').value = 2;
   document.getElementById('lblDicaDiarias').textContent = '';
   document.getElementById('inputSala').value = 'VILLA';
+
+  // Inicializar categoria diárias e sócio padrão
+  aoAlternarCategoriaVoucher('diarias');
+  aoAlternarTipoClienteVoucher('socio');
+  if (document.getElementById('inputCpfBeneficiario')) document.getElementById('inputCpfBeneficiario').value = '';
+  if (document.getElementById('inputValorCredito')) document.getElementById('inputValorCredito').value = '';
 
   // Validade padrão: 1 ano
   const dataHoje = new Date();
@@ -3749,6 +4294,32 @@ async function abrirModalEditar(id) {
   document.getElementById('inputEspecUso').value = v.especificacoes_uso || '';
   if (v.modelo_id) document.getElementById('selectModelo').value = v.modelo_id;
 
+  // Carregar dados de crédito se for o caso
+  const ehCredito = isVoucherCredito(v);
+  const dadosCred = ehCredito ? extrairDadosCredito(v) : null;
+  if (ehCredito) {
+    aoAlternarCategoriaVoucher('credito');
+    const isSocio = dadosCred ? dadosCred.isSocio : (v.is_socio !== false);
+    const radioSocio = document.querySelector('input[name="tipoClienteVoucher"][value="socio"]');
+    const radioAvulso = document.querySelector('input[name="tipoClienteVoucher"][value="avulso"]');
+    if (isSocio && radioSocio) radioSocio.checked = true;
+    else if (!isSocio && radioAvulso) radioAvulso.checked = true;
+    aoAlternarTipoClienteVoucher(isSocio ? 'socio' : 'avulso');
+
+    if (document.getElementById('inputCpfBeneficiario')) {
+      document.getElementById('inputCpfBeneficiario').value = formatarCPF(dadosCred ? dadosCred.cpf : (v.cpf_beneficiario || ''));
+    }
+    if (document.getElementById('inputValorCredito')) {
+      document.getElementById('inputValorCredito').value = dadosCred ? dadosCred.valorTotal : (v.valor_credito || v.valor_hospedagem || '');
+      aoMudarValorCreditoModal();
+    }
+  } else {
+    aoAlternarCategoriaVoucher('diarias');
+    aoAlternarTipoClienteVoucher('socio');
+    if (document.getElementById('inputCpfBeneficiario')) document.getElementById('inputCpfBeneficiario').value = '';
+    if (document.getElementById('inputValorCredito')) document.getElementById('inputValorCredito').value = '';
+  }
+
   const wrapAssinante = document.getElementById('wrapAdminAssinanteEdit');
   const inAssinante = document.getElementById('inputAdminAssinanteEdit');
   if (wrapAssinante && inAssinante) {
@@ -3776,6 +4347,10 @@ function capturarSnapshotModalVoucher() {
   return JSON.stringify({
     nome: document.getElementById('inputNome')?.value || '',
     sala: document.getElementById('inputSala')?.value || '',
+    tipoVoucher: document.querySelector('input[name="tipoVoucherRadio"]:checked')?.value || 'diarias',
+    tipoCliente: document.querySelector('input[name="tipoClienteVoucher"]:checked')?.value || 'socio',
+    cpfBeneficiario: document.getElementById('inputCpfBeneficiario')?.value || '',
+    valorCredito: document.getElementById('inputValorCredito')?.value || '',
     diarias: document.getElementById('inputDiarias')?.value || '',
     valor: document.getElementById('inputValor')?.value || '',
     brinde: document.getElementById('inputBrinde')?.value || '',
@@ -3852,6 +4427,28 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
   const modeloObj = listaModelos.find(m => m.id === modeloId);
   const diariasTotais = Number(document.getElementById('inputDiarias').value) || 2;
 
+  const tipoVoucher = document.querySelector('input[name="tipoVoucherRadio"]:checked')?.value || 'diarias';
+  const ehTipoCredito = (tipoVoucher === 'credito');
+  const tipoCliente = document.querySelector('input[name="tipoClienteVoucher"]:checked')?.value || 'socio';
+  const isSocio = (tipoCliente === 'socio');
+  const cpfBeneficiario = (document.getElementById('inputCpfBeneficiario')?.value || '').trim();
+  const valorCreditoNum = Number(document.getElementById('inputValorCredito')?.value || 0);
+
+  if (ehTipoCredito) {
+    if (!valorCreditoNum || valorCreditoNum <= 0) {
+      showToast('⚠️ Por favor, informe um valor válido em R$ para o voucher de crédito.', 'error');
+      btn.disabled = false;
+      btn.textContent = id ? 'Atualizar Voucher' : 'Salvar Voucher';
+      return;
+    }
+    if (!isSocio && !cpfBeneficiario) {
+      showToast('⚠️ O CPF do beneficiário é obrigatório para clientes não-sócios.', 'error');
+      btn.disabled = false;
+      btn.textContent = id ? 'Atualizar Voucher' : 'Salvar Voucher';
+      return;
+    }
+  }
+
   const solicitacaoAtual = solicitacaoEmAtendimentoId ? listaSolicitacoes.find(s => s.id === solicitacaoEmAtendimentoId) : null;
 
   // Regra rígida de fluxo de aprovação e assinatura:
@@ -3883,6 +4480,23 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
     pos_venda_nome:     usuarioLogado ? usuarioLogado.nome : 'Equipe de Pós Venda',
     assinatura_url:     deveAssinarDireto ? (assinaturaAdminAtual || null) : null
   };
+
+  if (ehTipoCredito) {
+    payload.tipo_voucher = 'credito';
+    payload.valor_credito = valorCreditoNum;
+    payload.valor_hospedagem = valorCreditoNum;
+    payload.cpf_beneficiario = cpfBeneficiario || null;
+    payload.is_socio = isSocio;
+    payload.diarias = 0;
+    payload.diarias_totais = 0;
+    const tagCred = `[TIPO_VOUCHER: CREDITO | VALOR_TOTAL: ${valorCreditoNum} | CPF: ${cpfBeneficiario || 'N/A'} | CLIENTE: ${isSocio ? 'SOCIO' : 'NAO_SOCIO'}]`;
+    payload.observacoes = payload.observacoes ? `${payload.observacoes}\n${tagCred}` : tagCred;
+  } else {
+    payload.tipo_voucher = 'diarias';
+    payload.valor_credito = 0;
+    payload.cpf_beneficiario = null;
+    payload.is_socio = true;
+  }
 
   if (deveAssinarDireto) {
     payload.admin_assinante_nome = usuarioLogado ? usuarioLogado.nome : 'Marcio Pimenta';
@@ -3922,8 +4536,18 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
 
       try {
         const { data, error } = await db.from('vouchers').update(payload).eq('id', id).select().single();
-        if (!error && data) resultData = data;
-        else resultData = { ...payload, id };
+        if (!error && data) {
+          resultData = data;
+        } else {
+          const payloadFallback = { ...payload };
+          delete payloadFallback.tipo_voucher;
+          delete payloadFallback.valor_credito;
+          delete payloadFallback.cpf_beneficiario;
+          delete payloadFallback.is_socio;
+          const { data: dataFb, error: errFb } = await db.from('vouchers').update(payloadFallback).eq('id', id).select().single();
+          if (!errFb && dataFb) resultData = { ...dataFb, ...payload };
+          else resultData = { ...payload, id };
+        }
       } catch (e) {
         resultData = { ...payload, id };
       }
@@ -3942,8 +4566,18 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
         if (!error && data) {
           resultData = data;
         } else {
-          console.error('Erro insert Supabase:', error);
-          resultData = { ...payload, id: `vouch-${nanoid(8)}`, numero: (listaVouchers[0]?.numero || 0) + 1 };
+          const payloadFallback = { ...payload };
+          delete payloadFallback.tipo_voucher;
+          delete payloadFallback.valor_credito;
+          delete payloadFallback.cpf_beneficiario;
+          delete payloadFallback.is_socio;
+          const { data: dataFb, error: errFb } = await db.from('vouchers').insert([payloadFallback]).select().single();
+          if (!errFb && dataFb) {
+            resultData = { ...dataFb, ...payload };
+          } else {
+            console.error('Erro insert Supabase:', error || errFb);
+            resultData = { ...payload, id: `vouch-${nanoid(8)}`, numero: (listaVouchers[0]?.numero || 0) + 1 };
+          }
         }
       } catch (e) {
         console.error('Erro de rede insert Supabase:', e);

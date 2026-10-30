@@ -285,6 +285,84 @@
     }
     .v-historico-row:last-child { border-bottom: none; }
 
+    /* ── Estilos do Voucher de Crédito & Reembolso ── */
+    .v-credito-hero {
+      background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+      border: 1.5px solid #059669;
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin: 8px 14px 10px;
+      text-align: center;
+    }
+    .v-credito-hero-label {
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: #047857;
+      margin-bottom: 2px;
+    }
+    .v-credito-hero-saldo {
+      font-size: 24px;
+      font-weight: 900;
+      color: #065f46;
+      letter-spacing: .02em;
+    }
+    .v-credito-hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed #6ee7b7;
+    }
+    .v-credito-hero-item {
+      font-size: 9.5px;
+      color: #374151;
+    }
+    .v-credito-hero-item strong {
+      display: block;
+      font-size: 12px;
+      color: #111;
+      margin-top: 1px;
+    }
+    .v-extrato-wrap {
+      margin: 6px 14px 10px;
+      border: 1px solid #111;
+      background: #fff;
+    }
+    .v-extrato-title {
+      background: #111;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+      padding: 4px 8px;
+      letter-spacing: .05em;
+    }
+    .v-extrato-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9.5px;
+    }
+    .v-extrato-table th {
+      background: #f1f5f9;
+      padding: 4px 6px;
+      text-align: left;
+      font-weight: 800;
+      border-bottom: 1px solid #cbd5e1;
+      color: #334155;
+      text-transform: uppercase;
+      font-size: 8px;
+    }
+    .v-extrato-table td {
+      padding: 4px 6px;
+      border-bottom: 1px dashed #e2e8f0;
+      color: #1e293b;
+    }
+    .v-extrato-table tr:last-child td {
+      border-bottom: none;
+    }
 
     @media (max-width: 600px) {
       body {
@@ -605,12 +683,117 @@
         </div>`;
     }
 
+    // ── Helpers de Crédito & Documento ───────────────────────
+    function isVoucherCredito(v) {
+      if (!v) return false;
+      if (v.tipo_voucher === 'credito') return true;
+      if (v.modelo_id === 'credito-reembolso') return true;
+      const modNome = String(v.modelo_nome || '').toLowerCase();
+      if (modNome.includes('crédito') || modNome.includes('credito') || modNome.includes('reembolso')) return true;
+      const obs = String(v.observacoes || '');
+      const esp = String(v.especificacoes_uso || '');
+      if (obs.includes('[TIPO_VOUCHER: CREDITO]') || esp.includes('[TIPO_VOUCHER: CREDITO]')) return true;
+      return false;
+    }
+
+    function formatarCPF(v) {
+      if (!v) return '';
+      const num = String(v).replace(/\D/g, '').slice(0, 11);
+      return num
+        .replace(/^(\d{3})(\d)/, '$1.$2')
+        .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+        .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4');
+    }
+
+    function numeroPorExtensoReais(valor) {
+      const v = Math.round(Number(valor) || 0);
+      if (v <= 0) return 'zero reais';
+      const unidades = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove', 'dez', 'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
+      const dezenas = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
+      const centenas = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
+
+      function converterGrupo(n) {
+        if (n === 0) return '';
+        if (n === 100) return 'cem';
+        let res = '';
+        const c = Math.floor(n / 100);
+        const d = Math.floor((n % 100) / 10);
+        const u = n % 10;
+        if (c > 0) res += centenas[c];
+        const resto = n % 100;
+        if (resto > 0) {
+          if (res) res += ' e ';
+          if (resto < 20) {
+            res += unidades[resto];
+          } else {
+            res += dezenas[d];
+            if (u > 0) res += ' e ' + unidades[u];
+          }
+        }
+        return res;
+      }
+
+      if (v === 1) return 'um real';
+      if (v < 1000) return converterGrupo(v) + ' reais';
+      if (v === 1000) return 'mil reais';
+      if (v < 1000000) {
+        const milhar = Math.floor(v / 1000);
+        const resto = v % 1000;
+        let strMil = (milhar === 1) ? 'mil' : converterGrupo(milhar) + ' mil';
+        if (resto > 0) {
+          strMil += (resto < 100 || resto % 100 === 0 ? ' e ' : ' ') + converterGrupo(resto);
+        }
+        return strMil + ' reais';
+      }
+      return `${fmt(v)}`;
+    }
+
+    function extrairDadosCredito(v, historico) {
+      if (!v || !isVoucherCredito(v)) return null;
+      let valorTotal = Number(v.valor_credito || v.valor_hospedagem || 0);
+      const matchTotal = String(v.observacoes || '').match(/\[VALOR_TOTAL:\s*([\d.,]+)\]/i) ||
+                         String(v.especificacoes_uso || '').match(/\[VALOR_TOTAL:\s*([\d.,]+)\]/i);
+      if (matchTotal && !valorTotal) {
+        valorTotal = Number(matchTotal[1].replace(',', '.')) || 0;
+      }
+      let cpf = v.cpf_beneficiario || '';
+      if (!cpf) {
+        const matchCpf = String(v.observacoes || '').match(/\[CPF:\s*([^\]]+)\]/i) ||
+                         String(v.especificacoes_uso || '').match(/\[CPF:\s*([^\]]+)\]/i);
+        if (matchCpf) cpf = matchCpf[1].trim();
+      }
+      let isSocio = v.is_socio !== false;
+      if (String(v.observacoes || '').includes('[CLIENTE: NAO_SOCIO]') || String(v.observacoes || '').includes('[CLIENTE: Nao-Socio]')) {
+        isSocio = false;
+      }
+      let valorUtilizado = Number(v.valor_utilizado || 0);
+      if (Array.isArray(historico) && historico.length > 0) {
+        const soma = historico.reduce((acc, h) => {
+          let val = Number(h.valor_utilizado || 0);
+          if (!val && h.observacoes) {
+            const m = String(h.observacoes).match(/\[ABATIMENTO_R\$?:\s*([\d.,]+)\]/i) ||
+                      String(h.observacoes).match(/\[VALOR_ABATIDO:\s*([\d.,]+)\]/i);
+            if (m) val = Number(m[1].replace(',', '.')) || 0;
+          }
+          return acc + val;
+        }, 0);
+        if (soma > valorUtilizado) valorUtilizado = soma;
+      }
+      const saldo = Math.max(0, valorTotal - valorUtilizado);
+      return { isCredito: true, valorTotal, valorUtilizado, saldo, cpf, isSocio };
+    }
+
     // ── Render Voucher ───────────────────────────────────────
     function renderVoucher(v, historicoEstadias = [], assinaturaUrl = '', solicitacaoOrigem = null) {
-      document.title = `Voucher ${v.numero || v.codigo} — ${v.nome_socio}`;
-      const tot = v.diarias_totais || v.diarias || 2;
-      const usd = v.diarias_usadas || (v.usado ? tot : 0);
-      const saldo = Math.max(0, tot - usd);
+      const ehCredito = isVoucherCredito(v);
+      const dadosCred = ehCredito ? extrairDadosCredito(v, historicoEstadias) : null;
+      document.title = ehCredito
+        ? `Voucher de Crédito #${v.numero || v.codigo} — ${v.nome_socio}`
+        : `Voucher #${v.numero || v.codigo} — ${v.nome_socio}`;
+
+      const tot = ehCredito ? dadosCred.valorTotal : (v.diarias_totais || v.diarias || 2);
+      const usd = ehCredito ? dadosCred.valorUtilizado : (v.diarias_usadas || (v.usado ? tot : 0));
+      const saldo = ehCredito ? dadosCred.saldo : Math.max(0, tot - usd);
 
       function extrairDadosCancelamento(item) {
         if (!item) return null;
@@ -649,11 +832,13 @@
       const disponivel = !isCancelado && !isUsadoTotal && isAssinado && !isVencido;
       const linkAtual = window.location.href;
 
-      const espec = `Voucher de ${v.diarias > 1 ? v.diarias + ' ('+numPorExtenso(v.diarias)+')' : 'uma (01)'} diária${v.diarias > 1 ? 's' : ''} anua${v.diarias > 1 ? 'is' : 'l'} para um casal no Hotel Villamor Prime.`;
+      const espec = ehCredito
+        ? `Voucher de crédito financeiro no valor de ${fmt(tot)} (${numeroPorExtensoReais(tot)}) para utilização em diárias de hospedagem e/ou consumo no Villamor Tambaba Resort.`
+        : `Voucher de ${v.diarias > 1 ? v.diarias + ' ('+numPorExtenso(v.diarias)+')' : 'uma (01)'} diária${v.diarias > 1 ? 's' : ''} anua${v.diarias > 1 ? 'is' : 'l'} para um casal no Hotel Villamor Prime.`;
 
-      const brinde = v.brinde_descricao
-        ? escHtml(v.brinde_descricao).toUpperCase()
-        : `0${v.diarias} DIARIA${v.diarias > 1 ? 'S' : ''} ANUAIS`;
+      const brinde = ehCredito
+        ? `CRÉDITO FINANCEIRO: ${fmt(tot).toUpperCase()} (DIÁRIAS & CONSUMO)`
+        : (v.brinde_descricao ? escHtml(v.brinde_descricao).toUpperCase() : `0${v.diarias} DIARIA${v.diarias > 1 ? 'S' : ''} ANUAIS`);
 
       const agora = new Date().toLocaleString('pt-BR', {
         day: '2-digit', month: '2-digit', year: 'numeric',
@@ -664,11 +849,6 @@
       const temSolicitacao = Boolean(solicitacaoOrigem || v.solicitante_nome);
       const quemSolicitou = v.solicitante_nome || (solicitacaoOrigem ? (solicitacaoOrigem.solicitante_nome || solicitacaoOrigem.solicitante) : 'Equipe de Reservas');
       const quandoSolicitou = (solicitacaoOrigem && solicitacaoOrigem.created_at) || v.solicitado_em || null;
-      const periodoPretendido = (v.periodo_checkin && v.periodo_checkout)
-        ? `${fmtDate(v.periodo_checkin)} até ${fmtDate(v.periodo_checkout)}`
-        : (solicitacaoOrigem && solicitacaoOrigem.periodo_checkin && solicitacaoOrigem.periodo_checkout
-            ? `${fmtDate(solicitacaoOrigem.periodo_checkin)} até ${fmtDate(solicitacaoOrigem.periodo_checkout)}`
-            : null);
 
       // Dados de Emissão / Minuta
       const quemGerou = v.pos_venda_nome || 'Equipe de Pós Venda';
@@ -678,66 +858,98 @@
       const quemAssinou = v.admin_assinante_nome || 'Administrador Geral';
       const quandoAssinou = v.assinado_em;
 
-      document.getElementById('root').innerHTML = `
-        <!-- Barra de ações -->
-        <div class="actions-bar no-print">
-          ${isCancelado ? `
-          <span class="badge-status" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;font-weight:bold;">
-            🚫 VOUCHER CANCELADO
-          </span>` : (isMinuta ? `
-          <span class="badge-status" style="background:#fef3c7;color:#b45309;">
-            ✍️ Minuta — Aguardando Assinatura do Administrador
-          </span>` : (isUsadoTotal ? `
-          <span class="badge-status" style="background:#e2e8f0;color:#334155;border:1px solid #cbd5e1;font-weight:bold;">
-            ✓ Voucher Utilizado / Diárias Baixadas
-          </span>` : (isVencido ? `
-          <span class="badge-status" style="background:#fee2e2;color:#991b1b;font-weight:bold;">
-            ⚠️ VOUCHER VENCIDO (EXPIRADO EM ${fmtDate(v.validade)})
-          </span>` : `
-          <span class="badge-status badge-ok">
-            ✓ Disponível para Reserva
-          </span>`)))}
-          <button class="btn-print" onclick="window.print()">
-            🖨️ Imprimir
-          </button>
-        </div>
-
-        <!-- Documento Voucher -->
-        <div class="voucher ${isCancelado ? 'is-cancelado' : (isUsadoTotal ? 'is-usado' : '')}" id="voucherDoc">
-          <div class="v-usado-stamp">${isCancelado ? 'CANCELADO' : (isUsadoTotal ? 'UTILIZADO' : (isVencido ? 'EXPIRADO' : ''))}</div>
-          ${isCancelado ? `
-          <div style="background:#fee2e2;color:#991b1b;padding:9px 14px;font-weight:bold;text-align:center;font-size:12px;border-bottom:2px dashed #ef4444;line-height:1.45;">
-            🚫 VOUCHER CANCELADO — ESTE DOCUMENTO FOI OFICIALMENTE CANCELADO E NÃO TEM VALIDADE PARA HOSPEDAGEM.
-            ${dadosCancelamento ? `<br><span style="font-size:11px;font-weight:normal;color:#7f1d1d;">Motivo: <strong>${escHtml(dadosCancelamento.motivo)}</strong> | Registrado por: ${escHtml(dadosCancelamento.por)} (${fmtDateTime(dadosCancelamento.data)})</span>` : ''}
-          </div>` : ''}
-          ${isMinuta ? `
-          <div style="background:#fffbeb;color:#92400e;padding:7px 12px;font-weight:bold;text-align:center;font-size:11px;border-bottom:2px dashed #f59e0b;">
-            ⚠️ MINUTA DE VOUCHER — AGUARDA ASSINATURA OFICIAL DO ADMINISTRADOR (SEM VALIDADE PARA CHECK-IN ANTES DA ASSINATURA)
-          </div>` : ''}
-          ${isVencido ? `
-          <div style="background:#fee2e2;color:#991b1b;padding:7px 12px;font-weight:bold;text-align:center;font-size:11px;border-bottom:2px dashed #ef4444;">
-            ⚠️ VOUCHER VENCIDO / EXPIRADO — A DATA LIMITE DE VALIDADE (${fmtDate(v.validade)}) FOI ULTRAPASSADA
-          </div>` : ''}
-          ${isUsadoTotal ? `
-          <div style="background:#f1f5f9;color:#334155;padding:7px 12px;font-weight:bold;text-align:center;font-size:11px;border-bottom:2px solid #cbd5e1;">
-            ✓ VOUCHER UTILIZADO — TODAS AS DIÁRIAS FORAM BAIXADAS COM SUCESSO
-          </div>` : ''}
-
-          <!-- Cabeçalho -->
-          <div class="v-header">
-            <div class="v-title">
-              <h1>VOUCHER</h1>
-              <h2>RSM EMPREENDIMENTO</h2>
-            </div>
-
-            <div class="v-numero-wrap">
-              <div class="v-numero-label">NÚMERO</div>
-              <canvas id="qrcode"></canvas>
-              <div class="v-numero-val">${String(v.numero || v.codigo).padStart(4, '0')}</div>
+      // Montagem do bloco de dados
+      let blocoDadosHtml = '';
+      if (ehCredito) {
+        blocoDadosHtml = `
+          <div class="v-credito-hero">
+            <div class="v-credito-hero-label">💰 Saldo Atual Disponível</div>
+            <div class="v-credito-hero-saldo">${fmt(saldo)}</div>
+            <div class="v-credito-hero-grid">
+              <div class="v-credito-hero-item">
+                <span>Valor Total Concedido:</span>
+                <strong>${fmt(tot)}</strong>
+              </div>
+              <div class="v-credito-hero-item">
+                <span>Valor Já Utilizado / Abatido:</span>
+                <strong style="color:#b91c1c;">${fmt(usd)}</strong>
+              </div>
             </div>
           </div>
 
-          <!-- Dados Principais -->
+          <div class="v-dados">
+            <div class="v-row">
+              <span class="v-label">BENEFICIÁRIO:</span>
+              <span class="v-value"><strong>${escHtml(v.nome_socio)}</strong></span>
+            </div>
+            <div class="v-row">
+              <span class="v-label">CATEGORIA:</span>
+              <span class="v-value"><strong>${dadosCred.isSocio ? 'SÓCIO COTISTA VILLAMOR' : 'CLIENTE NÃO-SÓCIO (AVULSO)'}</strong></span>
+            </div>
+            ${dadosCred.cpf ? `
+            <div class="v-row">
+              <span class="v-label">CPF DO TITULAR:</span>
+              <span class="v-value"><strong>${escHtml(formatarCPF(dadosCred.cpf))}</strong></span>
+            </div>` : ''}
+            <div class="v-row">
+              <span class="v-label">FINALIDADE:</span>
+              <span class="v-value">DIÁRIAS DE HOSPEDAGEM E/OU CONSUMO NO HOTEL</span>
+            </div>
+            <div class="v-row">
+              <span class="v-label">VALOR TOTAL:</span>
+              <span class="v-value"><strong>${fmt(tot)}</strong> (${numeroPorExtensoReais(tot).toUpperCase()})</span>
+            </div>
+            <div class="v-row">
+              <span class="v-label">DATA EMISSÃO:</span>
+              <span class="v-value">${fmtDateTime(quandoGerou)}</span>
+            </div>
+            <div class="v-row">
+              <span class="v-label">SALA DE VENDA:</span>
+              <span class="v-value">${escHtml(v.sala_venda || 'VILLA')}</span>
+            </div>
+            ${v.validade ? `
+            <div class="v-row" style="background:${isUsadoTotal ? '#f1f5f9' : (isVencido ? '#fee2e2' : '#f0fdf4')};padding:5px 8px;border-radius:4px;border:1px solid ${isUsadoTotal ? '#cbd5e1' : (isVencido ? '#fca5a5' : '#bbf7d0')};margin-top:6px;">
+              <span class="v-label" style="color:${isUsadoTotal ? '#475569' : (isVencido ? '#991b1b' : '#166534')};font-weight:800;">DATA DE VENCIMENTO:</span>
+              <span class="v-value" style="color:${isUsadoTotal ? '#475569' : (isVencido ? '#991b1b' : '#166534')};font-weight:800;">
+                VÁLIDO ATÉ ${fmtDate(v.validade)} ${isUsadoTotal ? '✓ (SALDO TOTALMENTE UTILIZADO)' : (isVencido ? '⚠️ (EXPIRADO)' : '✓ (NO PRAZO)')}
+              </span>
+            </div>` : ''}
+          </div>
+
+          ${historicoEstadias.length > 0 ? `
+          <div class="v-extrato-wrap">
+            <div class="v-extrato-title">📋 Extrato de Utilizações & Abatimentos do Crédito:</div>
+            <table class="v-extrato-table">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Tipo</th>
+                  <th>Detalhes / Observações</th>
+                  <th>Operador</th>
+                  <th style="text-align:right;">Valor Abatido</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${historicoEstadias.map(h => {
+                  const tipoLabel = h.tipo_uso === 'consumo' ? 'Consumo' : (h.tipo_uso === 'misto' ? 'Misto' : 'Diária');
+                  const val = h.valor_utilizado ? fmt(h.valor_utilizado) : (h.diarias_utilizadas ? `${h.diarias_utilizadas} diária(s)` : '—');
+                  const dataStr = fmtDate(h.data_checkin) !== '—' ? fmtDate(h.data_checkin) : fmtDate(h.created_at);
+                  return `
+                    <tr>
+                      <td><strong>${dataStr}</strong></td>
+                      <td><span style="font-weight:700;color:#047857;">${tipoLabel}</span></td>
+                      <td>${escHtml(h.observacoes || 'Abatimento de crédito')}</td>
+                      <td>${escHtml(h.operador || 'Reservas')}</td>
+                      <td style="text-align:right;font-weight:800;color:#b91c1c;">-${val}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>` : ''}
+        `;
+      } else {
+        blocoDadosHtml = `
           <div class="v-dados">
             <div class="v-row">
               <span class="v-label">SALA DE VENDA:</span>
@@ -782,6 +994,70 @@
               </span>
             </div>` : ''}
           </div>
+        `;
+      }
+
+      document.getElementById('root').innerHTML = `
+        <!-- Barra de ações -->
+        <div class="actions-bar no-print">
+          ${isCancelado ? `
+          <span class="badge-status" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;font-weight:bold;">
+            🚫 VOUCHER CANCELADO
+          </span>` : (isMinuta ? `
+          <span class="badge-status" style="background:#fef3c7;color:#b45309;">
+            ✍️ Minuta — Aguardando Assinatura do Administrador
+          </span>` : (isUsadoTotal ? `
+          <span class="badge-status" style="background:#e2e8f0;color:#334155;border:1px solid #cbd5e1;font-weight:bold;">
+            ${ehCredito ? '✓ Crédito Totalmente Utilizado (Saldo Zerado)' : '✓ Voucher Utilizado / Diárias Baixadas'}
+          </span>` : (isVencido ? `
+          <span class="badge-status" style="background:#fee2e2;color:#991b1b;font-weight:bold;">
+            ⚠️ VOUCHER VENCIDO (EXPIRADO EM ${fmtDate(v.validade)})
+          </span>` : `
+          <span class="badge-status badge-ok" style="${ehCredito ? 'background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;' : ''}">
+            ${ehCredito ? `💰 Saldo Disponível: ${fmt(saldo)}` : '✓ Disponível para Reserva'}
+          </span>`)))}
+          <button class="btn-print" onclick="window.print()">
+            🖨️ Imprimir
+          </button>
+        </div>
+
+        <!-- Documento Voucher -->
+        <div class="voucher ${isCancelado ? 'is-cancelado' : (isUsadoTotal ? 'is-usado' : '')}" id="voucherDoc">
+          <div class="v-usado-stamp">${isCancelado ? 'CANCELADO' : (isUsadoTotal ? (ehCredito ? 'CRÉDITO ZERADO' : 'UTILIZADO') : (isVencido ? 'EXPIRADO' : ''))}</div>
+          ${isCancelado ? `
+          <div style="background:#fee2e2;color:#991b1b;padding:9px 14px;font-weight:bold;text-align:center;font-size:12px;border-bottom:2px dashed #ef4444;line-height:1.45;">
+            🚫 VOUCHER CANCELADO — ESTE DOCUMENTO FOI OFICIALMENTE CANCELADO E NÃO TEM VALIDADE PARA UTILIZAÇÃO.
+            ${dadosCancelamento ? `<br><span style="font-size:11px;font-weight:normal;color:#7f1d1d;">Motivo: <strong>${escHtml(dadosCancelamento.motivo)}</strong> | Registrado por: ${escHtml(dadosCancelamento.por)} (${fmtDateTime(dadosCancelamento.data)})</span>` : ''}
+          </div>` : ''}
+          ${isMinuta ? `
+          <div style="background:#fffbeb;color:#92400e;padding:7px 12px;font-weight:bold;text-align:center;font-size:11px;border-bottom:2px dashed #f59e0b;">
+            ⚠️ MINUTA DE VOUCHER — AGUARDA ASSINATURA OFICIAL DO ADMINISTRADOR (SEM VALIDADE PARA UTILIZAÇÃO ANTES DA ASSINATURA)
+          </div>` : ''}
+          ${isVencido ? `
+          <div style="background:#fee2e2;color:#991b1b;padding:7px 12px;font-weight:bold;text-align:center;font-size:11px;border-bottom:2px dashed #ef4444;">
+            ⚠️ VOUCHER VENCIDO / EXPIRADO — A DATA LIMITE DE VALIDADE (${fmtDate(v.validade)}) FOI ULTRAPASSADA
+          </div>` : ''}
+          ${isUsadoTotal ? `
+          <div style="background:#f1f5f9;color:#334155;padding:7px 12px;font-weight:bold;text-align:center;font-size:11px;border-bottom:2px solid #cbd5e1;">
+            ${ehCredito ? '✓ SALDO TOTALMENTE UTILIZADO — CRÉDITO INTEGRALMENTE ABATIDO' : '✓ VOUCHER UTILIZADO — TODAS AS DIÁRIAS FORAM BAIXADAS COM SUCESSO'}
+          </div>` : ''}
+
+          <!-- Cabeçalho -->
+          <div class="v-header">
+            <div class="v-title">
+              <h1>${ehCredito ? 'VOUCHER DE CRÉDITO' : 'VOUCHER'}</h1>
+              <h2>RSM EMPREENDIMENTO ${ehCredito ? '— DIÁRIAS & CONSUMO' : ''}</h2>
+            </div>
+
+            <div class="v-numero-wrap">
+              <div class="v-numero-label">NÚMERO</div>
+              <canvas id="qrcode"></canvas>
+              <div class="v-numero-val">${String(v.numero || v.codigo).padStart(4, '0')}</div>
+            </div>
+          </div>
+
+          <!-- Bloco de Dados e Extrato -->
+          ${blocoDadosHtml}
 
           <!-- Especificação -->
           <div class="v-espec-title">ESPECIFICAÇÃO DO VOUCHER :</div>

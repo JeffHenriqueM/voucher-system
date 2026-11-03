@@ -3459,22 +3459,28 @@ function abrirModalBaixa(voucherId) {
         const tipoLabel = h.tipo_uso === 'consumo' ? 'Consumo' : (h.tipo_uso === 'misto' ? 'Misto' : 'Diária');
         const valorAbatido = h.valor_utilizado ? fmtMoeda(h.valor_utilizado) : (h.diarias_utilizadas ? `${h.diarias_utilizadas}d` : '—');
         return `
-          <div class="historico-item">
+          <div class="historico-item" style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
             <div>
               <div class="historico-periodo">Abatimento #${i+1}: <strong>${valorAbatido}</strong> (${tipoLabel})</div>
               <div class="historico-info">${h.data_checkin ? `Período: ${fmtDate(h.data_checkin)} ${h.data_checkout ? `até ${fmtDate(h.data_checkout)}` : ''} | ` : ''}Operador: ${escHtml(h.operador || 'Reservas')} | Data: ${fmtDateTime(h.created_at)}</div>
               ${h.observacoes ? `<div style="font-size:.72rem;color:#475569;margin-top:2px;">Obs: ${escHtml(h.observacoes)}</div>` : ''}
             </div>
+            <button type="button" class="btn btn-sm btn-ghost danger" onclick="confirmarEstornoUtilizacao('${h.id || ''}', '${v.id}', ${h.diarias_utilizadas || 0}, ${h.valor_utilizado || 0})" style="padding:.22rem .55rem;font-size:.72rem;color:#dc2626;border-color:#fca5a5;white-space:nowrap;margin-top:2px;" title="Estornar este abatimento e devolver o valor ao saldo do voucher">
+              ↩️ Estornar
+            </button>
           </div>
         `;
       }
       return `
-        <div class="historico-item">
+        <div class="historico-item" style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
           <div>
-            <div class="historico-periodo">Estadia ${i+1}: ${h.diarias_utilizadas} diária(s)</div>
-            <div class="historico-info">Período: ${fmtDate(h.data_checkin)} até ${fmtDate(h.data_checkout)} | Operador: ${escHtml(h.operador || 'Reservas')}</div>
+            <div class="historico-periodo">Estadia ${i+1}: <strong>${h.diarias_utilizadas} diária(s)</strong></div>
+            <div class="historico-info">Período: ${fmtDate(h.data_checkin)} até ${fmtDate(h.data_checkout)} | Operador: ${escHtml(h.operador || 'Reservas')} | Data: ${fmtDateTime(h.created_at)}</div>
             ${h.observacoes ? `<div style="font-size:.72rem;color:#475569;margin-top:2px;">Obs: ${escHtml(h.observacoes)}</div>` : ''}
           </div>
+          <button type="button" class="btn btn-sm btn-ghost danger" onclick="confirmarEstornoUtilizacao('${h.id || ''}', '${v.id}', ${h.diarias_utilizadas || 1}, ${h.valor_utilizado || 0})" style="padding:.22rem .55rem;font-size:.72rem;color:#dc2626;border-color:#fca5a5;white-space:nowrap;margin-top:2px;" title="Estornar esta estadia e devolver o saldo de diárias ao voucher">
+            ↩️ Estornar
+          </button>
         </div>
       `;
     }).join('');
@@ -3486,8 +3492,85 @@ function abrirModalBaixa(voucherId) {
 }
 
 function fecharModalBaixa() {
+  isGravandoBaixa = false;
+  const btn = document.getElementById('btnConfirmarBaixa');
+  if (btn) {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'auto';
+  }
   document.getElementById('modalBaixaReserva').classList.add('hidden');
 }
+
+// ── Função de Estorno de Utilização / Baixa ────────────────────
+async function confirmarEstornoUtilizacao(histId, voucherId, qtdDiarias, valorCredito) {
+  const v = listaVouchers.find(item => item.id === voucherId);
+  if (!v) {
+    showToast('Voucher não encontrado.', 'error');
+    return;
+  }
+
+  const ehCredito = isVoucherCredito(v);
+  const msgConfirm = ehCredito
+    ? `Deseja realmente ESTORNAR este abatimento de ${fmtMoeda(valorCredito || 0)}?\n\nO valor será devolvido imediatamente ao saldo do voucher #${v.numero || v.codigo}.`
+    : `Deseja realmente ESTORNAR esta utilização de ${qtdDiarias} diária(s)?\n\nO saldo de diárias será devolvido imediatamente ao voucher #${v.numero || v.codigo}.`;
+
+  if (!window.confirm(msgConfirm)) return;
+
+  try {
+    showToast('Processando estorno…', 'info');
+
+    // 1. Remover do banco Supabase
+    if (histId) {
+      await db.from('voucher_historico_uso').delete().eq('id', histId);
+    } else {
+      await db.from('voucher_historico_uso').delete().eq('voucher_codigo', v.codigo);
+    }
+
+    // 2. Atualizar lista local de histórico
+    if (histId) {
+      listaHistoricoReservas = listaHistoricoReservas.filter(h => h.id !== histId);
+    } else {
+      const idx = listaHistoricoReservas.findIndex(h => h.voucher_codigo === v.codigo);
+      if (idx !== -1) listaHistoricoReservas.splice(idx, 1);
+    }
+    localStorage.setItem('rsm_historico_reservas', JSON.stringify(listaHistoricoReservas));
+
+    // 3. Restaurar saldo do voucher
+    if (ehCredito) {
+      const novoUsado = Math.max(0, (v.valor_utilizado || 0) - (Number(valorCredito) || 0));
+      v.valor_utilizado = novoUsado;
+      v.usado = false;
+      await db.from('vouchers').update({
+        valor_utilizado: novoUsado,
+        usado: false
+      }).eq('id', v.id);
+    } else {
+      const tot = v.diarias_totais || v.diarias || 2;
+      const novoUsado = Math.max(0, (v.diarias_usadas || (v.usado ? tot : 0)) - (Number(qtdDiarias) || 1));
+      v.diarias_usadas = novoUsado;
+      v.usado = false;
+      v.data_uso = null;
+      await db.from('vouchers').update({
+        diarias_usadas: novoUsado,
+        usado: false,
+        data_uso: null
+      }).eq('id', v.id);
+    }
+
+    localStorage.setItem('rsm_vouchers_cache', JSON.stringify(listaVouchers));
+
+    showToast(`✅ Estorno concluído com sucesso! Saldo restaurado.`);
+    abrirModalBaixa(v.id);
+    sincronizarCotas();
+    if (abaAtiva === 'vouchers') carregarVouchers();
+    if (abaAtiva === 'reservas') renderTabelaReservas();
+  } catch (err) {
+    console.error('Erro ao estornar:', err);
+    showToast('Erro ao estornar utilização.', 'error');
+  }
+}
+window.confirmarEstornoUtilizacao = confirmarEstornoUtilizacao;
 
 // ── Modal de Observações do Voucher ───────────────────────────
 function abrirModalObservacaoVoucher(voucherId) {
@@ -3555,10 +3638,20 @@ function copiarTextoObsModal() {
 window.copiarTextoObsModal = copiarTextoObsModal;
 
 // Submit da Baixa de Reserva
+let isGravandoBaixa = false;
+
 document.getElementById('formBaixaReserva').addEventListener('submit', async (e) => {
   e.preventDefault();
+  if (isGravandoBaixa) {
+    console.warn('Submissão bloqueada: gravação de baixa já em andamento.');
+    return;
+  }
+  isGravandoBaixa = true;
+
   const btn = document.getElementById('btnConfirmarBaixa');
   btn.disabled = true;
+  btn.style.opacity = '0.6';
+  btn.style.pointerEvents = 'none';
   btn.textContent = 'Gravando Baixa…';
 
   const voucherId = document.getElementById('baixaVoucherId').value;
@@ -3572,14 +3665,21 @@ document.getElementById('formBaixaReserva').addEventListener('submit', async (e)
   const voucher = listaVouchers.find(v => v.id === voucherId);
   if (!voucher) {
     showToast('Voucher não localizado', 'error');
+    isGravandoBaixa = false;
     btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'auto';
+    btn.textContent = 'Confirmar Baixa';
     return;
   }
 
   // Validação rígida: voucher sem assinatura não pode ser utilizado
   if (voucher.status_fluxo === 'aguardando_assinatura' || !voucher.assinado_em) {
     showToast('Operação bloqueada: vouchers sem assinatura oficial não podem ser utilizados.', 'error');
+    isGravandoBaixa = false;
     btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'auto';
     btn.textContent = 'Confirmar Baixa';
     return;
   }
@@ -3594,20 +3694,29 @@ document.getElementById('formBaixaReserva').addEventListener('submit', async (e)
 
     if (valAbater <= 0) {
       showToast('⚠️ Informe um valor válido em R$ para abater do crédito.', 'error');
+      isGravandoBaixa = false;
       btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = 'auto';
       btn.textContent = 'Confirmar Abatimento';
       return;
     }
     if (valAbater > (dadosCredito.saldo + 0.01)) {
       showToast(`⚠️ O valor informado (${fmtMoeda(valAbater)}) é maior que o saldo disponível (${fmtMoeda(dadosCredito.saldo)}).`, 'error');
+      isGravandoBaixa = false;
       btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = 'auto';
       btn.textContent = 'Confirmar Abatimento';
       return;
     }
 
     if (tipoGasto === 'diaria' && (!checkin || !checkout)) {
       showToast('⚠️ Para abatimento referente a diárias, informe a data de check-in e check-out.', 'error');
+      isGravandoBaixa = false;
       btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = 'auto';
       btn.textContent = 'Confirmar Abatimento';
       return;
     }
@@ -3648,13 +3757,19 @@ document.getElementById('formBaixaReserva').addEventListener('submit', async (e)
       };
 
       try {
-        await db.from('voucher_historico_uso').insert([novoRegistroHist]);
+        const { data: histCriado } = await db.from('voucher_historico_uso').insert([novoRegistroHist]).select().single();
+        if (histCriado && histCriado.id) {
+          novoRegistroHist.id = histCriado.id;
+        }
       } catch (eHist) {
         const histSimples = { ...novoRegistroHist };
         delete histSimples.valor_utilizado;
         delete histSimples.tipo_uso;
         try {
-          await db.from('voucher_historico_uso').insert([histSimples]);
+          const { data: histCriado2 } = await db.from('voucher_historico_uso').insert([histSimples]).select().single();
+          if (histCriado2 && histCriado2.id) {
+            novoRegistroHist.id = histCriado2.id;
+          }
         } catch (e2) {}
       }
 
@@ -3675,8 +3790,11 @@ document.getElementById('formBaixaReserva').addEventListener('submit', async (e)
       console.error('Erro ao abater crédito:', err);
       showToast('Erro ao gravar abatimento do voucher de crédito', 'error');
     } finally {
+      isGravandoBaixa = false;
       btn.disabled = false;
-      btn.textContent = 'Confirmar Baixa';
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = 'auto';
+      btn.textContent = 'Confirmar Abatimento';
     }
     return;
   }
@@ -3689,7 +3807,10 @@ document.getElementById('formBaixaReserva').addEventListener('submit', async (e)
   const isCheckoutPassadoSubmit = Boolean(voucher.periodo_checkout && voucher.periodo_checkout < hojeSubmit && (voucher.diarias_totais || 2) > (voucher.diarias_usadas || 0));
   if (voucher.validade && voucher.validade < hojeSubmit && !isCheckoutPassadoSubmit) {
     showToast(`Operação bloqueada: este voucher expirou a validade em ${fmtDate(voucher.validade)}.`, 'error');
+    isGravandoBaixa = false;
     btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'auto';
     btn.textContent = 'Confirmar Baixa de Diárias';
     return;
   }
@@ -3724,7 +3845,10 @@ document.getElementById('formBaixaReserva').addEventListener('submit', async (e)
     };
 
     try {
-      await db.from('voucher_historico_uso').insert([novoRegistroHist]);
+      const { data: histCriado } = await db.from('voucher_historico_uso').insert([novoRegistroHist]).select().single();
+      if (histCriado && histCriado.id) {
+        novoRegistroHist.id = histCriado.id;
+      }
     } catch (e) {}
 
     // Salvar localmente
@@ -3739,7 +3863,10 @@ document.getElementById('formBaixaReserva').addEventListener('submit', async (e)
   } catch (err) {
     showToast('Erro ao gravar baixa de reservas', 'error');
   } finally {
+    isGravandoBaixa = false;
     btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'auto';
     btn.textContent = 'Confirmar Baixa de Diárias';
   }
 });

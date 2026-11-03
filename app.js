@@ -420,8 +420,8 @@ function aoMudarTipoGastoCredito() {
   } else {
     if (badgeObr) {
       badgeObr.textContent = 'Obrigatório';
-      badgeObr.style.background = '#fee2e2';
-      badgeObr.style.color = '#991b1b';
+      badgeObr.style.background = '#faecec';
+      badgeObr.style.color = '#9c3232';
     }
     if (inCheckin) inCheckin.setAttribute('required', 'required');
     if (inCheckout) inCheckout.setAttribute('required', 'required');
@@ -447,10 +447,10 @@ function calcularSaldoAposAbatimentoCredito() {
   const novoSaldo = Math.max(0, saldoAtual - valAbater);
 
   if (valAbater > saldoAtual) {
-    lblSaldo.innerHTML = `<span style="color:#dc2626;">⚠️ Valor excede o saldo disponível de ${fmt(saldoAtual)}!</span>`;
+    lblSaldo.innerHTML = `<span style="color:#b83a3a;">⚠️ Valor excede o saldo disponível de ${fmt(saldoAtual)}!</span>`;
     if (btn) btn.disabled = true;
   } else {
-    lblSaldo.innerHTML = `<strong style="color:#047857;">${fmt(novoSaldo)}</strong> ${novoSaldo === 0 ? '<span class="badge" style="background:#cbd5e1;color:#1e293b;font-size:.68rem;">(Saldo Zerado)</span>' : ''}`;
+    lblSaldo.innerHTML = `<strong style="color:#228653;">${fmt(novoSaldo)}</strong> ${novoSaldo === 0 ? '<span class="badge" style="background:#cbd5e1;color:#1e293b;font-size:.68rem;">(Saldo Zerado)</span>' : ''}`;
     if (btn) btn.disabled = false;
     if (btn && valAbater > 0) {
       btn.textContent = `Confirmar Abatimento de ${fmt(valAbater)}`;
@@ -1175,10 +1175,10 @@ function renderBannerReservasVouchersAssinados() {
           </div>
         </div>
         <div style="display:flex;gap:.4rem;align-items:center;">
-          <a href="${linkDoc}" target="_blank" class="btn btn-sm btn-ghost" style="padding:.28rem .6rem;font-size:.76rem;color:#15803d;border:1px solid #86efac;">
+          <a href="${linkDoc}" target="_blank" class="btn btn-sm btn-ghost" style="padding:.28rem .6rem;font-size:.76rem;color:#1e6b3e;border:1px solid #c9e4d2;">
             👁️ Ver Voucher
           </a>
-          <button class="btn btn-sm btn-primary" onclick="confirmarLeituraVoucherAssinado('${s.id}')" style="background:#16a34a;border-color:#16a34a;padding:.28rem .65rem;font-size:.76rem;font-weight:700;">
+          <button class="btn btn-sm btn-primary" onclick="confirmarLeituraVoucherAssinado('${s.id}')" style="background:#228653;border-color:#228653;padding:.28rem .65rem;font-size:.76rem;font-weight:700;">
             ✓ Confirmar que li
           </button>
         </div>
@@ -1203,11 +1203,11 @@ function renderBannerReservasVouchersAssinados() {
       </div>
       <div class="banner-reservas-actions" style="margin-top:.5rem;">
         ${total > 1 ? `
-          <button class="btn btn-primary" onclick="confirmarLeituraTodosVouchersAssinados()" style="background:#15803d;border-color:#15803d;font-size:.8rem;padding:.45rem .85rem;font-weight:700;">
+          <button class="btn btn-primary" onclick="confirmarLeituraTodosVouchersAssinados()" style="background:#1e6b3e;border-color:#1e6b3e;font-size:.8rem;padding:.45rem .85rem;font-weight:700;">
             ✓ Confirmar Leitura de Todos (${total})
           </button>
         ` : ''}
-        <button class="btn btn-ghost" onclick="mudarAba('solicitacoes')" style="font-size:.78rem;padding:.45rem .75rem;background:rgba(255,255,255,0.7);border:1px solid #86efac;color:#14532d;font-weight:600;">
+        <button class="btn btn-ghost" onclick="mudarAba('solicitacoes')" style="font-size:.78rem;padding:.45rem .75rem;background:rgba(255,255,255,0.7);border:1px solid #c9e4d2;color:#1e6b3e;font-weight:600;">
           📥 Ver Solicitações
         </button>
       </div>
@@ -1306,12 +1306,12 @@ function renderBannerAguardandoAssinatura() {
   const chipsHtml = aguardando.slice(0, 4).map(v => {
     const tot = v.diarias_totais || v.diarias || 2;
     return `
-      <span class="banner-posvenda-chip" style="background:#fef3c7;border-color:#fde68a;color:#92400e;" title="Emitido por ${v.pos_venda_nome || 'Pós Venda'}">
+      <span class="banner-posvenda-chip" style="background:#faf4e8;border-color:#eedec3;color:#8a5716;" title="Emitido por ${v.pos_venda_nome || 'Pós Venda'}">
         ✍️ <strong>#${v.numero || v.codigo}</strong> — ${escHtml(v.nome_socio)} (${tot}d)
       </span>
     `;
   }).join('');
-  const maisQtd = total > 4 ? `<span class="banner-posvenda-chip" style="background:#fef3c7;border-color:#fde68a;color:#92400e;">+${total - 4} outro(s)</span>` : '';
+  const maisQtd = total > 4 ? `<span class="banner-posvenda-chip" style="background:#faf4e8;border-color:#eedec3;color:#8a5716;">+${total - 4} outro(s)</span>` : '';
 
   container.classList.remove('hidden');
   container.innerHTML = `
@@ -1319,7 +1319,7 @@ function renderBannerAguardandoAssinatura() {
       <div style="flex:1;min-width:280px;">
         <div class="banner-aguarda-assinatura-title">
           <span>✍️ VOUCHERS AGUARDANDO ASSINATURA DO MÁRCIO</span>
-          <span class="banner-posvenda-badge" style="background:#f59e0b;color:#fff;">${total} ${pluralVoucher}</span>
+          <span class="banner-posvenda-badge" style="background:#b86d14;color:#fff;">${total} ${pluralVoucher}</span>
         </div>
         <div class="banner-aguarda-assinatura-desc">
           ${isMarcio 
@@ -2912,24 +2912,24 @@ function renderTabelaVouchers(dados) {
 
     let statusBadge = '';
     if (isCancelado) {
-      statusBadge = '<span class="badge" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;font-weight:700;">🚫 Cancelado</span>';
+      statusBadge = '<span class="badge badge-red" style="font-weight:700;">🚫 Cancelado</span>';
     } else if (isPendenteAssinatura) {
-      statusBadge = '<span class="badge badge-yellow" style="background:#fef3c7;color:#b45309;font-weight:700;">✍️ Aguarda Assinatura</span>';
+      statusBadge = '<span class="badge badge-yellow" style="font-weight:700;">✍️ Aguarda Assinatura</span>';
     } else if (isUsadoTotal) {
       statusBadge = ehCredito
-        ? '<span class="badge" style="background:#e2e8f0;color:#334155;border:1px solid #cbd5e1;font-weight:700;">✓ Saldo Utilizado</span>'
-        : '<span class="badge" style="background:#e2e8f0;color:#334155;border:1px solid #cbd5e1;font-weight:700;">✓ Utilizado</span>';
+        ? '<span class="badge badge-gray" style="font-weight:700;">✓ Saldo Utilizado</span>'
+        : '<span class="badge badge-gray" style="font-weight:700;">✓ Utilizado</span>';
     } else if (isCheckoutPassadoSemBaixa) {
-      statusBadge = `<span class="badge" style="background:#ffedd5;color:#c2410c;border:1px solid #fdba74;font-weight:700;" title="Check-out ocorreu em ${fmtDate(v.periodo_checkout)}. As diárias ainda não foram baixadas.">🛎️ Checkout Vencido (Sem Baixa)</span>`;
+      statusBadge = `<span class="badge" style="background:#faf2ec;color:#b85c1e;border:1px solid #eed6c4;font-weight:700;" title="Check-out ocorreu em ${fmtDate(v.periodo_checkout)}. As diárias ainda não foram baixadas.">🛎️ Checkout Vencido (Sem Baixa)</span>`;
     } else if (isVencido) {
-      statusBadge = '<span class="badge badge-red" style="background:#fee2e2;color:#dc2626;font-weight:700;">⚠️ Vencido / Expirado</span>';
+      statusBadge = '<span class="badge badge-red" style="font-weight:700;">⚠️ Vencido / Expirado</span>';
     } else if (ehCredito) {
       statusBadge = usd > 0
         ? `<span class="badge badge-credito" title="Crédito com utilização parcial">💰 Saldo ${fmtMoeda(saldo)}</span>`
         : `<span class="badge badge-credito" title="Crédito integral disponível">💰 Crédito ${fmtMoeda(tot)}</span>`;
     } else {
       statusBadge = usd > 0
-        ? `<span class="badge badge-yellow" style="background:#fef9c3;color:#854d0e;">Parcial (${saldo} restam)</span>`
+        ? `<span class="badge badge-yellow">Parcial (${saldo} restam)</span>`
         : '<span class="badge badge-green">✓ Ativo & Disponível</span>';
     }
 
@@ -2939,14 +2939,14 @@ function renderTabelaVouchers(dados) {
       vencimentoHtml = `
         <div style="line-height:1.25;">
           <strong style="color:var(--text-3);font-size:.82rem;text-decoration:line-through;">${v.validade ? fmtDate(v.validade) : '—'}</strong>
-          <div><span class="badge" style="background:#fee2e2;color:#991b1b;font-size:.65rem;padding:1px 5px;display:inline-block;margin-top:2px;">🚫 Inoperante</span></div>
+          <div><span class="badge badge-red" style="font-size:.65rem;padding:1px 5px;display:inline-block;margin-top:2px;">🚫 Inoperante</span></div>
         </div>
       `;
     } else if (isUsadoTotal) {
       vencimentoHtml = `
         <div style="line-height:1.25;">
           <strong style="color:var(--text-2);font-size:.82rem;">${v.validade ? fmtDate(v.validade) : '—'}</strong>
-          <div><span class="badge" style="background:#f1f5f9;color:#475569;font-size:.65rem;padding:1px 5px;display:inline-block;margin-top:2px;">✓ Baixado</span></div>
+          <div><span class="badge badge-gray" style="font-size:.65rem;padding:1px 5px;display:inline-block;margin-top:2px;">✓ Baixado</span></div>
         </div>
       `;
     } else if (!v.validade) {
@@ -2954,7 +2954,7 @@ function renderTabelaVouchers(dados) {
     } else if (isVencido) {
       vencimentoHtml = `
         <div style="line-height:1.25;">
-          <strong style="color:#dc2626;font-size:.82rem;">${fmtDate(v.validade)}</strong>
+          <strong style="color:var(--danger);font-size:.82rem;">${fmtDate(v.validade)}</strong>
           <div><span class="badge badge-red" style="font-size:.65rem;padding:1px 5px;display:inline-block;margin-top:2px;">⚠️ Vencido</span></div>
         </div>
       `;
@@ -3024,12 +3024,12 @@ function renderTabelaVouchers(dados) {
             </div>
           </div>
           ${incDoVoucher ? `
-            <div class="card-socio-inc-warning" style="font-size:.72rem;color:#b91c1c;margin-top:2px;">
+            <div class="card-socio-inc-warning" style="font-size:.72rem;color:#9c3232;margin-top:2px;">
               ⚠️ Limite Cota: ${incDoVoucher.diarias_permitidas}d | Total Concedido: ${incDoVoucher.diarias_emitidas_total}d
             </div>
           ` : ''}
           ${isCancelado ? `
-            <div class="voucher-cancelado-strip" onclick="event.stopPropagation(); abrirModalVerMotivoCancelamentoVoucher('${v.id}')" style="cursor:pointer;margin-top:4px;padding:3px 8px;background:#fee2e2;border-radius:4px;border:1px solid #fecaca;display:inline-flex;align-items:center;gap:5px;font-size:.72rem;color:#991b1b;" title="Clique para ver motivo completo do cancelamento">
+            <div class="voucher-cancelado-strip" onclick="event.stopPropagation(); abrirModalVerMotivoCancelamentoVoucher('${v.id}')" style="cursor:pointer;margin-top:4px;padding:3px 8px;background:#faecec;border-radius:4px;border:1px solid #f1cccc;display:inline-flex;align-items:center;gap:5px;font-size:.72rem;color:#9c3232;" title="Clique para ver motivo completo do cancelamento">
               <span>🚫 <strong>Cancelado:</strong> ${escHtml(dadosCancelamento ? dadosCancelamento.motivo : 'Sem motivo informado')}</span>
               <span style="text-decoration:underline;font-size:.68rem;">🔍 Ver</span>
             </div>
@@ -3116,11 +3116,11 @@ function renderTabelaVouchers(dados) {
               ✏️ Editar
             </button>` : ''}
             ${(perfilAtivo === 'admin' || perfilAtivo === 'pos_venda') && !isCancelado && !isUsadoTotal ? `
-            <button class="btn btn-sm btn-ghost danger" title="Cancelar Voucher" onclick="abrirModalCancelarVoucher('${v.id}')" style="padding:.28rem .5rem;font-size:.76rem;color:#dc2626;border-color:#fecaca;">
+            <button class="btn btn-sm btn-ghost danger" title="Cancelar Voucher" onclick="abrirModalCancelarVoucher('${v.id}')" style="padding:.28rem .5rem;font-size:.76rem;color:#b83a3a;border-color:#f1cccc;">
               🚫 Cancelar
             </button>` : ''}
             ${perfilAtivo === 'admin' ? `
-            <button class="btn btn-sm btn-ghost danger" title="Excluir" onclick="confirmarDelete('${v.id}')" style="padding:.28rem .5rem;font-size:.76rem;color:#991b1b;">
+            <button class="btn btn-sm btn-ghost danger" title="Excluir" onclick="confirmarDelete('${v.id}')" style="padding:.28rem .5rem;font-size:.76rem;color:#9c3232;">
               🗑️
             </button>` : ''}
           </div>
@@ -3237,13 +3237,13 @@ function renderTabelaReservas() {
     let botaoAcao = '';
     if (isCancelado) {
       botaoAcao = `
-        <button class="btn btn-ghost" disabled style="padding:.35rem .65rem;font-size:.76rem;color:#991b1b;background:#fee2e2;border:1px dashed #ef4444;cursor:not-allowed;font-weight:700;">
+        <button class="btn btn-ghost" disabled style="padding:.35rem .65rem;font-size:.76rem;color:#9c3232;background:#faecec;border:1px dashed #f1cccc;cursor:not-allowed;font-weight:700;">
           🚫 Cancelado
         </button>
       `;
     } else if (isSemAssinatura) {
       botaoAcao = `
-        <button class="btn btn-ghost" disabled style="padding:.35rem .65rem;font-size:.76rem;color:#b45309;background:#fef3c7;border:1px dashed #f59e0b;cursor:not-allowed;font-weight:600;" title="Voucher aguarda assinatura oficial do Gerente/Admin. Bloqueado para uso.">
+        <button class="btn btn-ghost" disabled style="padding:.35rem .65rem;font-size:.76rem;color:#8a5716;background:#faf4e8;border:1px dashed #eedec3;cursor:not-allowed;font-weight:600;" title="Voucher aguarda assinatura oficial do Gerente/Admin. Bloqueado para uso.">
           ✍️ Bloqueado (Sem Assinatura)
         </button>
       `;
@@ -3255,19 +3255,19 @@ function renderTabelaReservas() {
       `;
     } else if (isCheckoutPassadoSemBaixa) {
       botaoAcao = `
-        <button class="btn btn-warning" style="padding:.35rem .75rem;font-size:.8rem;background:#ea580c;color:#fff;border-color:#ea580c;font-weight:700;" onclick="abrirModalBaixa('${v.id}')" title="Check-out ocorreu em ${fmtDate(v.periodo_checkout)}. Clique para registrar a baixa das diárias.">
+        <button class="btn btn-warning" style="padding:.35rem .75rem;font-size:.8rem;background:#b85c1e;color:#fff;border-color:#b85c1e;font-weight:700;" onclick="abrirModalBaixa('${v.id}')" title="Check-out ocorreu em ${fmtDate(v.periodo_checkout)}. Clique para registrar a baixa das diárias.">
           🛎️ Dar Baixa Pendente
         </button>
       `;
     } else if (isVencido) {
       botaoAcao = `
-        <button class="btn btn-ghost" disabled style="padding:.35rem .65rem;font-size:.76rem;color:#dc2626;background:#fee2e2;border:1px dashed #ef4444;cursor:not-allowed;font-weight:600;" title="Voucher expirou a validade em ${fmtDate(v.validade)}.">
+        <button class="btn btn-ghost" disabled style="padding:.35rem .65rem;font-size:.76rem;color:#9c3232;background:#faecec;border:1px dashed #f1cccc;cursor:not-allowed;font-weight:600;" title="Voucher expirou a validade em ${fmtDate(v.validade)}.">
           ⚠️ Vencido
         </button>
       `;
     } else if (ehCredito) {
       botaoAcao = `
-        <button class="btn btn-primary" style="padding:.35rem .75rem;font-size:.8rem;background:#059669;border-color:#059669;" onclick="abrirModalBaixa('${v.id}')">
+        <button class="btn btn-primary" style="padding:.35rem .75rem;font-size:.8rem;background:#228653;border-color:#228653;" onclick="abrirModalBaixa('${v.id}')">
           💰 Abater Crédito
         </button>
       `;
@@ -3291,7 +3291,7 @@ function renderTabelaReservas() {
           </div>
           <div class="card-top-right-wrap">
             <div class="mobile-only-status">
-              ${isCancelado ? '<span class="badge badge-red">🚫 Cancelado</span>' : (isUsadoTotal ? '<span class="badge">✓ Baixado</span>' : (isCheckoutPassadoSemBaixa ? '<span class="badge" style="background:#ffedd5;color:#c2410c;font-weight:700;">🛎️ Checkout Pendente</span>' : (isSemAssinatura ? '<span class="badge badge-yellow">✍️ Sem Assinatura</span>' : (isVencido ? '<span class="badge badge-red">⚠️ Vencido</span>' : '<span class="badge badge-green">✓ Disponível</span>'))))}
+              ${isCancelado ? '<span class="badge badge-red">🚫 Cancelado</span>' : (isUsadoTotal ? '<span class="badge badge-gray">✓ Baixado</span>' : (isCheckoutPassadoSemBaixa ? '<span class="badge" style="background:#faf2ec;color:#b85c1e;border:1px solid #eed6c4;font-weight:700;">🛎️ Checkout Pendente</span>' : (isSemAssinatura ? '<span class="badge badge-yellow">✍️ Sem Assinatura</span>' : (isVencido ? '<span class="badge badge-red">⚠️ Vencido</span>' : '<span class="badge badge-green">✓ Disponível</span>'))))}
             </div>
             <button type="button" class="btn-card-toggle" onclick="event.stopPropagation(); toggleReservaCard('${v.id}')" title="Expandir ou diminuir detalhes">
               <span class="btn-card-toggle-text">Diminuir</span>
@@ -3426,10 +3426,10 @@ function abrirModalBaixa(voucherId) {
     document.getElementById('baixaTituloSocio').textContent = `Voucher #${v.numero || v.codigo} — ${v.nome_socio}`;
     document.getElementById('baixaInfoSaldo').innerHTML = `
       Diárias Concedidas: <strong>${tot}</strong> | 
-      Já Utilizadas: <strong style="color:#dc2626;">${usd}</strong> | 
-      Saldo Restante: <strong style="color:#16a34a;">${saldo} diárias</strong> | 
-      Vencimento: <strong style="color:${isVencido ? '#dc2626' : 'var(--text-1)'};">${v.validade ? fmtDate(v.validade) : 'A definir'}</strong>
-      ${isCheckoutPassado ? ` | <span class="badge" style="background:#ffedd5;color:#c2410c;font-weight:700;">🛎️ Check-out ocorrido em ${fmtDate(v.periodo_checkout)}</span>` : ''}
+      Já Utilizadas: <strong style="color:#b83a3a;">${usd}</strong> | 
+      Saldo Restante: <strong style="color:#228653;">${saldo} diárias</strong> | 
+      Vencimento: <strong style="color:${isVencido ? 'var(--danger)' : 'var(--text-1)'};">${v.validade ? fmtDate(v.validade) : 'A definir'}</strong>
+      ${isCheckoutPassado ? ` | <span class="badge" style="background:#faf2ec;color:#b85c1e;border:1px solid #eed6c4;font-weight:700;">🛎️ Check-out ocorrido em ${fmtDate(v.periodo_checkout)}</span>` : ''}
     `;
 
     document.getElementById('baixaDiariasQtd').max = saldo > 0 ? saldo : 1;
@@ -3465,7 +3465,7 @@ function abrirModalBaixa(voucherId) {
               <div class="historico-info">${h.data_checkin ? `Período: ${fmtDate(h.data_checkin)} ${h.data_checkout ? `até ${fmtDate(h.data_checkout)}` : ''} | ` : ''}Operador: ${escHtml(h.operador || 'Reservas')} | Data: ${fmtDateTime(h.created_at)}</div>
               ${h.observacoes ? `<div style="font-size:.72rem;color:#475569;margin-top:2px;">Obs: ${escHtml(h.observacoes)}</div>` : ''}
             </div>
-            <button type="button" class="btn btn-sm btn-ghost danger" onclick="confirmarEstornoUtilizacao('${h.id || ''}', '${v.id}', ${h.diarias_utilizadas || 0}, ${h.valor_utilizado || 0})" style="padding:.22rem .55rem;font-size:.72rem;color:#dc2626;border-color:#fca5a5;white-space:nowrap;margin-top:2px;" title="Estornar este abatimento e devolver o valor ao saldo do voucher">
+            <button type="button" class="btn btn-sm btn-ghost danger" onclick="confirmarEstornoUtilizacao('${h.id || ''}', '${v.id}', ${h.diarias_utilizadas || 0}, ${h.valor_utilizado || 0})" style="padding:.22rem .55rem;font-size:.72rem;color:var(--danger);border-color:#f1cccc;white-space:nowrap;margin-top:2px;" title="Estornar este abatimento e devolver o valor ao saldo do voucher">
               ↩️ Estornar
             </button>
           </div>
@@ -3478,7 +3478,7 @@ function abrirModalBaixa(voucherId) {
             <div class="historico-info">Período: ${fmtDate(h.data_checkin)} até ${fmtDate(h.data_checkout)} | Operador: ${escHtml(h.operador || 'Reservas')} | Data: ${fmtDateTime(h.created_at)}</div>
             ${h.observacoes ? `<div style="font-size:.72rem;color:#475569;margin-top:2px;">Obs: ${escHtml(h.observacoes)}</div>` : ''}
           </div>
-          <button type="button" class="btn btn-sm btn-ghost danger" onclick="confirmarEstornoUtilizacao('${h.id || ''}', '${v.id}', ${h.diarias_utilizadas || 1}, ${h.valor_utilizado || 0})" style="padding:.22rem .55rem;font-size:.72rem;color:#dc2626;border-color:#fca5a5;white-space:nowrap;margin-top:2px;" title="Estornar esta estadia e devolver o saldo de diárias ao voucher">
+          <button type="button" class="btn btn-sm btn-ghost danger" onclick="confirmarEstornoUtilizacao('${h.id || ''}', '${v.id}', ${h.diarias_utilizadas || 1}, ${h.valor_utilizado || 0})" style="padding:.22rem .55rem;font-size:.72rem;color:var(--danger);border-color:#f1cccc;white-space:nowrap;margin-top:2px;" title="Estornar esta estadia e devolver o saldo de diárias ao voucher">
             ↩️ Estornar
           </button>
         </div>
@@ -4855,22 +4855,22 @@ function atualizarBadgeSolicitacoes() {
   if (perfilAtivo === 'admin') {
     if (aguardaAdmin > 0 && pendentes > 0) {
       badge.textContent = `${pendentes + aguardaAdmin} (${aguardaAdmin} ✍️)`;
-      badge.style.background = '#fef3c7';
-      badge.style.color = '#b45309';
+      badge.style.background = '#faf4e8';
+      badge.style.color = '#8a5716';
       badge.title = `${pendentes} pendente(s) de emissão e ${aguardaAdmin} aguardando assinatura`;
     } else if (aguardaAdmin > 0) {
       badge.textContent = `${aguardaAdmin} ✍️`;
-      badge.style.background = '#fef3c7';
-      badge.style.color = '#b45309';
+      badge.style.background = '#faf4e8';
+      badge.style.color = '#8a5716';
       badge.title = `${aguardaAdmin} voucher(s) aguardando assinatura`;
     } else if (pendentes > 0) {
       badge.textContent = pendentes;
-      badge.style.background = '#fee2e2';
-      badge.style.color = '#dc2626';
+      badge.style.background = '#faecec';
+      badge.style.color = '#9c3232';
       badge.title = `${pendentes} solicitação(ões) de voucher aguardando emissão`;
     } else {
       badge.textContent = '0';
-      badge.style.background = 'rgba(79, 70, 229, 0.1)';
+      badge.style.background = 'var(--primary-light)';
       badge.style.color = 'var(--primary)';
       badge.title = 'Nenhuma solicitação pendente';
     }
@@ -4878,8 +4878,8 @@ function atualizarBadgeSolicitacoes() {
     // Pós Venda, Reservas, Recepção
     if (pendentes > 0) {
       badge.textContent = pendentes;
-      badge.style.background = '#fee2e2';
-      badge.style.color = '#dc2626';
+      badge.style.background = '#faecec';
+      badge.style.color = '#9c3232';
       badge.title = `${pendentes} solicitação(ões) de voucher aguardando emissão`;
     } else {
       badge.textContent = '0';
@@ -4945,9 +4945,9 @@ function renderTabelaSolicitacoes() {
 
     let statusBadge = '<span class="badge badge-yellow">1. Solicitado (Reservas)</span>';
     if (isRecusada) {
-      statusBadge = '<span class="badge badge-red" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;font-weight:700;">⛔ Recusada</span>';
+      statusBadge = '<span class="badge badge-red" style="font-weight:700;">⛔ Recusada</span>';
     } else if (s.status === 'aguardando_assinatura') {
-      statusBadge = '<span class="badge badge-yellow" style="background:#fef3c7;color:#b45309;">2. Aguarda Assinatura (Admin)</span>';
+      statusBadge = '<span class="badge badge-yellow">2. Aguarda Assinatura (Admin)</span>';
     } else if (s.status === 'gerado') {
       statusBadge = `<span class="badge badge-green">3. Ativo & Assinado ${s.voucher_codigo ? `(#${s.voucher_codigo})` : ''}</span>`;
     } else if (s.status === 'cancelado') {
@@ -4961,7 +4961,7 @@ function renderTabelaSolicitacoes() {
     let acoesHtml = '';
     if (isRecusada) {
       acoesHtml = `
-        <button class="btn btn-ghost" style="padding:.28rem .55rem;font-size:.75rem;color:#991b1b;border:1px solid #fca5a5;" onclick="abrirModalVerMotivoRecusa('${s.id}')" title="Ver motivo detalhado da recusa">
+        <button class="btn btn-ghost" style="padding:.28rem .55rem;font-size:.75rem;color:#9c3232;border:1px solid #f1cccc;" onclick="abrirModalVerMotivoRecusa('${s.id}')" title="Ver motivo detalhado da recusa">
           📝 Ver Motivo
         </button>
       `;
@@ -4971,7 +4971,7 @@ function renderTabelaSolicitacoes() {
           <button class="btn btn-primary" style="padding:.3rem .6rem;font-size:.78rem;" onclick="atenderSolicitacao('${s.id}')" title="Registrar Diárias Disponíveis e Preparar Voucher">
             ⚡ Atender & Registrar Diárias
           </button>
-          <button class="btn btn-ghost" style="padding:.3rem .5rem;font-size:.78rem;color:#dc2626;border:1px solid #fca5a5;" onclick="abrirModalRecusarSolicitacao('${s.id}')" title="Recusar esta solicitação justificando o motivo">
+          <button class="btn btn-ghost" style="padding:.3rem .5rem;font-size:.78rem;color:#b83a3a;border:1px solid #f1cccc;" onclick="abrirModalRecusarSolicitacao('${s.id}')" title="Recusar esta solicitação justificando o motivo">
             ⛔ Recusar
           </button>
         `;
@@ -4984,7 +4984,7 @@ function renderTabelaSolicitacoes() {
     } else if (s.status === 'aguardando_assinatura') {
       if (perfilAtivo === 'admin') {
         acoesHtml += `
-          <button class="btn btn-primary" style="padding:.3rem .6rem;font-size:.78rem;background:#0f766e;border-color:#0f766e;" onclick="abrirModalAssinarVoucherPorCodigo('${s.voucher_codigo}')" title="Conferir e assinar voucher">
+          <button class="btn btn-primary" style="padding:.3rem .6rem;font-size:.78rem;background:#1d7068;border-color:#1d7068;" onclick="abrirModalAssinarVoucherPorCodigo('${s.voucher_codigo}')" title="Conferir e assinar voucher">
             ✍️ Assinar Voucher
           </button>
         `;
@@ -4993,7 +4993,7 @@ function renderTabelaSolicitacoes() {
       }
       if (perfilAtivo === 'admin' || perfilAtivo === 'pos_venda') {
         acoesHtml += `
-          <button class="btn btn-ghost" style="padding:.3rem .5rem;font-size:.78rem;color:#dc2626;border:1px solid #fca5a5;margin-left:4px;" onclick="abrirModalRecusarSolicitacao('${s.id}')" title="Recusar solicitação">
+          <button class="btn btn-ghost" style="padding:.3rem .5rem;font-size:.78rem;color:#b83a3a;border:1px solid #f1cccc;margin-left:4px;" onclick="abrirModalRecusarSolicitacao('${s.id}')" title="Recusar solicitação">
             ⛔ Recusar
           </button>
         `;
@@ -5007,7 +5007,7 @@ function renderTabelaSolicitacoes() {
       const jaLeu = isSolicitacaoLidaPorUsuario(s);
       if (!jaLeu && (perfilAtivo === 'reservas' || perfilAtivo === 'admin' || perfilAtivo === 'recepcao')) {
         acoesHtml += `
-          <button class="btn btn-sm btn-primary" onclick="confirmarLeituraVoucherAssinado('${s.id}')" style="background:#16a34a;border-color:#16a34a;font-size:.74rem;padding:.25rem .55rem;font-weight:700;" title="Confirmar ciência da assinatura para remover seus alertas">
+          <button class="btn btn-sm btn-primary" onclick="confirmarLeituraVoucherAssinado('${s.id}')" style="background:#228653;border-color:#228653;font-size:.74rem;padding:.25rem .55rem;font-weight:700;" title="Confirmar ciência da assinatura para remover seus alertas">
             ✓ Confirmar Leitura
           </button>
         `;
@@ -5055,11 +5055,11 @@ function renderTabelaSolicitacoes() {
             </div>
           </div>
           ${todasLeituras.length > 0 ? `
-            <div style="font-size:.72rem;color:#15803d;margin-top:4px;display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;background:#f0fdf4;padding:2px 6px;border-radius:4px;border:1px solid #bbf7d0;">
+            <div style="font-size:.72rem;color:#1e6b3e;margin-top:4px;display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;background:#eaf4ed;padding:2px 6px;border-radius:4px;border:1px solid #c9e4d2;">
               <span>✓ Ciente por: <strong>${escHtml(todasLeituras.map(l => l.usuario).join(', '))}</strong></span>
               ${leituraAtual 
-                ? `<span style="background:#dcfce7;color:#166534;padding:1px 5px;border-radius:3px;font-weight:600;font-size:.68rem;">(Você já confirmou)</span>` 
-                : `<span style="background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:3px;font-weight:600;font-size:.68rem;">(Aguardando seu ciente)</span>`}
+                ? `<span style="background:#d8ece0;color:#1e6b3e;padding:1px 5px;border-radius:3px;font-weight:600;font-size:.68rem;">(Você já confirmou)</span>` 
+                : `<span style="background:#faf4e8;color:#8a5716;padding:1px 5px;border-radius:3px;font-weight:600;font-size:.68rem;">(Aguardando seu ciente)</span>`}
             </div>
           ` : ''}
         </td>
@@ -5081,7 +5081,7 @@ function renderTabelaSolicitacoes() {
           <div class="card-cell-label">Motivo / Observação</div>
           <div style="font-size:.82rem;">${escHtml(motivoExibicao || '—')}</div>
           ${isRecusada ? `
-            <div onclick="event.stopPropagation(); abrirModalVerMotivoRecusa('${s.id}')" style="cursor:pointer;margin-top:4px;padding:3px 6px;background:#fee2e2;border-radius:4px;border:1px solid #fecaca;font-size:.72rem;color:#991b1b;display:inline-flex;align-items:center;gap:4px;" title="Clique para ver motivo completo">
+            <div onclick="event.stopPropagation(); abrirModalVerMotivoRecusa('${s.id}')" style="cursor:pointer;margin-top:4px;padding:3px 6px;background:#faecec;border-radius:4px;border:1px solid #f1cccc;font-size:.72rem;color:#9c3232;display:inline-flex;align-items:center;gap:4px;" title="Clique para ver motivo completo">
               <span>⛔ <strong>Recusada:</strong> ${escHtml(dadosRecusa ? dadosRecusa.motivo : 'Sem justificativa')}</span>
               <span style="text-decoration:underline;">🔍 Ver</span>
             </div>

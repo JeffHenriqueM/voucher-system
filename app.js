@@ -485,6 +485,15 @@ function escHtml(str) {
   return d.innerHTML;
 }
 
+function normalizarBusca(str) {
+  return String(str || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+window.normalizarBusca = normalizarBusca;
+
 function nanoid(len = 10) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   return Array.from(crypto.getRandomValues(new Uint8Array(len)))
@@ -2318,12 +2327,16 @@ function renderStatsCotas() {
 
 function renderTabelaCotas() {
   const tbody = document.getElementById('tbodyCotas');
-  const busca = (document.getElementById('inputBuscaCotas').value || '').trim().toLowerCase();
+  const buscaRaw = (document.getElementById('inputBuscaCotas')?.value || '').trim();
+  const buscaNormalizada = normalizarBusca(buscaRaw);
+  const termosBusca = buscaNormalizada.split(/\s+/).filter(Boolean);
 
   let filtrados = listaCotas.filter(c => {
-    if (busca) {
-      const matchNome = c.nome_socio.toLowerCase().includes(busca);
-      const matchProd = c.produto.toLowerCase().includes(busca);
+    if (termosBusca.length > 0) {
+      const nomeNorm = normalizarBusca(c.nome_socio);
+      const prodNorm = normalizarBusca(c.produto);
+      const matchNome = termosBusca.every(t => nomeNorm.includes(t));
+      const matchProd = prodNorm.includes(buscaNormalizada);
       if (!matchNome && !matchProd) return false;
     }
 
@@ -2451,8 +2464,6 @@ function filtrarVouchersStatusRapido(status) {
 window.filtrarVouchersStatusRapido = filtrarVouchersStatusRapido;
 
 async function carregarVouchers() {
-  const busca = (document.getElementById('inputBusca')?.value || '').trim().toLowerCase();
-
   try {
     const { data, error } = await db.from('vouchers').select('*').order('created_at', { ascending: false });
     if (!error && data) {
@@ -2467,14 +2478,30 @@ async function carregarVouchers() {
 
   atualizarStatusCotasComVouchers();
   renderStatsVouchers(listaVouchers);
+  filtrarERenderizarVouchers();
+}
+window.carregarVouchers = carregarVouchers;
 
-  // Filtragem dos dados para exibição na tabela
+function filtrarERenderizarVouchers() {
+  const buscaRaw = (document.getElementById('inputBusca')?.value || '').trim();
+  const buscaNormalizada = normalizarBusca(buscaRaw);
+  const termosBusca = buscaNormalizada.split(/\s+/).filter(Boolean);
+  const buscaSemHash = buscaRaw.replace(/^#/, '').trim();
+  const buscaDigitos = buscaRaw.replace(/\D/g, '');
+
   let dadosFiltrados = listaVouchers.filter(v => {
-    if (busca) {
-      const matchNome = (v.nome_socio || '').toLowerCase().includes(busca);
-      const matchNum = String(v.numero || '').includes(busca);
-      const matchCod = (v.codigo || '').toLowerCase().includes(busca);
-      const matchCpf = (v.cpf_beneficiario || '').replace(/\D/g, '').includes(busca.replace(/\D/g, ''));
+    if (termosBusca.length > 0) {
+      const nomeNorm = normalizarBusca(v.nome_socio);
+      const numStr = String(v.numero || '');
+      const codNorm = normalizarBusca(v.codigo);
+      const cpfLimpo = (v.cpf_beneficiario || '').replace(/\D/g, '');
+
+      // Todos os termos digitados devem estar presentes no nome, OU bater com número, código ou CPF
+      const matchNome = termosBusca.every(t => nomeNorm.includes(t));
+      const matchNum = buscaSemHash ? numStr.includes(buscaSemHash) : false;
+      const matchCod = codNorm.includes(buscaNormalizada);
+      const matchCpf = buscaDigitos.length >= 3 && cpfLimpo.includes(buscaDigitos);
+
       if (!matchNome && !matchNum && !matchCod && !matchCpf) return false;
     }
 
@@ -2513,6 +2540,7 @@ async function carregarVouchers() {
 
   renderTabelaVouchers(dadosFiltrados);
 }
+window.filtrarERenderizarVouchers = filtrarERenderizarVouchers;
 
 function renderStatsVouchers(dados) {
   const total = dados.length;
@@ -3137,16 +3165,28 @@ function renderTabelaReservas() {
   const tbody = document.getElementById('tbodyReservas');
   if (!tbody) return;
 
-  const busca = (document.getElementById('inputBuscaReservas')?.value || '').trim().toLowerCase();
+  const buscaRaw = (document.getElementById('inputBuscaReservas')?.value || '').trim();
+  const buscaNormalizada = normalizarBusca(buscaRaw);
+  const termosBusca = buscaNormalizada.split(/\s+/).filter(Boolean);
+  const buscaSemHash = buscaRaw.replace(/^#/, '').trim();
+  const buscaDigitos = buscaRaw.replace(/\D/g, '');
   const hojeStr = new Date().toISOString().split('T')[0];
 
   let filtrados = listaVouchers.filter(v => {
-    if (!busca) return true;
-    const matchNome = (v.nome_socio || '').toLowerCase().includes(busca);
-    const matchNum = String(v.numero || '').includes(busca);
-    const matchCod = (v.codigo || '').toLowerCase().includes(busca);
-    const matchCpf = (v.cpf_beneficiario || '').toLowerCase().includes(busca);
-    return matchNome || matchNum || matchCod || matchCpf;
+    if (termosBusca.length > 0) {
+      const nomeNorm = normalizarBusca(v.nome_socio);
+      const numStr = String(v.numero || '');
+      const codNorm = normalizarBusca(v.codigo);
+      const cpfLimpo = (v.cpf_beneficiario || '').replace(/\D/g, '');
+
+      const matchNome = termosBusca.every(t => nomeNorm.includes(t));
+      const matchNum = buscaSemHash ? numStr.includes(buscaSemHash) : false;
+      const matchCod = codNorm.includes(buscaNormalizada);
+      const matchCpf = buscaDigitos.length >= 3 && cpfLimpo.includes(buscaDigitos);
+
+      if (!matchNome && !matchNum && !matchCod && !matchCpf) return false;
+    }
+    return true;
   });
 
   if (!filtrados.length) {
@@ -4198,18 +4238,18 @@ function atualizarDicaSocioVoucher(nomeDigitado) {
     return;
   }
 
-  const termo = nomeDigitado.trim().toUpperCase();
-  const cotaEncontrada = listaCotas.find(c => (c.nome_socio || '').trim().toUpperCase() === termo);
+  const termoNorm = normalizarBusca(nomeDigitado);
+  const cotaEncontrada = listaCotas.find(c => normalizarBusca(c.nome_socio) === termoNorm);
 
   if (cotaEncontrada) {
     fecharSugestoesSocios();
-    const cotasDoMesmoSocio = listaCotas.filter(c => (c.nome_socio || '').trim().toUpperCase() === termo);
+    const cotasDoMesmoSocio = listaCotas.filter(c => normalizarBusca(c.nome_socio) === termoNorm);
     const produtos = cotasDoMesmoSocio.map(c => c.produto).join(', ');
     const diariasCalc = calcularDiariasSocio(cotaEncontrada.nome_socio);
 
     if (infoEl) {
       infoEl.textContent = `✓ Sócio na base: ${cotasDoMesmoSocio.length} cota(s) (${produtos}) — ${diariasCalc} diárias calculadas.`;
-      infoEl.style.color = '#15803d';
+      infoEl.style.color = '#1e6b3e';
     }
 
     document.getElementById('cotaVinculadaId').value = cotaEncontrada.id;
@@ -4221,13 +4261,15 @@ function atualizarDicaSocioVoucher(nomeDigitado) {
   } else {
     document.getElementById('cotaVinculadaId').value = '';
 
-    // Buscar sócios que contenham o termo digitado
+    // Buscar sócios que contenham todos os termos digitados
     const sugestoesMap = new Map();
+    const termos = termoNorm.split(/\s+/).filter(Boolean);
     listaCotas.forEach(c => {
       const nome = (c.nome_socio || '').trim();
-      if (nome && nome.toUpperCase().includes(termo)) {
-        if (!sugestoesMap.has(nome)) {
-          sugestoesMap.set(nome, c);
+      const nomeNorm = normalizarBusca(nome);
+      if (nome && termos.every(t => nomeNorm.includes(t))) {
+        if (!sugestoesMap.has(nomeNorm)) {
+          sugestoesMap.set(nomeNorm, c);
         }
       }
     });
@@ -4915,7 +4957,9 @@ function renderTabelaSolicitacoes() {
   const tbody = document.getElementById('tbodySolicitacoes');
   if (!tbody) return;
 
-  const busca = (document.getElementById('inputBuscaSolicitacoes')?.value || '').trim().toLowerCase();
+  const buscaRaw = (document.getElementById('inputBuscaSolicitacoes')?.value || '').trim();
+  const buscaNormalizada = normalizarBusca(buscaRaw);
+  const termosBusca = buscaNormalizada.split(/\s+/).filter(Boolean);
 
   let dados = listaSolicitacoes.filter(s => {
     if (filtroSolicitacoes && filtroSolicitacoes !== 'todos') {
@@ -4925,11 +4969,14 @@ function renderTabelaSolicitacoes() {
         if (s.status !== filtroSolicitacoes) return false;
       }
     }
-    if (busca) {
-      const matchNome = (s.nome_socio || '').toLowerCase().includes(busca);
-      const matchMotivo = (s.motivo || '').toLowerCase().includes(busca);
-      const matchSolicitante = (s.solicitante || s.solicitante_nome || '').toLowerCase().includes(busca);
-      return matchNome || matchMotivo || matchSolicitante;
+    if (termosBusca.length > 0) {
+      const nomeNorm = normalizarBusca(s.nome_socio);
+      const motivoNorm = normalizarBusca(s.motivo);
+      const solicNorm = normalizarBusca(s.solicitante || s.solicitante_nome);
+      const matchNome = termosBusca.every(t => nomeNorm.includes(t));
+      const matchMotivo = motivoNorm.includes(buscaNormalizada);
+      const matchSolic = solicNorm.includes(buscaNormalizada);
+      return matchNome || matchMotivo || matchSolic;
     }
     return true;
   });
@@ -5153,11 +5200,12 @@ function atualizarDicaSocioSolicitacao(nome) {
     return;
   }
 
-  const nomeNorm = nome.trim().toUpperCase();
-  const cotasSocio = listaCotas.filter(c => (c.nome_socio || '').trim().toUpperCase() === nomeNorm);
+  const nomeNorm = normalizarBusca(nome);
+  const cotasSocio = listaCotas.filter(c => normalizarBusca(c.nome_socio) === nomeNorm);
 
   if (cotasSocio.length > 0) {
-    const diariasTotais = calcularDiariasSocio(nome);
+    const cotaPrincipal = cotasSocio[0];
+    const diariasTotais = calcularDiariasSocio(cotaPrincipal.nome_socio || nome);
     const produtos = cotasSocio.map(c => c.produto).filter(Boolean).join(', ');
     if (lblDica) {
       lblDica.innerHTML = `Sócio identificado na base RSM: <strong>${cotasSocio.length} cota(s)</strong> (${produtos || 'Cotas'}). Diárias anuais recomendadas: <strong>${diariasTotais} diárias</strong>.`;
@@ -5679,9 +5727,13 @@ document.querySelectorAll('#secaoVouchers .tab').forEach(btn => {
   });
 });
 
-document.getElementById('inputBusca').addEventListener('input', () => {
+document.getElementById('inputBusca')?.addEventListener('input', () => {
   clearTimeout(buscaVouchersTimer);
-  buscaVouchersTimer = setTimeout(carregarVouchers, 300);
+  buscaVouchersTimer = setTimeout(filtrarERenderizarVouchers, 150);
+});
+
+document.getElementById('inputBusca')?.addEventListener('search', () => {
+  filtrarERenderizarVouchers();
 });
 
 // Busca Reservas

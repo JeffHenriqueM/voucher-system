@@ -303,31 +303,6 @@
 
       <main class="container">
 
-    <!-- Banner de Alerta: Vouchers Aguardando Assinatura do Márcio Pimenta -->
-    <div id="bannerAlertaAguardandoAssinatura" class="hidden" style="margin-bottom:1.25rem;">
-      <!-- Preenchido dinamicamente via renderBannerAguardandoAssinatura() -->
-    </div>
-
-    <!-- Banner de Alerta para Gerência (Márcio) & Auditoria de Inconsistências -->
-    <div id="bannerAlertaInconsistencias" class="hidden" style="margin-bottom:1.25rem;">
-      <!-- Preenchido dinamicamente via renderBannerAlertaInconsistencias() -->
-    </div>
-
-    <!-- Banner de Notificação para Reservas: Vouchers Solicitados que foram Assinados pelo Admin -->
-    <div id="bannerAlertaReservasVouchersAssinados" class="hidden" style="margin-bottom:1.25rem;">
-      <!-- Preenchido dinamicamente via renderBannerReservasVouchersAssinados() -->
-    </div>
-
-    <!-- Banner Fila de Trabalho Pós Venda: Vouchers Aguardando Emissão -->
-    <div id="bannerPosVendaFila" class="hidden" style="margin-bottom:1.25rem;">
-      <!-- Preenchido dinamicamente via renderBannerPosVenda() -->
-    </div>
-
-    <!-- Banner de Alerta Operacional: Vouchers com Checkout Realizado e Sem Baixa -->
-    <div id="bannerAlertaCheckoutSemBaixa" class="hidden" style="margin-bottom:1.25rem;">
-      <!-- Preenchido dinamicamente via renderBannerCheckoutSemBaixa() -->
-    </div>
-
     <!-- ════════════════════════════════════════════════════════════ -->
     <!-- ABA 1: BASE DE COTAS / SÓCIOS                             -->
     <!-- ════════════════════════════════════════════════════════════ -->
@@ -394,6 +369,11 @@
     <!-- ABA 2: VOUCHERS EMITIDOS                                    -->
     <!-- ════════════════════════════════════════════════════════════ -->
     <section id="secaoVouchers">
+      <!-- Banner de Alerta: Vouchers Aguardando Assinatura do Márcio Pimenta -->
+      <div id="bannerAlertaAguardandoAssinatura" class="hidden" style="margin-bottom:1.25rem;">
+        <!-- Preenchido dinamicamente via renderBannerAguardandoAssinatura() -->
+      </div>
+
       <!-- Stats Vouchers -->
       <div class="stats-bar">
         <div class="stat-card" style="cursor:pointer;" onclick="filtrarVouchersStatusRapido('')" title="Ver todos os vouchers">
@@ -547,6 +527,11 @@
     <!-- ABA: SOLICITAÇÕES DE VOUCHERS (RESERVAS ➔ PÓS VENDA)        -->
     <!-- ════════════════════════════════════════════════════════════ -->
     <section id="secaoSolicitacoes" class="hidden">
+      <!-- Banner Fila de Trabalho Pós Venda: Vouchers Aguardando Emissão -->
+      <div id="bannerPosVendaFila" class="hidden" style="margin-bottom:1.25rem;">
+        <!-- Preenchido dinamicamente via renderBannerPosVenda() -->
+      </div>
+
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:1rem;">
         <div>
           <h2 style="font-size:1.2rem;">📥 Solicitações de Vouchers</h2>
@@ -602,6 +587,11 @@
     <!-- ABA: AUDITORIA DE VOUCHERS INCONSISTENTES (GERÊNCIA)       -->
     <!-- ════════════════════════════════════════════════════════════ -->
     <section id="secaoInconsistencias" class="hidden">
+      <!-- Banner de Alerta para Gerência (Márcio) & Auditoria de Inconsistências -->
+      <div id="bannerAlertaInconsistencias" class="hidden" style="margin-bottom:1.25rem;">
+        <!-- Preenchido dinamicamente via renderBannerAlertaInconsistencias() -->
+      </div>
+
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;margin-bottom:1.25rem;">
         <div>
           <div style="display:flex;align-items:center;gap:8px;">
@@ -669,6 +659,16 @@
     <!-- ABA 4: BAIXA DE RESERVAS & CONTROLE DE USO                  -->
     <!-- ════════════════════════════════════════════════════════════ -->
     <section id="secaoReservas" class="hidden">
+      <!-- Banner de Notificação para Reservas: Vouchers Solicitados que foram Assinados pelo Admin -->
+      <div id="bannerAlertaReservasVouchersAssinados" class="hidden" style="margin-bottom:1.25rem;">
+        <!-- Preenchido dinamicamente via renderBannerReservasVouchersAssinados() -->
+      </div>
+
+      <!-- Banner de Alerta Operacional: Vouchers com Checkout Realizado e Sem Baixa -->
+      <div id="bannerAlertaCheckoutSemBaixa" class="hidden" style="margin-bottom:1.25rem;">
+        <!-- Preenchido dinamicamente via renderBannerCheckoutSemBaixa() -->
+      </div>
+
       <div class="table-wrap" style="padding:1.5rem;margin-bottom:1.5rem;">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:1rem;">
           <div>
@@ -1556,6 +1556,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="config.js?v=20261025_01"></script>
   <script src="cotas_dados.js?v=20261025_01"></script>
-  <script src="app.js?v=20261105_02"></script>
+  <script src="app.js?v=20261105_03"></script>
 </body>
 </html>

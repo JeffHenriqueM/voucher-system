@@ -319,6 +319,17 @@ function extrairDadosCredito(v) {
 }
 window.extrairDadosCredito = extrairDadosCredito;
 
+function aoMudarModeloVoucher() {
+  const sel = document.getElementById('selectModelo');
+  if (!sel) return;
+  const mod = listaModelos.find(m => m.id === sel.value);
+  if (!mod) return;
+  if (typeof adequarTextosPorDiarias === 'function') adequarTextosPorDiarias();
+  const inEspec = document.getElementById('inputEspecUso');
+  if (inEspec && mod.regras_uso) inEspec.value = mod.regras_uso;
+}
+window.aoMudarModeloVoucher = aoMudarModeloVoucher;
+
 function aoAlternarCategoriaVoucher(cat) {
   const lblDiarias = document.getElementById('labelTipoDiarias');
   const lblCredito = document.getElementById('labelTipoCredito');
@@ -2163,36 +2174,49 @@ function aplicarPermissoesPerfil() {
   const btnLancarCreditoReservas = document.getElementById('btnLancarCreditoReservas');
   const tabCotas = document.getElementById('tabNavCotas');
   const tabVouchers = document.getElementById('tabNavVouchers');
+  const tabCreditos = document.getElementById('tabNavCreditos');
   const tabSolicitacoes = document.getElementById('tabNavSolicitacoes');
   const tabReservas = document.getElementById('tabNavReservas');
   const tabModelos = document.getElementById('tabNavModelos');
   const tabUsuarios = document.getElementById('tabNavUsuarios');
   const tabInconsistencias = document.getElementById('tabNavInconsistencias');
 
+  const elName = document.getElementById('sidebarUserName');
+  const elInitials = document.getElementById('sidebarUserInitials');
+  if (usuarioLogado) {
+    if (elName) elName.textContent = usuarioLogado.nome;
+    if (elInitials) {
+      const parts = (usuarioLogado.nome || '').trim().split(/\s+/).filter(Boolean);
+      elInitials.textContent = ((parts[0] ? parts[0][0] : '') + (parts[1] ? parts[1][0] : '')).toUpperCase() || 'VP';
+    }
+  }
+
   if (perfilAtivo === 'admin') {
     btnAssinatura.style.display = 'inline-flex';
     btnNovo.style.display = 'inline-flex';
     if (btnNovoCredito) btnNovoCredito.style.display = 'inline-flex';
     if (btnLancarCreditoReservas) btnLancarCreditoReservas.style.display = 'inline-flex';
-    tabCotas.style.display = 'inline-flex';
-    tabVouchers.style.display = 'inline-flex';
-    tabSolicitacoes.style.display = 'inline-flex';
-    tabReservas.style.display = 'inline-flex';
-    tabModelos.style.display = 'inline-flex';
-    if (tabUsuarios) tabUsuarios.style.display = 'inline-flex';
-    if (tabInconsistencias) tabInconsistencias.style.display = 'inline-flex';
+    tabCotas.style.display = 'flex';
+    tabVouchers.style.display = 'flex';
+    if (tabCreditos) tabCreditos.style.display = 'flex';
+    tabSolicitacoes.style.display = 'flex';
+    tabReservas.style.display = 'flex';
+    tabModelos.style.display = 'flex';
+    if (tabUsuarios) tabUsuarios.style.display = 'flex';
+    if (tabInconsistencias) tabInconsistencias.style.display = 'flex';
   } else if (perfilAtivo === 'pos_venda') {
     btnAssinatura.style.display = 'none';
     btnNovo.style.display = 'inline-flex';
     if (btnNovoCredito) btnNovoCredito.style.display = 'inline-flex';
     if (btnLancarCreditoReservas) btnLancarCreditoReservas.style.display = 'none';
-    tabCotas.style.display = 'inline-flex';
-    tabVouchers.style.display = 'inline-flex';
-    tabSolicitacoes.style.display = 'inline-flex';
+    tabCotas.style.display = 'flex';
+    tabVouchers.style.display = 'flex';
+    if (tabCreditos) tabCreditos.style.display = 'flex';
+    tabSolicitacoes.style.display = 'flex';
     tabReservas.style.display = 'none';
-    tabModelos.style.display = 'inline-flex'; // Pós Venda pode acessar os modelos de voucher
+    tabModelos.style.display = 'flex'; // Pós Venda pode acessar os modelos de voucher
     if (tabUsuarios) tabUsuarios.style.display = 'none';
-    if (tabInconsistencias) tabInconsistencias.style.display = 'inline-flex';
+    if (tabInconsistencias) tabInconsistencias.style.display = 'flex';
     if (abaAtiva === 'reservas' || abaAtiva === 'usuarios') mudarAba('vouchers');
   } else if (perfilAtivo === 'reservas' || perfilAtivo === 'recepcao') {
     btnAssinatura.style.display = 'none';
@@ -2201,13 +2225,14 @@ function aplicarPermissoesPerfil() {
     if (btnNovoCredito) btnNovoCredito.style.display = podeLancarCredito ? 'inline-flex' : 'none';
     if (btnLancarCreditoReservas) btnLancarCreditoReservas.style.display = podeLancarCredito ? 'inline-flex' : 'none';
     tabCotas.style.display = 'none';
-    tabVouchers.style.display = 'inline-flex';
-    tabSolicitacoes.style.display = 'inline-flex';
-    tabReservas.style.display = 'inline-flex';
+    tabVouchers.style.display = 'flex';
+    if (tabCreditos) tabCreditos.style.display = 'flex';
+    tabSolicitacoes.style.display = 'flex';
+    tabReservas.style.display = 'flex';
     tabModelos.style.display = 'none';
     if (tabUsuarios) tabUsuarios.style.display = 'none';
     if (tabInconsistencias) tabInconsistencias.style.display = 'none';
-    if (abaAtiva !== 'vouchers' && abaAtiva !== 'reservas' && abaAtiva !== 'solicitacoes') mudarAba('vouchers');
+    if (abaAtiva !== 'vouchers' && abaAtiva !== 'creditos' && abaAtiva !== 'reservas' && abaAtiva !== 'solicitacoes') mudarAba('vouchers');
   }
 
   atualizarBadgeSolicitacoes();
@@ -2219,11 +2244,21 @@ function aplicarPermissoesPerfil() {
   renderBannerReservasVouchersAssinados();
 }
 
+function abrirSidebarMobile() {
+  document.body.classList.add('sidebar-open');
+}
+window.abrirSidebarMobile = abrirSidebarMobile;
+
+function fecharSidebarMobile() {
+  document.body.classList.remove('sidebar-open');
+}
+window.fecharSidebarMobile = fecharSidebarMobile;
+
 // ── Troca de Abas ──────────────────────────────────────────────
 function mudarAba(novaAba) {
   abaAtiva = novaAba;
 
-  const abas = ['cotas', 'vouchers', 'solicitacoes', 'inconsistencias', 'reservas', 'modelos', 'usuarios'];
+  const abas = ['cotas', 'vouchers', 'creditos', 'solicitacoes', 'inconsistencias', 'reservas', 'modelos', 'usuarios'];
   abas.forEach(a => {
     const btn = document.getElementById(`tabNav${a.charAt(0).toUpperCase() + a.slice(1)}`);
     const secao = document.getElementById(`secao${a.charAt(0).toUpperCase() + a.slice(1)}`);
@@ -2231,14 +2266,34 @@ function mudarAba(novaAba) {
     if (secao) secao.classList.toggle('hidden', a !== novaAba);
   });
 
+  const titulos = {
+    cotas: { t: 'Base de Cotas', s: 'Consulta de cotas e direitos dos sócios' },
+    vouchers: { t: 'Vouchers Emitidos', s: 'Gerenciamento, assinaturas e controle de diárias' },
+    creditos: { t: 'Crédito de Reservas & Consumo', s: 'Controle de saldos em R$, reembolsos e bonificações' },
+    solicitacoes: { t: 'Solicitações de Vouchers', s: 'Pedidos enviados pelas Reservas ao Pós Venda' },
+    inconsistencias: { t: 'Auditoria de Inconsistências', s: 'Conferência de regras contratuais' },
+    reservas: { t: 'Baixa de Reservas', s: 'Registro de estadias e check-ins' },
+    modelos: { t: 'Modelos de Voucher', s: 'Configuração dos layouts e regras' },
+    usuarios: { t: 'Usuários do Sistema', s: 'Controle de acessos e permissões' }
+  };
+  const info = titulos[novaAba] || { t: 'Villamor', s: '' };
+  const elT = document.getElementById('topbarTitle');
+  const elS = document.getElementById('topbarSubtitle');
+  if (elT) elT.textContent = info.t;
+  if (elS) elS.textContent = info.s;
+
+  fecharSidebarMobile();
+
   if (novaAba === 'cotas') renderTabelaCotas();
   if (novaAba === 'vouchers') carregarVouchers();
+  if (novaAba === 'creditos') renderTabelaCreditos();
   if (novaAba === 'solicitacoes') renderTabelaSolicitacoes();
   if (novaAba === 'inconsistencias') renderTabelaInconsistencias();
   if (novaAba === 'reservas') renderTabelaReservas();
   if (novaAba === 'modelos') renderModelos();
   if (novaAba === 'usuarios') renderTabelaUsuarios();
 }
+window.mudarAba = mudarAba;
 
 // ── Sincronização dos Dados de Cotas e Vouchers ─────────────────
 async function sincronizarCotas() {
@@ -2290,8 +2345,12 @@ async function sincronizarCotas() {
   renderTabelaCotas();
   renderTabelaReservas();
   renderStatsVouchers(listaVouchers);
+  renderStatsCreditos(listaVouchers.filter(v => isVoucherCredito(v)));
   if (abaAtiva === 'vouchers') {
     carregarVouchers();
+  }
+  if (abaAtiva === 'creditos') {
+    renderTabelaCreditos();
   }
   renderBannerAlertaInconsistencias();
   renderStatusLeituraInconsistencias();
@@ -3181,6 +3240,238 @@ function renderTabelaVouchers(dados) {
 
   atualizarBotaoToggleTodosVouchers();
 }
+
+// ── Renderização da Aba de Créditos de Reserva ─────────────────
+let filtroCreditoStatus = '';
+let buscaCreditosTimer = null;
+let todosCardsCreditosExpandidos = true;
+
+function filtrarCreditosStatusRapido(st) {
+  filtroCreditoStatus = st;
+  document.querySelectorAll('[data-status-cred]').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-status-cred') === st);
+  });
+  renderTabelaCreditos();
+}
+window.filtrarCreditosStatusRapido = filtrarCreditosStatusRapido;
+
+function toggleTodosCardsCreditos() {
+  todosCardsCreditosExpandidos = !todosCardsCreditosExpandidos;
+  const lbl = document.getElementById('lblToggleTodosCreditos');
+  if (lbl) lbl.textContent = todosCardsCreditosExpandidos ? 'Diminuir Todos' : 'Expandir Todos';
+  document.querySelectorAll('.credito-card-row').forEach(row => {
+    row.classList.toggle('is-expanded', todosCardsCreditosExpandidos);
+    const txt = row.querySelector('.btn-card-toggle-text');
+    const icon = row.querySelector('.btn-card-toggle-icon');
+    if (txt) txt.textContent = todosCardsCreditosExpandidos ? 'Diminuir' : 'Expandir';
+    if (icon) icon.textContent = todosCardsCreditosExpandidos ? '▲' : '▼';
+  });
+}
+window.toggleTodosCardsCreditos = toggleTodosCardsCreditos;
+
+function toggleCreditoCard(id) {
+  const row = document.getElementById(`card-credito-${id}`);
+  if (!row) return;
+  const isExp = row.classList.toggle('is-expanded');
+  const txt = row.querySelector('.btn-card-toggle-text');
+  const icon = row.querySelector('.btn-card-toggle-icon');
+  if (txt) txt.textContent = isExp ? 'Diminuir' : 'Expandir';
+  if (icon) icon.textContent = isExp ? '▲' : '▼';
+}
+window.toggleCreditoCard = toggleCreditoCard;
+
+function renderStatsCreditos(todosCreditos) {
+  let totalConcedido = 0;
+  let totalUtilizado = 0;
+  let saldoAtivo = 0;
+  let qtdComSaldo = 0;
+
+  todosCreditos.forEach(v => {
+    const dc = extrairDadosCredito(v);
+    if (!dc) return;
+    const isCancelado = Boolean(extrairDadosCancelamento(v) || v.cancelado || v.status_fluxo === 'cancelado');
+    totalConcedido += dc.valorTotal;
+    totalUtilizado += dc.valorUtilizado;
+    if (!isCancelado && dc.saldo > 0.01) {
+      saldoAtivo += dc.saldo;
+      qtdComSaldo++;
+    }
+  });
+
+  const elTot = document.getElementById('statCreditoTotal');
+  const elSaldo = document.getElementById('statCreditoSaldoAtivo');
+  const elUsd = document.getElementById('statCreditoUtilizado');
+  const elQtd = document.getElementById('statCreditoQtdAtivos');
+  const badgeSide = document.getElementById('badgeTotalCreditos');
+  const countTodos = document.getElementById('countFiltroCreditosTodos');
+  const countSaldo = document.getElementById('countFiltroCreditosComSaldo');
+
+  if (elTot) elTot.textContent = fmtMoeda(totalConcedido);
+  if (elSaldo) elSaldo.textContent = fmtMoeda(saldoAtivo);
+  if (elUsd) elUsd.textContent = fmtMoeda(totalUtilizado);
+  if (elQtd) elQtd.textContent = qtdComSaldo;
+  if (badgeSide) badgeSide.textContent = qtdComSaldo;
+  if (countTodos) countTodos.textContent = todosCreditos.length;
+  if (countSaldo) countSaldo.textContent = qtdComSaldo;
+}
+window.renderStatsCreditos = renderStatsCreditos;
+
+function renderTabelaCreditos() {
+  const tbody = document.getElementById('tbodyCreditos');
+  if (!tbody) return;
+
+  const todosCreditos = listaVouchers.filter(v => isVoucherCredito(v));
+  renderStatsCreditos(todosCreditos);
+
+  const buscaRaw = (document.getElementById('inputBuscaCreditos')?.value || '').trim();
+  const buscaNorm = normalizarBusca(buscaRaw);
+  const termosBusca = buscaNorm.split(/\s+/).filter(Boolean);
+  const buscaSemHash = buscaRaw.replace(/^#/, '').trim();
+  const buscaDigitos = buscaRaw.replace(/\D/g, '');
+  const hojeStr = new Date().toISOString().split('T')[0];
+
+  let filtrados = todosCreditos.filter(v => {
+    const dc = extrairDadosCredito(v);
+    if (!dc) return false;
+    const isCancelado = Boolean(extrairDadosCancelamento(v) || v.cancelado || v.status_fluxo === 'cancelado');
+    const isZerado = dc.saldo <= 0.01;
+
+    // Filtros rápidos
+    if (filtroCreditoStatus === 'disponivel' && (isCancelado || isZerado)) return false;
+    if (filtroCreditoStatus === 'zerado' && (!isZerado || isCancelado)) return false;
+    if (filtroCreditoStatus === 'socio' && !dc.isSocio) return false;
+    if (filtroCreditoStatus === 'avulso' && dc.isSocio) return false;
+
+    // Termos de busca
+    if (termosBusca.length > 0) {
+      const nomeNorm = normalizarBusca(v.nome_socio);
+      const numStr = String(v.numero || '');
+      const codNorm = normalizarBusca(v.codigo);
+      const cpfLimpo = (dc.cpf || '').replace(/\D/g, '');
+
+      const matchNome = termosBusca.every(t => nomeNorm.includes(t));
+      const matchNum = buscaSemHash ? numStr.includes(buscaSemHash) : false;
+      const matchCod = codNorm.includes(buscaNorm);
+      const matchCpf = buscaDigitos.length >= 3 && cpfLimpo.includes(buscaDigitos);
+
+      if (!matchNome && !matchNum && !matchCod && !matchCpf) return false;
+    }
+
+    return true;
+  });
+
+  if (!filtrados.length) {
+    tbody.innerHTML = '<tr><td colspan="8" class="empty">Nenhum crédito de reserva localizado com os filtros atuais.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtrados.map(v => {
+    const dc = extrairDadosCredito(v);
+    const tot = dc.valorTotal;
+    const usd = dc.valorUtilizado;
+    const saldo = dc.saldo;
+    const isCancelado = Boolean(extrairDadosCancelamento(v) || v.cancelado || v.status_fluxo === 'cancelado');
+    const isZerado = saldo <= 0.01;
+    const isVencido = !isCancelado && !isZerado && v.validade ? (v.validade < hojeStr) : false;
+
+    const historico = listaHistoricoReservas.filter(h => h.voucher_codigo === v.codigo);
+    const histResumo = historico.length
+      ? historico.map(h => {
+          const tipoLabel = h.tipo_uso === 'consumo' ? 'Consumo' : (h.tipo_uso === 'misto' ? 'Misto' : 'Diária');
+          const val = h.valor_utilizado ? fmtMoeda(h.valor_utilizado) : '—';
+          return `<div style="font-size:.74rem;">💰 <strong>${val}</strong> (${tipoLabel}${h.data_checkin ? ` · ${fmtDate(h.data_checkin)}` : ''})</div>`;
+        }).join('')
+      : '<span style="color:#94a3b8;font-size:.74rem;">Nenhum abatimento registrado</span>';
+
+    return `
+      <tr class="reserva-card-row credito-card-row ${todosCardsCreditosExpandidos ? 'is-expanded' : ''}" id="card-credito-${v.id}" data-credito-id="${v.id}">
+        <td class="col-card-top" data-label="Voucher" onclick="toggleCreditoCard('${v.id}')">
+          <div class="card-num-wrap">
+            <strong class="card-voucher-num">#${v.numero || v.codigo}</strong>
+            <span class="badge badge-green" style="font-size:.65rem;">💰 CRÉDITO</span>
+          </div>
+          <div class="card-top-right-wrap">
+            <div class="mobile-only-status">
+              ${isCancelado ? '<span class="badge badge-red">🚫 Cancelado</span>' : (isZerado ? '<span class="badge badge-gray">✓ Zerado</span>' : (isVencido ? '<span class="badge badge-red">⚠️ Vencido</span>' : '<span class="badge badge-green">✓ Saldo Ativo</span>'))}
+            </div>
+            <button type="button" class="btn-card-toggle" onclick="event.stopPropagation(); toggleCreditoCard('${v.id}')" title="Expandir ou diminuir">
+              <span class="btn-card-toggle-text">${todosCardsCreditosExpandidos ? 'Diminuir' : 'Expandir'}</span>
+              <span class="btn-card-toggle-icon">${todosCardsCreditosExpandidos ? '▲' : '▼'}</span>
+            </button>
+          </div>
+        </td>
+        <td class="col-card-socio" data-label="Beneficiário" onclick="toggleCreditoCard('${v.id}')">
+          <div class="card-socio-header-flex">
+            <div>
+              <div class="card-socio-name">
+                ${escHtml(v.nome_socio)}
+                <span class="badge ${dc.isSocio ? 'badge-credito' : 'badge-nao-socio'}" style="font-size:.65rem;margin-left:4px;vertical-align:middle;">
+                  ${dc.isSocio ? '👤 Sócio' : '⭐ Não-Sócio'}
+                </span>
+              </div>
+              ${dc.cpf ? `<div style="font-size:.74rem;color:var(--text-2);margin-top:2px;">CPF: <strong>${escHtml(formatarCPF(dc.cpf))}</strong></div>` : ''}
+              <div style="font-size:.72rem;color:#15803d;margin-top:2px;font-weight:600;">Origem: ${escHtml(dc.origem || 'Crédito de Reservas')}</div>
+            </div>
+            <div class="card-mini-summary-pill">
+              <span class="diarias-pill ${saldo > 0 ? 'diarias-disponiveis' : 'diarias-usadas'}" style="font-size:.76rem;font-weight:800;">${fmtMoeda(saldo)}</span>
+            </div>
+          </div>
+        </td>
+        <td class="col-card-vencimento card-collapsible-detail" data-label="Validade">
+          <div class="card-cell-label">📅 Validade</div>
+          <div class="card-cell-content">
+            <div style="line-height:1.25;">
+              <strong style="font-size:.82rem;color:var(--text-1);">${v.validade ? fmtDate(v.validade) : 'A definir'}</strong>
+              <div><span class="badge ${isCancelado ? 'badge-red' : (isZerado ? 'badge-gray' : (isVencido ? 'badge-red' : 'badge-green'))}" style="font-size:.65rem;padding:1px 5px;display:inline-block;margin-top:2px;">
+                ${isCancelado ? '🚫 Cancelado' : (isZerado ? '✓ Saldo Utilizado' : (isVencido ? '⚠️ Expirado' : '✓ Disponível'))}
+              </span></div>
+            </div>
+          </div>
+        </td>
+        <td class="col-card-diarias card-collapsible-detail" data-label="Concedido">
+          <div class="card-cell-label">💰 Concedido</div>
+          <div class="card-cell-content"><strong style="color:var(--text-1);">${fmtMoeda(tot)}</strong></div>
+        </td>
+        <td class="col-card-diarias-usd card-collapsible-detail" data-label="Abatido">
+          <div class="card-cell-label">💳 Abatido</div>
+          <div class="card-cell-content"><strong style="color:#b83a3a;">${fmtMoeda(usd)}</strong></div>
+        </td>
+        <td class="col-card-saldo card-collapsible-detail" data-label="Saldo">
+          <div class="card-cell-label">💰 Saldo Disponível</div>
+          <div class="card-cell-content">
+            <span class="diarias-pill ${saldo > 0 ? 'diarias-disponiveis' : 'diarias-usadas'}" style="font-size:.82rem;font-weight:800;">${fmtMoeda(saldo)}</span>
+          </div>
+        </td>
+        <td class="col-card-historico card-collapsible-detail" data-label="Extrato">
+          <div class="card-cell-label">📋 Extrato de Uso</div>
+          <div class="card-cell-content">${histResumo}</div>
+        </td>
+        <td class="col-card-acoes card-collapsible-detail" data-label="Ações">
+          <div class="actions card-actions-flex" style="flex-wrap:wrap;gap:4px;">
+            ${!isCancelado && !isZerado ? `
+            <button class="btn btn-sm btn-primary" style="background:#228653;border-color:#228653;padding:.32rem .65rem;font-size:.76rem;" onclick="abrirModalBaixa('${v.id}')" title="Registrar abatimento de diária ou consumo deste crédito">
+              💰 Abater Saldo
+            </button>` : ''}
+            <a href="${linkVoucher(v.codigo)}" target="_blank" class="btn btn-sm btn-ghost" style="padding:.32rem .6rem;font-size:.76rem;" title="Ver Comprovante Oficial & Extrato">
+              📄 Comprovante
+            </a>
+            <button class="btn btn-sm btn-notif-whatsapp" onclick="enviarComprovanteCreditoWhatsApp('${escHtml(v.codigo)}')" title="Enviar Comprovante de Saldo no WhatsApp" style="padding:.32rem .6rem;font-size:.76rem;">
+              📲 WhatsApp
+            </button>
+            <button class="btn btn-sm btn-ghost" title="Ver Trilha de Auditoria" onclick="abrirModalTrilhaAuditoria('${v.id}')" style="padding:.32rem .5rem;font-size:.76rem;">
+              📋 Trilha
+            </button>
+            ${!isCancelado && !isZerado && (perfilAtivo === 'admin' || perfilAtivo === 'pos_venda') ? `
+            <button class="btn btn-sm btn-ghost danger" title="Cancelar Crédito" onclick="abrirModalCancelarVoucher('${v.id}')" style="padding:.32rem .5rem;font-size:.76rem;color:#b83a3a;border-color:#f1cccc;">
+              🚫 Cancelar
+            </button>` : ''}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+window.renderTabelaCreditos = renderTabelaCreditos;
 
 // ── Renderização da Aba de Baixa de Reservas ────────────────────
 function renderTabelaReservas() {
@@ -4483,6 +4774,12 @@ function abrirModalEmitirParaCota(cotaId, isNovoVoucherAdicional = false) {
   }
 }
 
+function abrirModalNovoCredito() {
+  solicitacaoEmAtendimentoId = null;
+  abrirModalNovo('credito');
+}
+window.abrirModalNovoCredito = abrirModalNovoCredito;
+
 function abrirModalNovo(categoriaPadrao = 'diarias') {
   popularDatalistSociosVoucher();
   carregarSelectModelos();
@@ -4494,6 +4791,15 @@ function abrirModalNovo(categoriaPadrao = 'diarias') {
   document.getElementById('inputDiarias').value = 2;
   document.getElementById('lblDicaDiarias').textContent = '';
   document.getElementById('inputSala').value = 'VILLA';
+
+  // Validade padrão: 1 ano
+  const dataHoje = new Date();
+  dataHoje.setFullYear(dataHoje.getFullYear() + 1);
+  if (document.getElementById('inputValidade')) {
+    document.getElementById('inputValidade').value = dataHoje.toISOString().split('T')[0];
+  }
+  if (document.getElementById('inputCheckin')) document.getElementById('inputCheckin').value = '';
+  if (document.getElementById('inputCheckout')) document.getElementById('inputCheckout').value = '';
 
   // Configurar modo (diárias ou crédito financeiro)
   if (categoriaPadrao === 'credito') {
@@ -4510,25 +4816,14 @@ function abrirModalNovo(categoriaPadrao = 'diarias') {
     if (radDia) radDia.checked = true;
     aoAlternarCategoriaVoucher('diarias');
     aoAlternarTipoClienteVoucher('socio');
+    const mod = listaModelos[0] || MODELOS_PADRAO[0];
+    document.getElementById('selectModelo').value = mod.id;
+    document.getElementById('inputEspecUso').value = mod.regras_uso;
+    adequarTextosPorDiarias();
   }
   if (document.getElementById('inputCpfBeneficiario')) document.getElementById('inputCpfBeneficiario').value = '';
   if (document.getElementById('inputValorCredito')) document.getElementById('inputValorCredito').value = '';
   if (document.getElementById('inputOrigemCredito')) document.getElementById('inputOrigemCredito').value = 'Crédito de Reservas (Ganho / Bonificação)';
-
-  // Validade padrão: 1 ano
-  const dataHoje = new Date();
-  dataHoje.setFullYear(dataHoje.getFullYear() + 1);
-  if (document.getElementById('inputValidade')) {
-    document.getElementById('inputValidade').value = dataHoje.toISOString().split('T')[0];
-  }
-  if (document.getElementById('inputCheckin')) document.getElementById('inputCheckin').value = '';
-  if (document.getElementById('inputCheckout')) document.getElementById('inputCheckout').value = '';
-
-  const mod = listaModelos[0] || MODELOS_PADRAO[0];
-  document.getElementById('selectModelo').value = mod.id;
-  document.getElementById('inputEspecUso').value = mod.regras_uso;
-
-  adequarTextosPorDiarias();
 
   document.getElementById('wrapAdminAssinanteEdit')?.classList.add('hidden');
   if (document.getElementById('inputAdminAssinanteEdit')) document.getElementById('inputAdminAssinanteEdit').value = '';
@@ -4538,6 +4833,7 @@ function abrirModalNovo(categoriaPadrao = 'diarias') {
   salvarSnapshotModalVoucher();
   document.getElementById('inputNome').focus();
 }
+window.abrirModalNovo = abrirModalNovo;
 
 async function abrirModalEditar(id) {
   if (perfilAtivo !== 'admin' && perfilAtivo !== 'pos_venda') {
@@ -5671,18 +5967,34 @@ document.getElementById('btnNovo').addEventListener('click', () => {
 const btnNovoCred = document.getElementById('btnNovoCredito');
 if (btnNovoCred) {
   btnNovoCred.addEventListener('click', () => {
-    solicitacaoEmAtendimentoId = null;
-    abrirModalNovo('credito');
+    abrirModalNovoCredito();
   });
 }
 
 const btnLancarCredRes = document.getElementById('btnLancarCreditoReservas');
 if (btnLancarCredRes) {
   btnLancarCredRes.addEventListener('click', () => {
-    solicitacaoEmAtendimentoId = null;
-    abrirModalNovo('credito');
+    abrirModalNovoCredito();
   });
 }
+
+document.getElementById('btnNovoTopbar')?.addEventListener('click', () => {
+  abrirModalNovo('diarias');
+});
+
+document.getElementById('btnNovoCreditoTopbar')?.addEventListener('click', () => {
+  abrirModalNovoCredito();
+});
+
+const tabNavCred = document.getElementById('tabNavCreditos');
+if (tabNavCred) {
+  tabNavCred.addEventListener('click', () => mudarAba('creditos'));
+}
+
+document.getElementById('inputBuscaCreditos')?.addEventListener('input', () => {
+  clearTimeout(buscaCreditosTimer);
+  buscaCreditosTimer = setTimeout(renderTabelaCreditos, 250);
+});
 document.getElementById('btnFecharModal').addEventListener('click', fecharModalComConfirmacao);
 document.getElementById('btnCancelar').addEventListener('click', fecharModalComConfirmacao);
 document.getElementById('btnFecharDelete').addEventListener('click', fecharModalDelete);

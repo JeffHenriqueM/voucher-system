@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png?v=20261022_09" />
   <link rel="shortcut icon" href="favicon.ico?v=20261022_09" />
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261022_09" />
-  <link rel="stylesheet" href="style.css?v=20261105_01" />
+  <link rel="stylesheet" href="style.css?v=20261105_02" />
 </head>
 <body>
 
@@ -124,12 +124,18 @@
     </div>
   </div>
 
-  <!-- ── Header ─────────────────────────────────────────────────── -->
-  <header class="header">
-    <div class="header-inner">
-      <div class="header-top-row">
-        <div class="brand">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="28" height="28" fill="none" style="flex-shrink:0;">
+  <!-- ── Estrutura com Menu Lateral (Sidebar) & Área Principal ───── -->
+  <div class="app-shell">
+    
+    <!-- Backdrop para fechar menu no mobile -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="fecharSidebarMobile()"></div>
+
+    <!-- ─── MENU LATERAL (SIDEBAR) ────────────────────────── -->
+    <aside class="sidebar" id="appSidebar">
+      <!-- Topo da Sidebar (Logo & Fechar Mobile) -->
+      <div class="sidebar-header">
+        <div class="sidebar-brand">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="30" height="30" fill="none" style="flex-shrink:0;">
             <defs>
               <linearGradient id="brandBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stop-color="#0f172a"/>
@@ -163,68 +169,139 @@
               <rect x="47.6" y="36.5" width="2.4" height="5.5" rx="0.8"/>
             </g>
           </svg>
-          <span class="brand-text">Villamor Vouchers</span>
-        </div>
-
-        <div class="header-user-controls">
-          <button class="btn-theme-toggle" id="btnThemeToggle" title="Alternar Modo Escuro / Claro">
-            🌙
-          </button>
-          <button class="btn btn-ghost" id="btnAssinaturaAdmin" title="Configurar Assinatura Oficial">
-            ✍️ Assinatura
-          </button>
-          <div class="perfil-badge-wrap">
-            <span class="perfil-badge perfil-admin" id="perfilBadge">👑 Admin</span>
-            <button class="btn-trocar-perfil" id="btnTrocarPerfil">Sair</button>
+          <div class="brand-title-wrap">
+            <span class="brand-text">Villamor</span>
+            <span class="brand-sub">Sistema de Gestão</span>
           </div>
         </div>
+        <button class="btn-sidebar-close" id="btnFecharSidebar" onclick="fecharSidebarMobile()" title="Fechar Menu">✕</button>
       </div>
 
-      <!-- Ação Principal (Emitir Voucher / Lançar Crédito) -->
-      <div class="header-cta-row" style="display:flex;gap:8px;align-items:center;">
-        <button class="btn btn-primary btn-emitir-top" id="btnNovo">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z"/></svg>
-          Emitir Voucher
+      <!-- Card do Usuário Logado -->
+      <div class="sidebar-user-box">
+        <div class="sidebar-user-avatar">
+          <span id="sidebarUserInitials">VP</span>
+        </div>
+        <div class="sidebar-user-meta">
+          <strong id="sidebarUserName" class="sidebar-user-name">Usuário</strong>
+          <span class="perfil-badge perfil-admin" id="perfilBadge">👑 Admin</span>
+        </div>
+        <button class="btn-trocar-perfil" id="btnTrocarPerfil" title="Sair do perfil atual">Sair</button>
+      </div>
+
+      <!-- Ações Rápidas na Sidebar -->
+      <div class="sidebar-quick-actions">
+        <button class="btn btn-primary btn-sidebar-action" id="btnNovo" onclick="abrirModalNovo('diarias')">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z"/></svg>
+          <span>Emitir Voucher</span>
         </button>
-        <button class="btn btn-primary btn-emitir-top" id="btnNovoCredito" style="background:#228653;border-color:#228653;" title="Lançar crédito de reservas ou consumo para cliente">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 14.93V18h-2v-1.07A4 4 0 0 1 8 13.5h2a2 2 0 0 0 4 0c0-1.5-1.5-1.5-3-2s-3-1-3-3a3.5 3.5 0 0 1 3-3.43V4h2v1.07A4 4 0 0 1 16 8.5h-2a2 2 0 0 0-4 0c0 1.5 1.5 1.5 3 2s3 1 3 3a3.5 3.5 0 0 1-3 3.43z"/></svg>
-          💰 Lançar Crédito
+        <button class="btn btn-primary btn-sidebar-action" id="btnNovoCredito" onclick="abrirModalNovoCredito()" style="background:#228653;border-color:#228653;" title="Lançar crédito de reservas ou consumo">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 14.93V18h-2v-1.07A4 4 0 0 1 8 13.5h2a2 2 0 0 0 4 0c0-1.5-1.5-1.5-3-2s-3-1-3-3a3.5 3.5 0 0 1 3-3.43V4h2v1.07A4 4 0 0 1 16 8.5h-2a2 2 0 0 0-4 0c0 1.5 1.5 1.5 3 2s3 1 3 3a3.5 3.5 0 0 1-3 3.43z"/></svg>
+          <span>💰 Lançar Crédito</span>
         </button>
       </div>
 
-      <!-- Abas de Navegação -->
-      <nav class="main-nav">
-        <button class="nav-btn active" id="tabNavVouchers">
-          <span>🎟️ Vouchers Emitidos</span>
-          <span class="nav-counter" id="badgeTotalVouchers">0</span>
-        </button>
-        <button class="nav-btn" id="tabNavCotas">
-          <span>👥 Base de Cotas</span>
+      <!-- ── Navegação do Menu Lateral ── -->
+      <nav class="sidebar-nav">
+        <div class="sidebar-group-title">MÓDULOS PRINCIPAIS</div>
+
+        <!-- 1 MENU: Base de Cotas -->
+        <button class="sidebar-nav-btn" id="tabNavCotas" onclick="mudarAba('cotas')">
+          <span class="nav-icon">👥</span>
+          <span class="nav-label">Base de cotas</span>
           <span class="nav-counter" id="badgeTotalCotas">433</span>
         </button>
-        <button class="nav-btn" id="tabNavSolicitacoes">
-          <span>📥 Solicitações</span>
+
+        <!-- 2 MENU: Vouchers -->
+        <button class="sidebar-nav-btn active" id="tabNavVouchers" onclick="mudarAba('vouchers')">
+          <span class="nav-icon">🎟️</span>
+          <span class="nav-label">Vouchers</span>
+          <span class="nav-counter" id="badgeTotalVouchers">0</span>
+        </button>
+
+        <!-- 3 MENU: Crédito de reserva -->
+        <button class="sidebar-nav-btn" id="tabNavCreditos" onclick="mudarAba('creditos')">
+          <span class="nav-icon">💰</span>
+          <span class="nav-label">Crédito de reserva</span>
+          <span class="nav-counter" id="badgeTotalCreditos" style="background:#dcfce7;color:#15803d;font-weight:700;">0</span>
+        </button>
+
+        <div class="sidebar-group-title" style="margin-top:1rem;">OPERAÇÃO & CONTROLE</div>
+
+        <!-- 4 MENU: Solicitações -->
+        <button class="sidebar-nav-btn" id="tabNavSolicitacoes" onclick="mudarAba('solicitacoes')">
+          <span class="nav-icon">📥</span>
+          <span class="nav-label">Solicitações</span>
           <span class="nav-counter" id="badgeTotalSolicitacoes" style="background:#fee2e2;color:#dc2626;">0</span>
         </button>
-        <button class="nav-btn" id="tabNavReservas">
-          <span>🛎️ Baixa de Reservas</span>
+
+        <!-- 5 MENU: Baixa de Reservas -->
+        <button class="sidebar-nav-btn" id="tabNavReservas" onclick="mudarAba('reservas')">
+          <span class="nav-icon">🛎️</span>
+          <span class="nav-label">Baixa de Reservas</span>
           <span class="nav-counter" id="badgeTotalReservasAlerta" style="display:none;background:#ffedd5;color:#c2410c;font-weight:700;">0</span>
         </button>
-        <button class="nav-btn" id="tabNavModelos">
-          <span>📝 Modelos</span>
-        </button>
-        <button class="nav-btn" id="tabNavUsuarios">
-          <span>👥 Usuários</span>
-        </button>
-        <button class="nav-btn" id="tabNavInconsistencias" style="color:#b91c1c;">
-          <span>⚠️ Inconsistências</span>
+
+        <!-- 6 MENU: Inconsistências -->
+        <button class="sidebar-nav-btn" id="tabNavInconsistencias" onclick="mudarAba('inconsistencias')" style="color:#b91c1c;">
+          <span class="nav-icon">⚠️</span>
+          <span class="nav-label">Inconsistências</span>
           <span class="nav-counter" id="badgeTotalInconsistencias" style="background:#fee2e2;color:#dc2626;font-weight:700;">0</span>
         </button>
-      </nav>
-    </div>
-  </header>
 
-  <main class="container">
+        <!-- 7 MENU: Modelos -->
+        <button class="sidebar-nav-btn" id="tabNavModelos" onclick="mudarAba('modelos')">
+          <span class="nav-icon">📝</span>
+          <span class="nav-label">Modelos</span>
+        </button>
+
+        <!-- 8 MENU: Usuários -->
+        <button class="sidebar-nav-btn" id="tabNavUsuarios" onclick="mudarAba('usuarios')">
+          <span class="nav-icon">👤</span>
+          <span class="nav-label">Usuários</span>
+        </button>
+      </nav>
+
+      <!-- Rodapé da Sidebar -->
+      <div class="sidebar-footer">
+        <button class="btn-theme-toggle" id="btnThemeToggle" title="Alternar Modo Escuro / Claro">
+          🌙 <span class="theme-text" style="font-size:.78rem;font-weight:600;margin-left:4px;">Tema</span>
+        </button>
+        <button class="btn btn-ghost" id="btnAssinaturaAdmin" title="Configurar Assinatura Oficial" style="font-size:.78rem;padding:.35rem .6rem;">
+          ✍️ Assinatura
+        </button>
+      </div>
+    </aside>
+
+    <!-- ─── ÁREA PRINCIPAL DA APLICAÇÃO (CONTEÚDO) ─────────── -->
+    <div class="app-main-wrapper">
+      
+      <!-- Topbar Superior (Cabeçalho da Tela Ativa) -->
+      <header class="app-topbar">
+        <div class="topbar-left">
+          <button class="btn-hamburger" id="btnHamburger" onclick="abrirSidebarMobile()" title="Abrir menu lateral">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M3 4h18v2H3V4zm0 7h18v2H3v-2zm0 7h18v2H3v-2z"/></svg>
+          </button>
+          <div class="topbar-title-wrap">
+            <h1 class="topbar-title" id="topbarTitle">Vouchers</h1>
+            <span class="topbar-subtitle" id="topbarSubtitle">Gerenciamento, emissão e controle</span>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <button class="btn btn-sm btn-primary" onclick="abrirModalNovo('diarias')" id="btnNovoTopbar">
+            + Emitir Voucher
+          </button>
+          <button class="btn btn-sm btn-primary" onclick="abrirModalNovoCredito()" id="btnNovoCreditoTopbar" style="background:#228653;border-color:#228653;">
+            💰 Lançar Crédito
+          </button>
+          <button class="btn-theme-toggle" id="btnThemeToggleTopbar" onclick="alternarTema()" title="Alternar Modo Escuro / Claro">
+            🌙
+          </button>
+        </div>
+      </header>
+
+      <main class="container">
 
     <!-- Banner de Alerta: Vouchers Aguardando Assinatura do Márcio Pimenta -->
     <div id="bannerAlertaAguardandoAssinatura" class="hidden" style="margin-bottom:1.25rem;">
@@ -388,7 +465,86 @@
     </section>
 
     <!-- ════════════════════════════════════════════════════════════ -->
-    <!-- ABA 3: SOLICITAÇÕES DE VOUCHERS (RESERVAS ➔ PÓS VENDA)      -->
+    <!-- MENU 3: CRÉDITO DE RESERVA & CONSUMO                         -->
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <section id="secaoCreditos" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:1rem;">
+        <div>
+          <h2 style="font-size:1.15rem;margin-bottom:.25rem;color:var(--text-1);display:flex;align-items:center;gap:8px;">
+            <span>💰 Painel de Crédito de Reservas & Consumo</span>
+            <span class="badge badge-green" style="font-size:.7rem;">Financeiro & Hospedagem</span>
+          </h2>
+          <p style="color:var(--text-2);font-size:.875rem;margin:0;">
+            Gerencie créditos em R$, bonificações, retenções de cancelamento, reembolsos de cotas e concessões para hóspedes avulsos e sócios.
+          </p>
+        </div>
+        <button class="btn btn-primary" onclick="abrirModalNovoCredito()" style="background:#228653;border-color:#228653;font-size:.875rem;padding:.55rem 1.15rem;" title="Lançar crédito de reservas ou consumo">
+          💰 Lançar Novo Crédito
+        </button>
+      </div>
+
+      <!-- Stats Créditos -->
+      <div class="stats-bar">
+        <div class="stat-card" style="border-left:4px solid #16a34a;cursor:pointer;" onclick="filtrarCreditosStatusRapido('')" title="Ver todos os créditos">
+          <span class="stat-value" id="statCreditoTotal" style="color:#16a34a;">R$ 0,00</span>
+          <span class="stat-label">Total Concedido em R$</span>
+        </div>
+        <div class="stat-card stat-green" style="border-left:4px solid #22c55e;cursor:pointer;" onclick="filtrarCreditosStatusRapido('disponivel')" title="Ver créditos com saldo ativo">
+          <span class="stat-value" id="statCreditoSaldoAtivo" style="color:#15803d;">R$ 0,00</span>
+          <span class="stat-label">💰 Saldo Ativo Disponível</span>
+        </div>
+        <div class="stat-card stat-red" style="border-left:4px solid #dc2626;cursor:pointer;" onclick="filtrarCreditosStatusRapido('zerado')" title="Ver valor já abatido">
+          <span class="stat-value" id="statCreditoUtilizado" style="color:#dc2626;">R$ 0,00</span>
+          <span class="stat-label">💳 Total Já Abatido</span>
+        </div>
+        <div class="stat-card stat-blue" style="border-left:4px solid #2563eb;">
+          <span class="stat-value" id="statCreditoQtdAtivos">0</span>
+          <span class="stat-label">Créditos com Saldo</span>
+        </div>
+      </div>
+
+      <!-- Filtros Créditos -->
+      <div class="filters">
+        <div class="search-wrap">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M10 2a8 8 0 1 1 0 16A8 8 0 0 1 10 2zm0 2a6 6 0 1 0 0 12A6 6 0 0 0 10 4zm8.293 12.293 3.414 3.414-1.414 1.414-3.414-3.414 1.414-1.414z"/></svg>
+          <input type="text" id="inputBuscaCreditos" placeholder="Buscar por cliente, CPF, voucher # ou código..." />
+        </div>
+        <button type="button" class="btn-toggle-all-cards" id="btnToggleTodosCardsCreditos" onclick="toggleTodosCardsCreditos()" title="Expandir ou diminuir todos os cartões">
+          ↕️ <span id="lblToggleTodosCreditos">Diminuir Todos</span>
+        </button>
+        <div class="filter-tabs">
+          <button class="tab active" data-status-cred="" onclick="filtrarCreditosStatusRapido('')">Todos (<span id="countFiltroCreditosTodos">0</span>)</button>
+          <button class="tab" data-status-cred="disponivel" onclick="filtrarCreditosStatusRapido('disponivel')" style="color:#15803d;font-weight:700;">✓ Com Saldo (<span id="countFiltroCreditosComSaldo">0</span>)</button>
+          <button class="tab" data-status-cred="socio" onclick="filtrarCreditosStatusRapido('socio')">👤 Sócios Cotistas</button>
+          <button class="tab" data-status-cred="avulso" onclick="filtrarCreditosStatusRapido('avulso')">⭐ Não-Sócios (Avulsos)</button>
+          <button class="tab" data-status-cred="zerado" onclick="filtrarCreditosStatusRapido('zerado')">✓ Saldo Zerado</button>
+        </div>
+      </div>
+
+      <!-- Tabela / Cards de Créditos -->
+      <div class="table-wrap table-responsive-cards">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Voucher</th>
+              <th>Beneficiário</th>
+              <th>Validade</th>
+              <th>Concedido (R$)</th>
+              <th>Abatido (R$)</th>
+              <th>Saldo Disponível</th>
+              <th>Extrato de Uso</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyCreditos">
+            <tr><td colspan="8" class="empty">Carregando créditos…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════════════════════════ -->
+    <!-- ABA: SOLICITAÇÕES DE VOUCHERS (RESERVAS ➔ PÓS VENDA)        -->
     <!-- ════════════════════════════════════════════════════════════ -->
     <section id="secaoSolicitacoes" class="hidden">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:1rem;">
@@ -609,7 +765,9 @@
       </div>
     </section>
 
-  </main>
+      </main>
+    </div> <!-- .app-main-wrapper -->
+  </div> <!-- .app-shell -->
 
   <!-- ── Modal Emitir / Editar Voucher (Layout Amplo & Responsivo) ── -->
   <div class="modal-overlay hidden" id="modalOverlay">
@@ -1398,6 +1556,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="config.js?v=20261025_01"></script>
   <script src="cotas_dados.js?v=20261025_01"></script>
-  <script src="app.js?v=20261105_01"></script>
+  <script src="app.js?v=20261105_02"></script>
 </body>
 </html>

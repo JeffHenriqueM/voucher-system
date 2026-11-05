@@ -275,7 +275,15 @@ function extrairDadosCredito(v) {
     isSocio = false;
   }
 
-  // 4. Valor utilizado até o momento
+  // 4. Origem / Motivo da concessão
+  let origem = v.origem_credito || '';
+  if (!origem) {
+    const matchOrigem = String(v.observacoes || '').match(/\[ORIGEM:\s*([^\]|]+)\]/i) ||
+                        String(v.especificacoes_uso || '').match(/\[ORIGEM:\s*([^\]|]+)\]/i);
+    if (matchOrigem) origem = matchOrigem[1].trim();
+  }
+
+  // 5. Valor utilizado até o momento
   let valorUtilizado = Number(v.valor_utilizado || 0);
 
   // Calcular também somando o histórico caso o voucher não tenha sido atualizado diretamente
@@ -305,7 +313,8 @@ function extrairDadosCredito(v) {
     valorUtilizado,
     saldo,
     cpf,
-    isSocio
+    isSocio,
+    origem: origem || (isSocio ? 'Reembolso de Cota RSM' : 'Crédito de Reservas / Consumo')
   };
 }
 window.extrairDadosCredito = extrairDadosCredito;
@@ -2150,6 +2159,8 @@ function aplicarPermissoesPerfil() {
 
   const btnAssinatura = document.getElementById('btnAssinaturaAdmin');
   const btnNovo = document.getElementById('btnNovo');
+  const btnNovoCredito = document.getElementById('btnNovoCredito');
+  const btnLancarCreditoReservas = document.getElementById('btnLancarCreditoReservas');
   const tabCotas = document.getElementById('tabNavCotas');
   const tabVouchers = document.getElementById('tabNavVouchers');
   const tabSolicitacoes = document.getElementById('tabNavSolicitacoes');
@@ -2161,6 +2172,8 @@ function aplicarPermissoesPerfil() {
   if (perfilAtivo === 'admin') {
     btnAssinatura.style.display = 'inline-flex';
     btnNovo.style.display = 'inline-flex';
+    if (btnNovoCredito) btnNovoCredito.style.display = 'inline-flex';
+    if (btnLancarCreditoReservas) btnLancarCreditoReservas.style.display = 'inline-flex';
     tabCotas.style.display = 'inline-flex';
     tabVouchers.style.display = 'inline-flex';
     tabSolicitacoes.style.display = 'inline-flex';
@@ -2171,6 +2184,8 @@ function aplicarPermissoesPerfil() {
   } else if (perfilAtivo === 'pos_venda') {
     btnAssinatura.style.display = 'none';
     btnNovo.style.display = 'inline-flex';
+    if (btnNovoCredito) btnNovoCredito.style.display = 'inline-flex';
+    if (btnLancarCreditoReservas) btnLancarCreditoReservas.style.display = 'none';
     tabCotas.style.display = 'inline-flex';
     tabVouchers.style.display = 'inline-flex';
     tabSolicitacoes.style.display = 'inline-flex';
@@ -2182,6 +2197,9 @@ function aplicarPermissoesPerfil() {
   } else if (perfilAtivo === 'reservas' || perfilAtivo === 'recepcao') {
     btnAssinatura.style.display = 'none';
     btnNovo.style.display = 'none';
+    const podeLancarCredito = (perfilAtivo === 'reservas');
+    if (btnNovoCredito) btnNovoCredito.style.display = podeLancarCredito ? 'inline-flex' : 'none';
+    if (btnLancarCreditoReservas) btnLancarCreditoReservas.style.display = podeLancarCredito ? 'inline-flex' : 'none';
     tabCotas.style.display = 'none';
     tabVouchers.style.display = 'inline-flex';
     tabSolicitacoes.style.display = 'inline-flex';
@@ -3104,10 +3122,14 @@ function renderTabelaVouchers(dados) {
         </td>
         <td class="col-card-acoes card-collapsible-detail" data-label="Ações">
           <div class="actions card-actions-flex">
-            <a href="${linkVoucher(v.codigo)}" target="_blank" class="btn btn-sm btn-primary-card" title="Visualizar / Imprimir Voucher">
+            <a href="${linkVoucher(v.codigo)}" target="_blank" class="btn btn-sm btn-primary-card" title="${ehCredito ? 'Visualizar Comprovante Oficial de Saldo & Crédito' : 'Visualizar / Imprimir Voucher'}">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-              <span>Ver Voucher</span>
+              <span>${ehCredito ? 'Ver Comprovante' : 'Ver Voucher'}</span>
             </a>
+            ${ehCredito ? `
+            <button class="btn btn-sm btn-notif-whatsapp" onclick="enviarComprovanteCreditoWhatsApp('${escHtml(v.codigo)}')" title="Enviar Comprovante de Saldo no WhatsApp" style="padding:.28rem .55rem;font-size:.76rem;">
+              📲 WhatsApp
+            </button>` : ''}
             <button class="btn btn-sm btn-ghost mobile-only-inline-btn" onclick="copiarLink('${v.codigo}')" title="Copiar link do voucher">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="13" height="13"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
               <span>Link</span>
@@ -3389,8 +3411,15 @@ function renderTabelaReservas() {
           <div class="card-cell-content">${histResumo}</div>
         </td>
         <td class="col-card-acoes card-collapsible-detail" data-label="Ação">
-          <div class="actions card-actions-flex">
+          <div class="actions card-actions-flex" style="flex-wrap:wrap;gap:4px;">
             ${botaoAcao}
+            <a href="${linkVoucher(v.codigo)}" target="_blank" class="btn btn-sm btn-ghost" style="padding:.35rem .6rem;font-size:.76rem;" title="${ehCredito ? 'Abrir Comprovante de Saldo' : 'Abrir Voucher'}">
+              📄 ${ehCredito ? 'Comprovante' : 'Voucher'}
+            </a>
+            ${ehCredito ? `
+            <button class="btn btn-sm btn-notif-whatsapp" onclick="enviarComprovanteCreditoWhatsApp('${escHtml(v.codigo)}')" title="Enviar Comprovante de Saldo no WhatsApp" style="padding:.35rem .6rem;font-size:.76rem;">
+              📲 WhatsApp
+            </button>` : ''}
           </div>
         </td>
       </tr>
@@ -3430,7 +3459,7 @@ function abrirModalBaixa(voucherId) {
 
   const secaoDiarias = document.getElementById('baixaSecaoDiarias');
   const secaoCredito = document.getElementById('baixaSecaoCredito');
-  const tituloModal = document.getElementById('baixaTituloModal');
+  const tituloModal = document.getElementById('baixaModalTitulo') || document.getElementById('baixaTituloModal');
   const lblHist = document.getElementById('lblTituloHistoricoAnterior');
 
   if (ehCredito) {
@@ -3541,6 +3570,75 @@ function fecharModalBaixa() {
   }
   document.getElementById('modalBaixaReserva').classList.add('hidden');
 }
+
+// ── Modal de Sucesso e Emissão de Comprovante de Saldo ────────
+function abrirModalSucessoBaixaCredito(voucher, valAbater, saldoFinal, tipoGasto) {
+  const modal = document.getElementById('modalSucessoBaixaCredito');
+  if (!modal) return;
+
+  const lblSocio = document.getElementById('sucessoBaixaSocio');
+  if (lblSocio) {
+    lblSocio.textContent = `${voucher.nome_socio} • Voucher #${voucher.numero || voucher.codigo}`;
+  }
+  const lblValor = document.getElementById('sucessoBaixaValorAbatido');
+  if (lblValor) {
+    lblValor.textContent = `- ${fmtMoeda(valAbater)}`;
+  }
+  const lblTipo = document.getElementById('sucessoBaixaTipoGasto');
+  if (lblTipo) {
+    const tipoMap = {
+      diaria: 'Diária / Hospedagem',
+      consumo: 'Consumo no Hotel',
+      misto: 'Diária + Consumo',
+      outro: 'Outro Débito'
+    };
+    lblTipo.textContent = tipoMap[tipoGasto] || tipoGasto;
+  }
+  const lblSaldo = document.getElementById('sucessoBaixaSaldoAtual');
+  if (lblSaldo) {
+    lblSaldo.textContent = fmtMoeda(saldoFinal);
+  }
+
+  const btnDoc = document.getElementById('btnAbrirComprovanteAposBaixa');
+  if (btnDoc) {
+    btnDoc.href = `voucher.html?v=${voucher.codigo}`;
+  }
+
+  const btnWpp = document.getElementById('btnWhatsAposBaixa');
+  if (btnWpp) {
+    btnWpp.onclick = () => enviarComprovanteCreditoWhatsApp(voucher.codigo);
+  }
+
+  modal.classList.remove('hidden');
+}
+window.abrirModalSucessoBaixaCredito = abrirModalSucessoBaixaCredito;
+
+function fecharModalSucessoBaixaCredito() {
+  const modal = document.getElementById('modalSucessoBaixaCredito');
+  if (modal) modal.classList.add('hidden');
+}
+window.fecharModalSucessoBaixaCredito = fecharModalSucessoBaixaCredito;
+
+function enviarComprovanteCreditoWhatsApp(codigo) {
+  const v = listaVouchers.find(item => item.codigo === codigo);
+  if (!v) return;
+  const dc = extrairDadosCredito(v);
+  const saldoFmt = dc ? fmtMoeda(dc.saldo) : 'R$ 0,00';
+  const totFmt = dc ? fmtMoeda(dc.valorTotal) : 'R$ 0,00';
+  const usdFmt = dc ? fmtMoeda(dc.valorUtilizado) : 'R$ 0,00';
+  const linkDoc = `${window.location.origin}${window.location.pathname.replace(/[^/]*$/, '')}voucher.html?v=${v.codigo}`;
+
+  const texto = `Olá, *${v.nome_socio}*! Segue o seu comprovante atualizado de crédito do *RSM Empreendimento*:%0A%0A` +
+    `💰 *Saldo Disponível:* ${saldoFmt}%0A` +
+    `📋 *Valor Total Concedido:* ${totFmt}%0A` +
+    `💳 *Valor Já Utilizado:* ${usdFmt}%0A` +
+    `📅 *Validade:* ${v.validade ? fmtDate(v.validade) : 'A definir'}%0A%0A` +
+    `📄 *Acesse o seu Comprovante Oficial em:*%0A${encodeURIComponent(linkDoc)}%0A%0A` +
+    `_RSM Empreendimento — Reservas e Atendimento_`;
+
+  window.open(`https://api.whatsapp.com/send?text=${texto}`, '_blank');
+}
+window.enviarComprovanteCreditoWhatsApp = enviarComprovanteCreditoWhatsApp;
 
 // ── Função de Estorno de Utilização / Baixa ────────────────────
 async function confirmarEstornoUtilizacao(histId, voucherId, qtdDiarias, valorCredito) {
@@ -3826,6 +3924,7 @@ document.getElementById('formBaixaReserva').addEventListener('submit', async (e)
       sincronizarCotas();
       if (abaAtiva === 'vouchers') carregarVouchers();
       if (abaAtiva === 'reservas') renderTabelaReservas();
+      abrirModalSucessoBaixaCredito(voucher, valAbater, saldoFinal, tipoGasto);
     } catch (err) {
       console.error('Erro ao abater crédito:', err);
       showToast('Erro ao gravar abatimento do voucher de crédito', 'error');
@@ -4384,13 +4483,11 @@ function abrirModalEmitirParaCota(cotaId, isNovoVoucherAdicional = false) {
   }
 }
 
-function abrirModalNovo() {
+function abrirModalNovo(categoriaPadrao = 'diarias') {
   popularDatalistSociosVoucher();
   carregarSelectModelos();
   document.getElementById('editId').value = '';
   document.getElementById('cotaVinculadaId').value = '';
-  document.getElementById('modalTitulo').textContent = 'Emitir Novo Voucher';
-  document.getElementById('btnSalvar').textContent = 'Salvar Voucher';
   document.getElementById('formVoucher').reset();
   const infoEl = document.getElementById('inputNomeInfoSocio');
   if (infoEl) infoEl.textContent = '';
@@ -4398,11 +4495,25 @@ function abrirModalNovo() {
   document.getElementById('lblDicaDiarias').textContent = '';
   document.getElementById('inputSala').value = 'VILLA';
 
-  // Inicializar categoria diárias e sócio padrão
-  aoAlternarCategoriaVoucher('diarias');
-  aoAlternarTipoClienteVoucher('socio');
+  // Configurar modo (diárias ou crédito financeiro)
+  if (categoriaPadrao === 'credito') {
+    document.getElementById('modalTitulo').textContent = '💰 Lançar Crédito de Reservas & Consumo';
+    document.getElementById('btnSalvar').textContent = 'Salvar Crédito';
+    const radCred = document.querySelector('input[name="tipoVoucherRadio"][value="credito"]');
+    if (radCred) radCred.checked = true;
+    aoAlternarCategoriaVoucher('credito');
+    aoAlternarTipoClienteVoucher('socio');
+  } else {
+    document.getElementById('modalTitulo').textContent = 'Emitir Novo Voucher';
+    document.getElementById('btnSalvar').textContent = 'Salvar Voucher';
+    const radDia = document.querySelector('input[name="tipoVoucherRadio"][value="diarias"]');
+    if (radDia) radDia.checked = true;
+    aoAlternarCategoriaVoucher('diarias');
+    aoAlternarTipoClienteVoucher('socio');
+  }
   if (document.getElementById('inputCpfBeneficiario')) document.getElementById('inputCpfBeneficiario').value = '';
   if (document.getElementById('inputValorCredito')) document.getElementById('inputValorCredito').value = '';
+  if (document.getElementById('inputOrigemCredito')) document.getElementById('inputOrigemCredito').value = 'Crédito de Reservas (Ganho / Bonificação)';
 
   // Validade padrão: 1 ano
   const dataHoje = new Date();
@@ -4646,9 +4757,11 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
     modelo_id:          modeloId,
     modelo_nome:        modeloObj ? modeloObj.nome : null,
     status_fluxo:       statusFluxo,
-    pos_venda_nome:     usuarioLogado ? usuarioLogado.nome : 'Equipe de Pós Venda',
+    pos_venda_nome:     usuarioLogado ? usuarioLogado.nome : (perfilAtivo === 'reservas' ? 'Equipe de Reservas' : 'Equipe de Pós Venda'),
     assinatura_url:     deveAssinarDireto ? (assinaturaAdminAtual || null) : null
   };
+
+  const origemCredito = (document.getElementById('inputOrigemCredito')?.value || 'Crédito de Reservas (Ganho / Bonificação)').trim();
 
   if (ehTipoCredito) {
     payload.tipo_voucher = 'credito';
@@ -4656,9 +4769,10 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
     payload.valor_hospedagem = valorCreditoNum;
     payload.cpf_beneficiario = cpfBeneficiario || null;
     payload.is_socio = isSocio;
+    payload.origem_credito = origemCredito;
     payload.diarias = 0;
     payload.diarias_totais = 0;
-    const tagCred = `[TIPO_VOUCHER: CREDITO | VALOR_TOTAL: ${valorCreditoNum} | CPF: ${cpfBeneficiario || 'N/A'} | CLIENTE: ${isSocio ? 'SOCIO' : 'NAO_SOCIO'}]`;
+    const tagCred = `[TIPO_VOUCHER: CREDITO | VALOR_TOTAL: ${valorCreditoNum} | CPF: ${cpfBeneficiario || 'N/A'} | CLIENTE: ${isSocio ? 'SOCIO' : 'NAO_SOCIO'} | ORIGEM: ${origemCredito}]`;
     payload.observacoes = payload.observacoes ? `${payload.observacoes}\n${tagCred}` : tagCred;
   } else {
     payload.tipo_voucher = 'diarias';
@@ -4713,6 +4827,7 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
           delete payloadFallback.valor_credito;
           delete payloadFallback.cpf_beneficiario;
           delete payloadFallback.is_socio;
+          delete payloadFallback.origem_credito;
           const { data: dataFb, error: errFb } = await db.from('vouchers').update(payloadFallback).eq('id', id).select().single();
           if (!errFb && dataFb) resultData = { ...dataFb, ...payload };
           else resultData = { ...payload, id };
@@ -4740,6 +4855,7 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
           delete payloadFallback.valor_credito;
           delete payloadFallback.cpf_beneficiario;
           delete payloadFallback.is_socio;
+          delete payloadFallback.origem_credito;
           const { data: dataFb, error: errFb } = await db.from('vouchers').insert([payloadFallback]).select().single();
           if (!errFb && dataFb) {
             resultData = { ...dataFb, ...payload };
@@ -5549,8 +5665,24 @@ document.getElementById('inputDiarias')?.addEventListener('input', () => {
 
 document.getElementById('btnNovo').addEventListener('click', () => {
   solicitacaoEmAtendimentoId = null;
-  abrirModalNovo();
+  abrirModalNovo('diarias');
 });
+
+const btnNovoCred = document.getElementById('btnNovoCredito');
+if (btnNovoCred) {
+  btnNovoCred.addEventListener('click', () => {
+    solicitacaoEmAtendimentoId = null;
+    abrirModalNovo('credito');
+  });
+}
+
+const btnLancarCredRes = document.getElementById('btnLancarCreditoReservas');
+if (btnLancarCredRes) {
+  btnLancarCredRes.addEventListener('click', () => {
+    solicitacaoEmAtendimentoId = null;
+    abrirModalNovo('credito');
+  });
+}
 document.getElementById('btnFecharModal').addEventListener('click', fecharModalComConfirmacao);
 document.getElementById('btnCancelar').addEventListener('click', fecharModalComConfirmacao);
 document.getElementById('btnFecharDelete').addEventListener('click', fecharModalDelete);

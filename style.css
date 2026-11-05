@@ -1348,9 +1348,6 @@ body.dark-mode .obs-field-badge {
     font-weight: 700;
     border-radius: 8px;
   }
-    border-radius: 8px;
-    order: 2;
-  }
 
   /* Abas de Navegação no Mobile (Pills com scroll suave) */
   .main-nav {

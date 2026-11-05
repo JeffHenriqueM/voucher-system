@@ -766,6 +766,12 @@
       if (String(v.observacoes || '').includes('[CLIENTE: NAO_SOCIO]') || String(v.observacoes || '').includes('[CLIENTE: Nao-Socio]')) {
         isSocio = false;
       }
+      let origem = v.origem_credito || '';
+      if (!origem) {
+        const matchOrigem = String(v.observacoes || '').match(/\[ORIGEM:\s*([^\]|]+)\]/i) ||
+                            String(v.especificacoes_uso || '').match(/\[ORIGEM:\s*([^\]|]+)\]/i);
+        if (matchOrigem) origem = matchOrigem[1].trim();
+      }
       let valorUtilizado = Number(v.valor_utilizado || 0);
       if (Array.isArray(historico) && historico.length > 0) {
         const soma = historico.reduce((acc, h) => {
@@ -780,7 +786,15 @@
         if (soma > valorUtilizado) valorUtilizado = soma;
       }
       const saldo = Math.max(0, valorTotal - valorUtilizado);
-      return { isCredito: true, valorTotal, valorUtilizado, saldo, cpf, isSocio };
+      return {
+        isCredito: true,
+        valorTotal,
+        valorUtilizado,
+        saldo,
+        cpf,
+        isSocio,
+        origem: origem || (isSocio ? 'Reembolso de Cota RSM' : 'Crédito de Reservas / Consumo')
+      };
     }
 
     // ── Render Voucher ───────────────────────────────────────
@@ -885,6 +899,10 @@
             <div class="v-row">
               <span class="v-label">CATEGORIA:</span>
               <span class="v-value"><strong>${dadosCred.isSocio ? 'SÓCIO COTISTA VILLAMOR' : 'CLIENTE NÃO-SÓCIO (AVULSO)'}</strong></span>
+            </div>
+            <div class="v-row">
+              <span class="v-label">ORIGEM / MOTIVO:</span>
+              <span class="v-value"><strong>${escHtml(dadosCred.origem || 'Crédito de Reservas')}</strong></span>
             </div>
             ${dadosCred.cpf ? `
             <div class="v-row">
@@ -1016,9 +1034,13 @@
           <span class="badge-status badge-ok" style="${ehCredito ? 'background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;' : ''}">
             ${ehCredito ? `💰 Saldo Disponível: ${fmt(saldo)}` : '✓ Disponível para Reserva'}
           </span>`)))}
-          <button class="btn-print" onclick="window.print()">
-            🖨️ Imprimir
+          <button class="btn-print" onclick="window.print()" style="${ehCredito ? 'background:#16a34a;' : ''}">
+            🖨️ ${ehCredito ? 'Imprimir Comprovante de Saldo' : 'Imprimir Voucher'}
           </button>
+          ${ehCredito ? `
+          <button class="btn-print" onclick="compartilharComprovanteWhatsApp()" style="background:#25d366;" title="Enviar comprovante atualizado de saldo no WhatsApp do hóspede">
+            📲 WhatsApp
+          </button>` : ''}
         </div>
 
         <!-- Documento Voucher -->
@@ -1045,8 +1067,8 @@
           <!-- Cabeçalho -->
           <div class="v-header">
             <div class="v-title">
-              <h1>${ehCredito ? 'VOUCHER DE CRÉDITO' : 'VOUCHER'}</h1>
-              <h2>RSM EMPREENDIMENTO ${ehCredito ? '— DIÁRIAS & CONSUMO' : ''}</h2>
+              <h1>${ehCredito ? 'COMPROVANTE DE CRÉDITO & SALDO' : 'VOUCHER'}</h1>
+              <h2>RSM EMPREENDIMENTO ${ehCredito ? '— HOSPEDAGEM & CONSUMO' : ''}</h2>
             </div>
 
             <div class="v-numero-wrap">
@@ -1113,6 +1135,13 @@
       const ext = ['','um','duas','três','quatro','cinco','seis','sete','oito','nove','dez'];
       return n <= 10 ? ext[n] : n;
     }
+
+    function compartilharComprovanteWhatsApp() {
+      const link = window.location.href;
+      const texto = `Olá! Segue o Comprovante Oficial de Saldo & Crédito do RSM Empreendimento:%0A${encodeURIComponent(link)}`;
+      window.open(`https://api.whatsapp.com/send?text=${texto}`, '_blank');
+    }
+    window.compartilharComprovanteWhatsApp = compartilharComprovanteWhatsApp;
 
     carregarVoucher();
   </script>

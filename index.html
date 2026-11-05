@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png?v=20261022_09" />
   <link rel="shortcut icon" href="favicon.ico?v=20261022_09" />
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261022_09" />
-  <link rel="stylesheet" href="style.css?v=20261103_02" />
+  <link rel="stylesheet" href="style.css?v=20261105_01" />
 </head>
 <body>
 
@@ -180,11 +180,15 @@
         </div>
       </div>
 
-      <!-- Ação Principal (Emitir Voucher) -->
-      <div class="header-cta-row">
+      <!-- Ação Principal (Emitir Voucher / Lançar Crédito) -->
+      <div class="header-cta-row" style="display:flex;gap:8px;align-items:center;">
         <button class="btn btn-primary btn-emitir-top" id="btnNovo">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z"/></svg>
           Emitir Voucher
+        </button>
+        <button class="btn btn-primary btn-emitir-top" id="btnNovoCredito" style="background:#228653;border-color:#228653;" title="Lançar crédito de reservas ou consumo para cliente">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 14.93V18h-2v-1.07A4 4 0 0 1 8 13.5h2a2 2 0 0 0 4 0c0-1.5-1.5-1.5-3-2s-3-1-3-3a3.5 3.5 0 0 1 3-3.43V4h2v1.07A4 4 0 0 1 16 8.5h-2a2 2 0 0 0-4 0c0 1.5 1.5 1.5 3 2s3 1 3 3a3.5 3.5 0 0 1-3 3.43z"/></svg>
+          💰 Lançar Crédito
         </button>
       </div>
 
@@ -515,9 +519,14 @@
             <h2 style="font-size:1.1rem;margin-bottom:.5rem;">🛎️ Painel da Equipe de Reservas</h2>
             <p style="color:var(--text-2);margin-bottom:1.25rem;">Consulte o voucher pelo número, código ou nome do sócio para registrar a hospedagem e dar baixa nas diárias.</p>
           </div>
-          <button class="btn btn-primary" id="btnSolicitarVoucherReservas">
-            📢 Solicitar Voucher para Sócio
-          </button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary" id="btnSolicitarVoucherReservas">
+              📢 Solicitar Voucher para Sócio
+            </button>
+            <button class="btn btn-primary" id="btnLancarCreditoReservas" style="background:#228653;border-color:#228653;" title="Lançar crédito de reservas ou consumo para cliente sócio ou avulso">
+              💰 Lançar Crédito de Reservas
+            </button>
+          </div>
         </div>
 
         <div class="search-wrap" style="max-width:500px;margin-bottom:1rem;">
@@ -692,6 +701,22 @@
               </label>
               <input type="number" id="inputValorCredito" min="1" step="0.01" placeholder="Ex: 1000.00" oninput="aoMudarValorCreditoModal()" style="background:#fff;border-color:#86efac;font-weight:700;color:#166534;" />
               <small id="lblValorCreditoExtenso" style="font-weight:700;color:#047857;display:block;margin-top:3px;font-size:.74rem;"></small>
+            </div>
+          </div>
+
+          <div class="form-row" style="margin-top:.75rem;margin-bottom:0;">
+            <div class="form-group" style="flex:1;margin-bottom:0;">
+              <label for="inputOrigemCredito" style="font-size:.78rem;font-weight:700;color:#166534;">
+                Origem / Motivo da Concessão do Crédito *
+              </label>
+              <select id="inputOrigemCredito" style="width:100%;padding:.45rem;border:1px solid #86efac;border-radius:6px;background:#fff;font-weight:600;color:#166534;">
+                <option value="Crédito de Reservas (Ganho / Bonificação)">🎁 Crédito de Reservas (Ganho / Bonificação)</option>
+                <option value="Cancelamento de Reserva com Retenção de Saldo">🛎️ Cancelamento de Reserva com Retenção de Saldo</option>
+                <option value="Reembolso de Cota RSM">💼 Reembolso de Cota RSM</option>
+                <option value="Compensação de Diária / Cortesia da Diretoria">🤝 Compensação de Diária / Cortesia da Diretoria</option>
+                <option value="Crédito Avulso de Consumo / Hóspede">🍽️ Crédito Avulso de Consumo / Hóspede</option>
+                <option value="Outro Motivo">📝 Outro Motivo (especificar nas observações)</option>
+              </select>
             </div>
           </div>
         </div>
@@ -934,7 +959,40 @@
       </form>
     </div>
   </div>
-      </form>
+
+  <!-- ── Modal Comprovante / Sucesso do Abatimento de Crédito ── -->
+  <div class="modal-overlay hidden" id="modalSucessoBaixaCredito">
+    <div class="modal" style="max-width:520px;text-align:center;">
+      <div style="font-size:3rem;margin-bottom:.5rem;">🎉</div>
+      <h2 style="font-size:1.25rem;color:var(--text-1);margin-bottom:.25rem;">Abatimento Registrado com Sucesso!</h2>
+      <p id="sucessoBaixaSocio" style="color:var(--text-2);font-size:.9rem;margin-bottom:1.25rem;">—</p>
+
+      <div style="background:#f2f8f4;border:1.5px solid #c4e4d0;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem;text-align:left;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;border-bottom:1px dashed #c4e4d0;padding-bottom:.5rem;">
+          <span style="font-size:.82rem;color:var(--text-2);">Valor Abatido:</span>
+          <strong id="sucessoBaixaValorAbatido" style="font-size:1rem;color:#b83a3a;">—</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;border-bottom:1px dashed #c4e4d0;padding-bottom:.5rem;">
+          <span style="font-size:.82rem;color:var(--text-2);">Finalidade:</span>
+          <strong id="sucessoBaixaTipoGasto" style="font-size:.85rem;color:var(--text-1);">—</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:.85rem;font-weight:700;color:#1e6d42;">Saldo Atual Disponível:</span>
+          <strong id="sucessoBaixaSaldoAtual" style="font-size:1.25rem;color:#1e6d42;font-weight:900;">—</strong>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:.6rem;">
+        <a id="btnAbrirComprovanteAposBaixa" href="#" target="_blank" class="btn btn-primary btn-full" style="background:#228653;border-color:#228653;font-size:.9rem;padding:.6rem 1rem;">
+          📄 Abrir / Imprimir Comprovante de Saldo
+        </a>
+        <button type="button" class="btn btn-notif-whatsapp btn-full" id="btnWhatsAposBaixa" style="justify-content:center;font-size:.85rem;padding:.55rem 1rem;">
+          📲 Enviar Comprovante no WhatsApp do Cliente
+        </button>
+        <button type="button" class="btn btn-ghost btn-full" onclick="fecharModalSucessoBaixaCredito()" style="font-size:.85rem;">
+          Concluir e Fechar
+        </button>
+      </div>
     </div>
   </div>
 
@@ -1340,6 +1398,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="config.js?v=20261025_01"></script>
   <script src="cotas_dados.js?v=20261025_01"></script>
-  <script src="app.js?v=20261103_03"></script>
+  <script src="app.js?v=20261105_01"></script>
 </body>
 </html>

@@ -2291,10 +2291,10 @@ function aplicarPermissoesPerfil() {
     if (tabCreditos) tabCreditos.style.display = 'flex';
     tabSolicitacoes.style.display = 'flex';
     tabReservas.style.display = 'flex';
-    tabModelos.style.display = 'none';
+    tabModelos.style.display = podeEmitir ? 'flex' : 'none'; // Reservas pode acessar e criar modelos de voucher
     if (tabUsuarios) tabUsuarios.style.display = 'none';
     if (tabInconsistencias) tabInconsistencias.style.display = 'none';
-    if (abaAtiva !== 'vouchers' && abaAtiva !== 'creditos' && abaAtiva !== 'reservas' && abaAtiva !== 'solicitacoes') mudarAba('vouchers');
+    if (abaAtiva !== 'vouchers' && abaAtiva !== 'creditos' && abaAtiva !== 'reservas' && abaAtiva !== 'solicitacoes' && (abaAtiva !== 'modelos' || !podeEmitir)) mudarAba('vouchers');
   }
 
   atualizarBadgeSolicitacoes();
@@ -4481,11 +4481,13 @@ function renderModelos() {
   const grid = document.getElementById('gridModelos');
   if (!grid) return;
 
-  grid.innerHTML = listaModelos.map(m => `
+  grid.innerHTML = listaModelos.map(m => {
+    const isPadrao = (m.id === 'padrao-rsm' || m.id === 'credito-reembolso' || m.id === 'cortesia-avulsa');
+    return `
     <div class="stat-card" style="gap:.75rem;">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <strong style="font-size:1rem;color:var(--primary);">${escHtml(m.nome)}</strong>
-        <span class="badge badge-green">Ativo</span>
+        <span class="badge ${isPadrao ? 'badge-blue' : 'badge-green'}">${isPadrao ? 'Padrão' : 'Personalizado'}</span>
       </div>
       <div style="font-size:.82rem;color:var(--text-2);">
         <strong>Título Documento:</strong> ${escHtml(m.titulo_documento)}
@@ -4493,14 +4495,33 @@ function renderModelos() {
       <div style="font-size:.8rem;background:var(--bg);padding:.5rem;border-radius:6px;max-height:80px;overflow-y:auto;">
         ${escHtml(m.especificacao_padrao)}
       </div>
-      <div class="actions" style="margin-top:auto;">
+      <div class="actions" style="margin-top:auto;display:flex;gap:6px;flex-wrap:wrap;">
         <button class="btn btn-ghost" style="font-size:.78rem;" onclick="abrirModalEditarModelo('${m.id}')">
           ✏️ Editar Modelo
         </button>
+        ${!isPadrao ? `
+        <button class="btn btn-ghost danger" style="font-size:.78rem;color:var(--danger);" onclick="excluirModelo('${m.id}')">
+          🗑️ Excluir
+        </button>` : ''}
       </div>
     </div>
-  `).join('');
+    `;
+  }).join('');
 }
+
+function excluirModelo(id) {
+  if (id === 'padrao-rsm' || id === 'credito-reembolso' || id === 'cortesia-avulsa') {
+    showToast('⚠️ Este é um modelo padrão do sistema e não pode ser excluído.', 'error');
+    return;
+  }
+  if (!confirm('Deseja realmente excluir este modelo de voucher?')) return;
+  listaModelos = listaModelos.filter(m => m.id !== id);
+  localStorage.setItem('rsm_modelos_vouchers', JSON.stringify(listaModelos));
+  showToast('Modelo excluído com sucesso!');
+  carregarSelectModelos();
+  renderModelos();
+}
+window.excluirModelo = excluirModelo;
 
 function abrirModalNovoModelo() {
   document.getElementById('editModeloId').value = '';

@@ -191,7 +191,7 @@
 
       <!-- Ações Rápidas na Sidebar -->
       <div class="sidebar-quick-actions">
-        <button class="btn btn-primary btn-sidebar-action" id="btnNovo" onclick="abrirModalNovo('diarias')">
+        <button class="btn btn-primary btn-sidebar-action" id="btnNovo" onclick="acaoEmitirVoucherBotao()">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2z"/></svg>
           <span>Emitir Voucher</span>
         </button>
@@ -289,7 +289,7 @@
         </div>
 
         <div class="topbar-right">
-          <button class="btn btn-sm btn-primary" onclick="abrirModalNovo('diarias')" id="btnNovoTopbar">
+          <button class="btn btn-sm btn-primary" onclick="acaoEmitirVoucherBotao()" id="btnNovoTopbar">
             + Emitir Voucher
           </button>
           <button class="btn btn-sm btn-primary" onclick="abrirModalNovoCredito()" id="btnNovoCreditoTopbar" style="background:#228653;border-color:#228653;">
@@ -692,6 +692,9 @@
             <button class="btn btn-primary" id="btnSolicitarVoucherReservas">
               📢 Solicitar Voucher para Sócio
             </button>
+            <button class="btn btn-primary" id="btnNovoCortesiaReservas" onclick="abrirModalNovoCortesia()" style="background:#7c3aed;border-color:#7c3aed;" title="Emitir voucher de cortesia ou diárias para qualquer pessoa">
+              🎁 Emitir Voucher Cortesia / Avulso
+            </button>
             <button class="btn btn-primary" id="btnLancarCreditoReservas" style="background:#228653;border-color:#228653;" title="Lançar crédito de reservas ou consumo para cliente sócio ou avulso">
               💰 Lançar Crédito de Reservas
             </button>
@@ -822,7 +825,7 @@
           </p>
         </div>
 
-        <!-- Seletor de Categoria do Voucher (Diárias Contratuais vs Crédito Financeiro) -->
+        <!-- Seletor de Categoria do Voucher (Diárias Contratuais vs Cortesia vs Crédito Financeiro) -->
         <div class="categoria-voucher-selector" style="margin-bottom:1.15rem;padding:.75rem .95rem;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;">
           <label style="font-size:.78rem;font-weight:800;color:var(--text-1);display:block;margin-bottom:.55rem;letter-spacing:0.02em;">
             CATEGORIA DO VOUCHER :
@@ -830,12 +833,51 @@
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
             <label class="radio-card-tipo is-active" id="labelTipoDiarias">
               <input type="radio" name="tipoVoucherRadio" value="diarias" checked onchange="aoAlternarCategoriaVoucher('diarias')" />
-              <span>🎟️ Diárias Contratuais (Hospedagem)</span>
+              <span>🎟️ Diárias de Sócio (Cotas)</span>
+            </label>
+            <label class="radio-card-tipo" id="labelTipoCortesia">
+              <input type="radio" name="tipoVoucherRadio" value="cortesia" onchange="aoAlternarCategoriaVoucher('cortesia')" />
+              <span>🎁 Cortesia / Avulso (Qualquer Pessoa — Ex: 1 Diária)</span>
             </label>
             <label class="radio-card-tipo" id="labelTipoCredito">
               <input type="radio" name="tipoVoucherRadio" value="credito" onchange="aoAlternarCategoriaVoucher('credito')" />
-              <span>💰 Crédito em R$ (Reembolso / Diárias & Consumo)</span>
+              <span>💰 Crédito em R$ (Hospedagem & Consumo)</span>
             </label>
+          </div>
+        </div>
+
+        <!-- Bloco Específico para Voucher de Cortesia / Avulso -->
+        <div id="boxCamposVoucherCortesia" class="hidden" style="margin-bottom:1.15rem;background:#faf5ff;border:1.5px solid #d8b4fe;border-radius:10px;padding:.85rem 1rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:.5rem;">
+            <strong style="color:#6b21a8;font-size:.84rem;display:flex;align-items:center;gap:6px;">
+              <span>🎁 Configurações de Cortesia / Diárias Livres (Para Qualquer Pessoa)</span>
+            </strong>
+            <span class="badge" style="background:#f3e8ff;color:#7e22ce;border-color:#d8b4fe;font-size:.7rem;">Emissão Livre</span>
+          </div>
+          <p style="color:#7e22ce;font-size:.76rem;margin-bottom:.75rem;line-height:1.35;">
+            Este voucher pode ser emitido pela equipe de <strong>Reservas</strong>, Pós Venda ou Admin para <strong>qualquer pessoa</strong> (hóspede, parceiro, convidado ou cliente avulso). Não exige cota contratual.
+          </p>
+          <div class="form-row" style="margin-bottom:0;">
+            <div class="form-group" style="flex:1;margin-bottom:0;">
+              <label for="inputCpfBeneficiarioCortesia" style="font-size:.78rem;font-weight:700;color:#6b21a8;">
+                CPF do Beneficiário <small style="font-weight:normal;color:#9333ea;">(opcional, para constar no documento)</small>
+              </label>
+              <input type="text" id="inputCpfBeneficiarioCortesia" placeholder="000.000.000-00 (opcional)" maxlength="14" oninput="mascaraCpf(this)" style="background:#fff;border-color:#d8b4fe;" />
+            </div>
+            <div class="form-group" style="flex:1;margin-bottom:0;">
+              <label for="inputMotivoCortesia" style="font-size:.78rem;font-weight:700;color:#6b21a8;">
+                Motivo / Justificativa da Cortesia *
+              </label>
+              <select id="inputMotivoCortesia" style="width:100%;padding:.45rem;border:1px solid #d8b4fe;border-radius:6px;background:#fff;font-weight:600;color:#6b21a8;">
+                <option value="Cortesia de Hospedagem (Reservas)">🎁 Cortesia de Hospedagem (Reservas)</option>
+                <option value="Cortesia da Gerência / Diretoria">👑 Cortesia da Gerência / Diretoria</option>
+                <option value="Bonificação / Fidelidade de Hóspede">⭐ Bonificação / Fidelidade de Hóspede</option>
+                <option value="Permuta / Parceria Comercial">🤝 Permuta / Parceria Comercial</option>
+                <option value="Evento / Convidado Especial">🎉 Evento / Convidado Especial</option>
+                <option value="Compensação Operacional de Estadia">🛠️ Compensação Operacional de Estadia</option>
+                <option value="Outro Motivo">📝 Outro Motivo (especificar nas observações)</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -1569,6 +1611,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="config.js?v=20261025_01"></script>
   <script src="cotas_dados.js?v=20261025_01"></script>
-  <script src="app.js?v=20261107_01"></script>
+  <script src="app.js?v=20261107_02"></script>
 </body>
 </html>

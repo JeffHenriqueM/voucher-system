@@ -120,6 +120,19 @@ Exceto feriados, datas comemorativas e alta temporada.`
 - As reservas de hospedagem estão sujeitas à disponibilidade de vagas no período pretendido;
 - Cada abatimento de diária ou consumo será registrado no sistema e emitido o comprovante correspondente;
 - Para agendamentos, reservas e saldo ligar (83) 98834-0045, no Villamor Tambaba Resort.`
+  },
+  {
+    id: 'cortesia-avulsa',
+    nome: 'Voucher Cortesia / Diárias Livres — Villamor Tambaba Resort',
+    titulo_documento: 'RSM EMPREENDIMENTO — VOUCHER DE HOSPEDAGEM CORTESIA',
+    especificacao_padrao: 'Voucher especial de {diarias} diária(s) de cortesia para um casal no Villamor Tambaba Resort.',
+    regras_uso: `🎟️ Utilização do Voucher Cortesia / Hospedagem — Villamor:
+- Este voucher concede {diarias} diária(s) de hospedagem para um casal em acomodação LUXO no Villamor Tambaba Resort;
+- Café da manhã incluso nas diárias para um casal;
+- Utilização sujeita à disponibilidade de vagas mediante agendamento prévio com a equipe de Reservas;
+- Válido para o titular beneficiário informado neste documento mediante apresentação de documento com foto;
+- Exceto feriados prolongados, datas comemorativas e alta temporada (salvo autorização expressa da gerência);
+- Para agendamento e informações ligar (83) 98834-0045, no Villamor Tambaba Resort.`
   }
 ];
 
@@ -132,7 +145,7 @@ if (!listaModelos || !Array.isArray(listaModelos) || listaModelos.length === 0) 
     const idx = listaModelos.findIndex(m => m.id === mp.id);
     if (idx === -1) {
       listaModelos.push(JSON.parse(JSON.stringify(mp)));
-    } else if (mp.id === 'padrao-rsm' || mp.id === 'credito-reembolso') {
+    } else if (mp.id === 'padrao-rsm' || mp.id === 'credito-reembolso' || mp.id === 'cortesia-avulsa') {
       listaModelos[idx] = JSON.parse(JSON.stringify(mp));
     }
   });
@@ -330,22 +343,47 @@ function aoMudarModeloVoucher() {
 }
 window.aoMudarModeloVoucher = aoMudarModeloVoucher;
 
+function isVoucherCortesia(v) {
+  if (!v) return false;
+  if (v.tipo_voucher === 'cortesia') return true;
+  if (v.modelo_id === 'cortesia-avulsa') return true;
+  const modNome = String(v.modelo_nome || '').toLowerCase();
+  if (modNome.includes('cortesia') || modNome.includes('diárias livres') || modNome.includes('diarias livres')) return true;
+  const obs = String(v.observacoes || '');
+  if (obs.includes('[TIPO_VOUCHER: CORTESIA]')) return true;
+  return false;
+}
+window.isVoucherCortesia = isVoucherCortesia;
+
 function aoAlternarCategoriaVoucher(cat) {
   const lblDiarias = document.getElementById('labelTipoDiarias');
+  const lblCortesia = document.getElementById('labelTipoCortesia');
   const lblCredito = document.getElementById('labelTipoCredito');
   const boxCredito = document.getElementById('boxCamposVoucherCredito');
+  const boxCortesia = document.getElementById('boxCamposVoucherCortesia');
   const inDiarias = document.getElementById('inputDiarias');
   const grpDiarias = inDiarias ? inDiarias.closest('.form-group') : null;
   const selectModelo = document.getElementById('selectModelo');
+  const inputNome = document.getElementById('inputNome');
+  const lblDicaDiarias = document.getElementById('lblDicaDiarias');
+  const boxInfoAnteriores = document.getElementById('boxInfoVouchersAnterioresModal');
+
   const radioDiarias = document.querySelector('input[name="tipoVoucherRadio"][value="diarias"]');
+  const radioCortesia = document.querySelector('input[name="tipoVoucherRadio"][value="cortesia"]');
   const radioCredito = document.querySelector('input[name="tipoVoucherRadio"][value="credito"]');
+
+  if (lblDiarias) lblDiarias.classList.toggle('is-active', cat === 'diarias');
+  if (lblCortesia) lblCortesia.classList.toggle('is-active', cat === 'cortesia');
+  if (lblCredito) lblCredito.classList.toggle('is-active', cat === 'credito');
+
+  if (boxCredito) boxCredito.classList.toggle('hidden', cat !== 'credito');
+  if (boxCortesia) boxCortesia.classList.toggle('hidden', cat !== 'cortesia');
 
   if (cat === 'credito') {
     if (radioCredito) radioCredito.checked = true;
-    if (lblDiarias) lblDiarias.classList.remove('is-active');
-    if (lblCredito) lblCredito.classList.add('is-active');
-    if (boxCredito) boxCredito.classList.remove('hidden');
     if (grpDiarias) grpDiarias.style.display = 'none';
+    if (boxInfoAnteriores) boxInfoAnteriores.classList.add('hidden');
+    if (inputNome) inputNome.placeholder = 'Digite o nome do beneficiário (sócio ou cliente avulso)...';
 
     // Selecionar modelo de crédito automaticamente se disponível
     if (selectModelo) {
@@ -356,14 +394,28 @@ function aoAlternarCategoriaVoucher(cat) {
       }
     }
     aoMudarValorCreditoModal();
+  } else if (cat === 'cortesia') {
+    if (radioCortesia) radioCortesia.checked = true;
+    if (grpDiarias) grpDiarias.style.display = 'block';
+    if (boxInfoAnteriores) boxInfoAnteriores.classList.add('hidden');
+    if (inputNome) inputNome.placeholder = 'Digite o nome de qualquer pessoa / hóspede beneficiário...';
+    if (lblDicaDiarias) lblDicaDiarias.textContent = '🎁 Voucher Cortesia: defina 1 ou mais diárias para qualquer pessoa.';
+
+    // Selecionar modelo de cortesia automaticamente se disponível
+    if (selectModelo) {
+      const optCortesia = Array.from(selectModelo.options).find(o => o.value === 'cortesia-avulsa');
+      if (optCortesia) {
+        selectModelo.value = 'cortesia-avulsa';
+        aoMudarModeloVoucher();
+      }
+    }
+    adequarTextosPorDiarias();
   } else {
     if (radioDiarias) radioDiarias.checked = true;
-    if (lblDiarias) lblDiarias.classList.add('is-active');
-    if (lblCredito) lblCredito.classList.remove('is-active');
-    if (boxCredito) boxCredito.classList.add('hidden');
     if (grpDiarias) grpDiarias.style.display = 'block';
+    if (inputNome) inputNome.placeholder = 'Digite para buscar na base de sócios...';
 
-    if (selectModelo && selectModelo.value === 'credito-reembolso') {
+    if (selectModelo && (selectModelo.value === 'credito-reembolso' || selectModelo.value === 'cortesia-avulsa')) {
       selectModelo.value = 'padrao-rsm';
       aoMudarModeloVoucher();
     }
@@ -670,6 +722,7 @@ function auditarInconsistenciasVouchers() {
   const mapVouchersPorSocio = {};
 
   listaVouchers.forEach(v => {
+    if (isVoucherCredito(v) || isVoucherCortesia(v)) return; // Vouchers de cortesia e créditos não entram na auditoria de cotas contratuais
     const nomeNorm = (v.nome_socio || '').trim().toUpperCase();
     if (!mapVouchersPorSocio[nomeNorm]) mapVouchersPorSocio[nomeNorm] = [];
     mapVouchersPorSocio[nomeNorm].push(v);
@@ -2191,11 +2244,16 @@ function aplicarPermissoesPerfil() {
     }
   }
 
+  const btnNovoCortesiaReservas = document.getElementById('btnNovoCortesiaReservas');
+  const btnNovoTopbar = document.getElementById('btnNovoTopbar');
+
   if (perfilAtivo === 'admin') {
     btnAssinatura.style.display = 'inline-flex';
     btnNovo.style.display = 'inline-flex';
+    if (btnNovoTopbar) btnNovoTopbar.style.display = 'inline-flex';
     if (btnNovoCredito) btnNovoCredito.style.display = 'inline-flex';
     if (btnLancarCreditoReservas) btnLancarCreditoReservas.style.display = 'inline-flex';
+    if (btnNovoCortesiaReservas) btnNovoCortesiaReservas.style.display = 'inline-flex';
     tabCotas.style.display = 'flex';
     tabVouchers.style.display = 'flex';
     if (tabCreditos) tabCreditos.style.display = 'flex';
@@ -2207,8 +2265,10 @@ function aplicarPermissoesPerfil() {
   } else if (perfilAtivo === 'pos_venda') {
     btnAssinatura.style.display = 'none';
     btnNovo.style.display = 'inline-flex';
+    if (btnNovoTopbar) btnNovoTopbar.style.display = 'inline-flex';
     if (btnNovoCredito) btnNovoCredito.style.display = 'inline-flex';
     if (btnLancarCreditoReservas) btnLancarCreditoReservas.style.display = 'none';
+    if (btnNovoCortesiaReservas) btnNovoCortesiaReservas.style.display = 'inline-flex';
     tabCotas.style.display = 'flex';
     tabVouchers.style.display = 'flex';
     if (tabCreditos) tabCreditos.style.display = 'flex';
@@ -2220,10 +2280,12 @@ function aplicarPermissoesPerfil() {
     if (abaAtiva === 'reservas' || abaAtiva === 'usuarios') mudarAba('vouchers');
   } else if (perfilAtivo === 'reservas' || perfilAtivo === 'recepcao') {
     btnAssinatura.style.display = 'none';
-    btnNovo.style.display = 'none';
-    const podeLancarCredito = (perfilAtivo === 'reservas');
-    if (btnNovoCredito) btnNovoCredito.style.display = podeLancarCredito ? 'inline-flex' : 'none';
-    if (btnLancarCreditoReservas) btnLancarCreditoReservas.style.display = podeLancarCredito ? 'inline-flex' : 'none';
+    const podeEmitir = (perfilAtivo === 'reservas');
+    btnNovo.style.display = podeEmitir ? 'inline-flex' : 'none';
+    if (btnNovoTopbar) btnNovoTopbar.style.display = podeEmitir ? 'inline-flex' : 'none';
+    if (btnNovoCredito) btnNovoCredito.style.display = podeEmitir ? 'inline-flex' : 'none';
+    if (btnLancarCreditoReservas) btnLancarCreditoReservas.style.display = podeEmitir ? 'inline-flex' : 'none';
+    if (btnNovoCortesiaReservas) btnNovoCortesiaReservas.style.display = podeEmitir ? 'inline-flex' : 'none';
     tabCotas.style.display = 'none';
     tabVouchers.style.display = 'flex';
     if (tabCreditos) tabCreditos.style.display = 'flex';
@@ -3682,9 +3744,13 @@ function renderTabelaReservas() {
                 ${ehCredito ? `
                   <span class="badge ${dadosCred.isSocio ? 'badge-credito' : 'badge-nao-socio'}" style="font-size:.65rem;margin-left:4px;vertical-align:middle;">
                     ${dadosCred.isSocio ? '💰 Sócio Crédito' : '👤 Não-Sócio'}
-                  </span>` : ''}
+                  </span>` : (isVoucherCortesia(v) ? `
+                  <span class="badge badge-cortesia" style="font-size:.65rem;margin-left:4px;vertical-align:middle;">
+                    🎁 Cortesia / Avulso
+                  </span>` : '')}
               </div>
               ${ehCredito && dadosCred.cpf ? `<div style="font-size:.72rem;color:var(--text-2);margin-top:1px;">CPF: <strong>${escHtml(formatarCPF(dadosCred.cpf))}</strong></div>` : ''}
+              ${isVoucherCortesia(v) && v.cpf_beneficiario ? `<div style="font-size:.72rem;color:var(--text-2);margin-top:1px;">CPF: <strong>${escHtml(formatarCPF(v.cpf_beneficiario))}</strong></div>` : ''}
             </div>
             <div class="card-mini-summary-pill">
               <span class="diarias-pill ${saldo > 0 ? 'diarias-disponiveis' : 'diarias-usadas'}" style="font-size:.72rem;">${ehCredito ? `${fmtMoeda(saldo)} saldo` : `${saldo}d saldo`}</span>
@@ -3726,8 +3792,8 @@ function renderTabelaReservas() {
         <td class="col-card-acoes card-collapsible-detail" data-label="Ação">
           <div class="actions card-actions-flex" style="flex-wrap:wrap;gap:4px;">
             ${botaoAcao}
-            <a href="${linkVoucher(v.codigo)}" target="_blank" class="btn btn-sm btn-ghost" style="padding:.35rem .6rem;font-size:.76rem;" title="${ehCredito ? 'Abrir Comprovante de Saldo' : 'Abrir Voucher'}">
-              📄 ${ehCredito ? 'Comprovante' : 'Voucher'}
+            <a href="${linkVoucher(v.codigo)}" target="_blank" class="btn btn-sm btn-ghost" style="padding:.35rem .6rem;font-size:.76rem;" title="${ehCredito ? 'Abrir Comprovante de Saldo' : (isVoucherCortesia(v) ? 'Abrir Voucher de Cortesia' : 'Abrir Voucher')}">
+              📄 ${ehCredito ? 'Comprovante' : (isVoucherCortesia(v) ? 'Cortesia' : 'Voucher')}
             </a>
             ${ehCredito ? `
             <button class="btn btn-sm btn-notif-whatsapp" onclick="enviarComprovanteCreditoWhatsApp('${escHtml(v.codigo)}')" title="Enviar Comprovante de Saldo no WhatsApp" style="padding:.35rem .6rem;font-size:.76rem;">
@@ -4802,6 +4868,21 @@ function abrirModalNovoCredito() {
 }
 window.abrirModalNovoCredito = abrirModalNovoCredito;
 
+function abrirModalNovoCortesia() {
+  solicitacaoEmAtendimentoId = null;
+  abrirModalNovo('cortesia');
+}
+window.abrirModalNovoCortesia = abrirModalNovoCortesia;
+
+function acaoEmitirVoucherBotao() {
+  if (perfilAtivo === 'reservas') {
+    abrirModalNovoCortesia();
+  } else {
+    abrirModalNovo('diarias');
+  }
+}
+window.acaoEmitirVoucherBotao = acaoEmitirVoucherBotao;
+
 function abrirModalNovo(categoriaPadrao = 'diarias') {
   popularDatalistSociosVoucher();
   carregarSelectModelos();
@@ -4810,7 +4891,7 @@ function abrirModalNovo(categoriaPadrao = 'diarias') {
   document.getElementById('formVoucher').reset();
   const infoEl = document.getElementById('inputNomeInfoSocio');
   if (infoEl) infoEl.textContent = '';
-  document.getElementById('inputDiarias').value = 2;
+  document.getElementById('inputDiarias').value = (categoriaPadrao === 'cortesia') ? 1 : 2;
   document.getElementById('lblDicaDiarias').textContent = '';
   document.getElementById('inputSala').value = 'VILLA';
 
@@ -4823,7 +4904,7 @@ function abrirModalNovo(categoriaPadrao = 'diarias') {
   if (document.getElementById('inputCheckin')) document.getElementById('inputCheckin').value = '';
   if (document.getElementById('inputCheckout')) document.getElementById('inputCheckout').value = '';
 
-  // Configurar modo (diárias ou crédito financeiro)
+  // Configurar modo (diárias de sócio, cortesia/avulso ou crédito financeiro)
   if (categoriaPadrao === 'credito') {
     document.getElementById('modalTitulo').textContent = '💰 Lançar Crédito de Reservas & Consumo';
     document.getElementById('btnSalvar').textContent = 'Salvar Crédito';
@@ -4831,6 +4912,21 @@ function abrirModalNovo(categoriaPadrao = 'diarias') {
     if (radCred) radCred.checked = true;
     aoAlternarCategoriaVoucher('credito');
     aoAlternarTipoClienteVoucher('socio');
+  } else if (categoriaPadrao === 'cortesia') {
+    document.getElementById('modalTitulo').textContent = '🎁 Emitir Voucher Cortesia / Avulso';
+    document.getElementById('btnSalvar').textContent = 'Emitir Voucher Cortesia';
+    const radCort = document.querySelector('input[name="tipoVoucherRadio"][value="cortesia"]');
+    if (radCort) radCort.checked = true;
+    aoAlternarCategoriaVoucher('cortesia');
+    document.getElementById('inputDiarias').value = 1;
+    if (document.getElementById('selectModelo')) {
+      document.getElementById('selectModelo').value = 'cortesia-avulsa';
+    }
+    const optCort = listaModelos.find(m => m.id === 'cortesia-avulsa');
+    if (optCort && document.getElementById('inputEspecUso')) {
+      document.getElementById('inputEspecUso').value = optCort.regras_uso;
+    }
+    adequarTextosPorDiarias();
   } else {
     document.getElementById('modalTitulo').textContent = 'Emitir Novo Voucher';
     document.getElementById('btnSalvar').textContent = 'Salvar Voucher';
@@ -4844,8 +4940,10 @@ function abrirModalNovo(categoriaPadrao = 'diarias') {
     adequarTextosPorDiarias();
   }
   if (document.getElementById('inputCpfBeneficiario')) document.getElementById('inputCpfBeneficiario').value = '';
+  if (document.getElementById('inputCpfBeneficiarioCortesia')) document.getElementById('inputCpfBeneficiarioCortesia').value = '';
   if (document.getElementById('inputValorCredito')) document.getElementById('inputValorCredito').value = '';
   if (document.getElementById('inputOrigemCredito')) document.getElementById('inputOrigemCredito').value = 'Crédito de Reservas (Ganho / Bonificação)';
+  if (document.getElementById('inputMotivoCortesia')) document.getElementById('inputMotivoCortesia').value = 'Cortesia de Hospedagem (Reservas)';
 
   document.getElementById('wrapAdminAssinanteEdit')?.classList.add('hidden');
   if (document.getElementById('inputAdminAssinanteEdit')) document.getElementById('inputAdminAssinanteEdit').value = '';
@@ -4892,8 +4990,9 @@ async function abrirModalEditar(id) {
   document.getElementById('inputEspecUso').value = v.especificacoes_uso || '';
   if (v.modelo_id) document.getElementById('selectModelo').value = v.modelo_id;
 
-  // Carregar dados de crédito se for o caso
+  // Carregar dados de crédito ou cortesia se for o caso
   const ehCredito = isVoucherCredito(v);
+  const ehCortesia = isVoucherCortesia(v);
   const dadosCred = ehCredito ? extrairDadosCredito(v) : null;
   if (ehCredito) {
     aoAlternarCategoriaVoucher('credito');
@@ -4911,10 +5010,19 @@ async function abrirModalEditar(id) {
       document.getElementById('inputValorCredito').value = dadosCred ? dadosCred.valorTotal : (v.valor_credito || v.valor_hospedagem || '');
       aoMudarValorCreditoModal();
     }
+  } else if (ehCortesia) {
+    aoAlternarCategoriaVoucher('cortesia');
+    if (document.getElementById('inputCpfBeneficiarioCortesia')) {
+      document.getElementById('inputCpfBeneficiarioCortesia').value = formatarCPF(v.cpf_beneficiario || '');
+    }
+    if (document.getElementById('inputMotivoCortesia') && v.origem_credito) {
+      document.getElementById('inputMotivoCortesia').value = v.origem_credito;
+    }
   } else {
     aoAlternarCategoriaVoucher('diarias');
     aoAlternarTipoClienteVoucher('socio');
     if (document.getElementById('inputCpfBeneficiario')) document.getElementById('inputCpfBeneficiario').value = '';
+    if (document.getElementById('inputCpfBeneficiarioCortesia')) document.getElementById('inputCpfBeneficiarioCortesia').value = '';
     if (document.getElementById('inputValorCredito')) document.getElementById('inputValorCredito').value = '';
   }
 
@@ -4948,6 +5056,8 @@ function capturarSnapshotModalVoucher() {
     tipoVoucher: document.querySelector('input[name="tipoVoucherRadio"]:checked')?.value || 'diarias',
     tipoCliente: document.querySelector('input[name="tipoClienteVoucher"]:checked')?.value || 'socio',
     cpfBeneficiario: document.getElementById('inputCpfBeneficiario')?.value || '',
+    cpfCortesia: document.getElementById('inputCpfBeneficiarioCortesia')?.value || '',
+    motivoCortesia: document.getElementById('inputMotivoCortesia')?.value || '',
     valorCredito: document.getElementById('inputValorCredito')?.value || '',
     diarias: document.getElementById('inputDiarias')?.value || '',
     valor: document.getElementById('inputValor')?.value || '',
@@ -5027,9 +5137,12 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
 
   const tipoVoucher = document.querySelector('input[name="tipoVoucherRadio"]:checked')?.value || 'diarias';
   const ehTipoCredito = (tipoVoucher === 'credito');
+  const ehTipoCortesia = (tipoVoucher === 'cortesia');
   const tipoCliente = document.querySelector('input[name="tipoClienteVoucher"]:checked')?.value || 'socio';
   const isSocio = (tipoCliente === 'socio');
   const cpfBeneficiario = (document.getElementById('inputCpfBeneficiario')?.value || '').trim();
+  const cpfCortesia = (document.getElementById('inputCpfBeneficiarioCortesia')?.value || '').trim();
+  const motivoCortesia = (document.getElementById('inputMotivoCortesia')?.value || 'Cortesia de Hospedagem (Reservas)').trim();
   const valorCreditoNum = Number(document.getElementById('inputValorCredito')?.value || 0);
 
   if (ehTipoCredito) {
@@ -5092,6 +5205,20 @@ document.getElementById('formVoucher').addEventListener('submit', async (e) => {
     payload.diarias_totais = 0;
     const tagCred = `[TIPO_VOUCHER: CREDITO | VALOR_TOTAL: ${valorCreditoNum} | CPF: ${cpfBeneficiario || 'N/A'} | CLIENTE: ${isSocio ? 'SOCIO' : 'NAO_SOCIO'} | ORIGEM: ${origemCredito}]`;
     payload.observacoes = payload.observacoes ? `${payload.observacoes}\n${tagCred}` : tagCred;
+  } else if (ehTipoCortesia) {
+    payload.tipo_voucher = 'cortesia';
+    payload.valor_credito = 0;
+    payload.valor_hospedagem = valorInput !== '' ? Number(valorInput) : 0;
+    payload.diarias = diariasTotais;
+    payload.diarias_totais = diariasTotais;
+    payload.cpf_beneficiario = cpfCortesia || null;
+    payload.is_socio = false; // Cortesia / Avulso para qualquer pessoa
+    payload.origem_credito = motivoCortesia;
+    if (!payload.brinde_descricao) {
+      payload.brinde_descricao = `${diariasTotais > 1 ? (diariasTotais < 10 ? '0' + diariasTotais : diariasTotais) + ' DIÁRIAS' : '01 DIÁRIA'} DE CORTESIA`;
+    }
+    const tagCort = `[TIPO_VOUCHER: CORTESIA | DIARIAS: ${diariasTotais} | BENEFICIARIO: ${payload.nome_socio} | CPF: ${cpfCortesia || 'N/A'} | MOTIVO: ${motivoCortesia}]`;
+    payload.observacoes = payload.observacoes ? `${payload.observacoes}\n${tagCort}` : tagCort;
   } else {
     payload.tipo_voucher = 'diarias';
     payload.valor_credito = 0;

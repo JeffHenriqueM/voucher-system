@@ -696,6 +696,17 @@
       return false;
     }
 
+    function isVoucherCortesia(v) {
+      if (!v) return false;
+      if (v.tipo_voucher === 'cortesia') return true;
+      if (v.modelo_id === 'cortesia-avulsa') return true;
+      const modNome = String(v.modelo_nome || '').toLowerCase();
+      if (modNome.includes('cortesia') || modNome.includes('diárias livres') || modNome.includes('diarias livres')) return true;
+      const obs = String(v.observacoes || '');
+      if (obs.includes('[TIPO_VOUCHER: CORTESIA]')) return true;
+      return false;
+    }
+
     function formatarCPF(v) {
       if (!v) return '';
       const num = String(v).replace(/\D/g, '').slice(0, 11);
@@ -800,10 +811,13 @@
     // ── Render Voucher ───────────────────────────────────────
     function renderVoucher(v, historicoEstadias = [], assinaturaUrl = '', solicitacaoOrigem = null) {
       const ehCredito = isVoucherCredito(v);
+      const ehCortesia = !ehCredito && isVoucherCortesia(v);
       const dadosCred = ehCredito ? extrairDadosCredito(v, historicoEstadias) : null;
       document.title = ehCredito
         ? `Voucher de Crédito #${v.numero || v.codigo} — ${v.nome_socio}`
-        : `Voucher #${v.numero || v.codigo} — ${v.nome_socio}`;
+        : (ehCortesia
+            ? `Voucher de Cortesia #${v.numero || v.codigo} — ${v.nome_socio}`
+            : `Voucher #${v.numero || v.codigo} — ${v.nome_socio}`);
 
       const tot = ehCredito ? dadosCred.valorTotal : (v.diarias_totais || v.diarias || 2);
       const usd = ehCredito ? dadosCred.valorUtilizado : (v.diarias_usadas || (v.usado ? tot : 0));
@@ -848,11 +862,15 @@
 
       const espec = ehCredito
         ? `Voucher de crédito financeiro no valor de ${fmt(tot)} (${numeroPorExtensoReais(tot)}) para utilização em diárias de hospedagem e/ou consumo no Villamor Tambaba Resort.`
-        : `Voucher de ${v.diarias > 1 ? v.diarias + ' ('+numPorExtenso(v.diarias)+')' : 'uma (01)'} diária${v.diarias > 1 ? 's' : ''} anua${v.diarias > 1 ? 'is' : 'l'} para um casal no Hotel Villamor Prime.`;
+        : (ehCortesia
+            ? `Voucher especial de ${tot > 1 ? tot + ' ('+numPorExtenso(tot)+')' : 'uma (01)'} diária${tot > 1 ? 's' : ''} de cortesia para um casal no Villamor Tambaba Resort.`
+            : `Voucher de ${v.diarias > 1 ? v.diarias + ' ('+numPorExtenso(v.diarias)+')' : 'uma (01)'} diária${v.diarias > 1 ? 's' : ''} anua${v.diarias > 1 ? 'is' : 'l'} para um casal no Hotel Villamor Prime.`);
 
       const brinde = ehCredito
         ? `CRÉDITO FINANCEIRO: ${fmt(tot).toUpperCase()} (DIÁRIAS & CONSUMO)`
-        : (v.brinde_descricao ? escHtml(v.brinde_descricao).toUpperCase() : `0${v.diarias} DIARIA${v.diarias > 1 ? 'S' : ''} ANUAIS`);
+        : (ehCortesia
+            ? (v.brinde_descricao ? escHtml(v.brinde_descricao).toUpperCase() : `${tot > 1 ? (tot < 10 ? '0' + tot : tot) + ' DIÁRIAS' : '01 DIÁRIA'} DE CORTESIA`)
+            : (v.brinde_descricao ? escHtml(v.brinde_descricao).toUpperCase() : `0${v.diarias} DIARIA${v.diarias > 1 ? 'S' : ''} ANUAIS`));
 
       const agora = new Date().toLocaleString('pt-BR', {
         day: '2-digit', month: '2-digit', year: 'numeric',
@@ -966,6 +984,62 @@
             </table>
           </div>` : ''}
         `;
+      } else if (ehCortesia) {
+        blocoDadosHtml = `
+          <div class="v-dados">
+            <div class="v-row">
+              <span class="v-label">BENEFICIÁRIO:</span>
+              <span class="v-value"><strong>${escHtml(v.nome_socio)}</strong></span>
+            </div>
+            <div class="v-row">
+              <span class="v-label">CATEGORIA:</span>
+              <span class="v-value"><strong>CORTESIA / HOSPEDAGEM AVULSA</strong></span>
+            </div>
+            ${v.origem_credito ? `
+            <div class="v-row">
+              <span class="v-label">MOTIVO:</span>
+              <span class="v-value"><strong>${escHtml(v.origem_credito)}</strong></span>
+            </div>` : ''}
+            ${v.cpf_beneficiario ? `
+            <div class="v-row">
+              <span class="v-label">CPF DO TITULAR:</span>
+              <span class="v-value"><strong>${escHtml(formatarCPF(v.cpf_beneficiario))}</strong></span>
+            </div>` : ''}
+            <div class="v-row">
+              <span class="v-label">SALA DE VENDA:</span>
+              <span class="v-value">${escHtml(v.sala_venda || 'VILLA')}</span>
+            </div>
+            <div class="v-row">
+              <span class="v-label">DATA EMISSÃO:</span>
+              <span class="v-value">${fmtDateTime(quandoGerou)}</span>
+            </div>
+            <div class="v-row">
+              <span class="v-label">BRINDE:</span>
+              <span class="v-value">${brinde}</span>
+            </div>
+            <div class="v-row">
+              <span class="v-label">DIÁRIAS CONCEDIDAS:</span>
+              <span class="v-value"><strong>${tot} diária(s) de cortesia</strong></span>
+            </div>
+            ${(v.diarias_usadas > 0) ? `
+            <div class="v-row" style="color:#b91c1c;">
+              <span class="v-label">DIÁRIAS UTILIZADAS:</span>
+              <span class="v-value"><strong>${v.diarias_usadas} diária(s)</strong> (Restam: ${Math.max(0, tot - v.diarias_usadas)})</span>
+            </div>` : ''}
+            ${(v.periodo_checkin && v.periodo_checkout) ? `
+            <div class="v-row">
+              <span class="v-label">PERÍODO HOSPEDAGEM:</span>
+              <span class="v-value"><strong>${fmtDate(v.periodo_checkin)} até ${fmtDate(v.periodo_checkout)}</strong></span>
+            </div>` : ''}
+            ${v.validade ? `
+            <div class="v-row" style="background:${isUsadoTotal ? '#f1f5f9' : (isVencido ? '#fee2e2' : '#f0fdf4')};padding:5px 8px;border-radius:4px;border:1px solid ${isUsadoTotal ? '#cbd5e1' : (isVencido ? '#fca5a5' : '#bbf7d0')};margin-top:6px;">
+              <span class="v-label" style="color:${isUsadoTotal ? '#475569' : (isVencido ? '#991b1b' : '#166534')};font-weight:800;">DATA DE VENCIMENTO:</span>
+              <span class="v-value" style="color:${isUsadoTotal ? '#475569' : (isVencido ? '#991b1b' : '#166534')};font-weight:800;">
+                VÁLIDO ATÉ ${fmtDate(v.validade)} ${isUsadoTotal ? '✓ (UTILIZADO)' : (isVencido ? '⚠️ (EXPIRADO)' : '✓ (NO PRAZO)')}
+              </span>
+            </div>` : ''}
+          </div>
+        `;
       } else {
         blocoDadosHtml = `
           <div class="v-dados">
@@ -1067,8 +1141,8 @@
           <!-- Cabeçalho -->
           <div class="v-header">
             <div class="v-title">
-              <h1>${ehCredito ? 'COMPROVANTE DE CRÉDITO & SALDO' : 'VOUCHER'}</h1>
-              <h2>RSM EMPREENDIMENTO ${ehCredito ? '— HOSPEDAGEM & CONSUMO' : ''}</h2>
+              <h1>${ehCredito ? 'COMPROVANTE DE CRÉDITO & SALDO' : (ehCortesia ? 'VOUCHER DE CORTESIA' : 'VOUCHER')}</h1>
+              <h2>RSM EMPREENDIMENTO ${ehCredito ? '— HOSPEDAGEM & CONSUMO' : (ehCortesia ? '— HOSPEDAGEM CORTESIA' : '')}</h2>
             </div>
 
             <div class="v-numero-wrap">

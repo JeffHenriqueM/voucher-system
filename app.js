@@ -2497,10 +2497,13 @@ function renderTabelaCotas() {
             </button>
           </div>
         </td>
-        <td class="col-cota-socio desktop-only-cell" data-label="Sócio" onclick="toggleCotaCard('${c.id}')">
+        <td class="col-cota-socio desktop-only-cell" data-label="Sócio" onclick="toggleCotaCard('${c.id}')" style="cursor:pointer;">
           <div class="cota-socio-name">
-            <strong>${escHtml(c.nome_socio)}</strong>
-            ${isInconsistente ? `<span class="badge-inconsistente" title="Cliente possui ${totalDiariasEmitidas} diárias emitidas, mas a cota permite ${diariasTotais}">⚠️ Fora da regra (${totalDiariasEmitidas}/${diariasTotais}d)</span>` : ''}
+            <div style="display:flex;align-items:center;gap:6px;">
+              <button type="button" class="btn-row-toggle" title="Expandir ou diminuir detalhes">${isCardRecolhido ? '▶' : '▼'}</button>
+              <strong>${escHtml(c.nome_socio)}</strong>
+              ${isInconsistente ? `<span class="badge-inconsistente" title="Cliente possui ${totalDiariasEmitidas} diárias emitidas, mas a cota permite ${diariasTotais}">⚠️ Fora da regra (${totalDiariasEmitidas}/${diariasTotais}d)</span>` : ''}
+            </div>
           </div>
         </td>
         <td class="col-cota-produto card-collapsible-detail" data-label="Produto">
@@ -2749,6 +2752,9 @@ function toggleVoucherCard(id, event) {
     vouchersCardsRecolhidos.delete(id);
   }
 
+  const rowBtn = row.querySelector('.btn-row-toggle');
+  if (rowBtn) rowBtn.textContent = willCollapse ? '▶' : '▼';
+
   const btn = row.querySelector('.btn-card-toggle');
   if (btn) {
     btn.innerHTML = willCollapse 
@@ -2782,6 +2788,9 @@ function toggleTodosCardsVouchers() {
     } else {
       if (id) vouchersCardsExpandidos.add(id);
     }
+    const rowBtn = row.querySelector('.btn-row-toggle');
+    if (rowBtn) rowBtn.textContent = recolherTodos ? '▶' : '▼';
+
     const btn = row.querySelector('.btn-card-toggle');
     if (btn) {
       btn.innerHTML = recolherTodos
@@ -2829,6 +2838,9 @@ function toggleSolicCard(id, event) {
     solicsCardsRecolhidos.delete(id);
   }
 
+  const rowBtn = row.querySelector('.btn-row-toggle');
+  if (rowBtn) rowBtn.textContent = willCollapse ? '▶' : '▼';
+
   const btn = row.querySelector('.btn-card-toggle');
   if (btn) {
     btn.innerHTML = willCollapse 
@@ -2862,6 +2874,9 @@ function toggleTodosCardsSolic() {
     } else {
       if (id) solicsCardsExpandidos.add(id);
     }
+    const rowBtn = row.querySelector('.btn-row-toggle');
+    if (rowBtn) rowBtn.textContent = recolherTodos ? '▶' : '▼';
+
     const btn = row.querySelector('.btn-card-toggle');
     if (btn) {
       btn.innerHTML = recolherTodos
@@ -2909,6 +2924,9 @@ function toggleCotaCard(id, event) {
     cotasCardsRecolhidos.delete(id);
   }
 
+  const rowBtn = row.querySelector('.btn-row-toggle');
+  if (rowBtn) rowBtn.textContent = willCollapse ? '▶' : '▼';
+
   const btn = row.querySelector('.btn-card-toggle');
   if (btn) {
     btn.innerHTML = willCollapse 
@@ -2942,6 +2960,9 @@ function toggleTodosCardsCotas() {
     } else {
       if (id) cotasCardsExpandidos.add(id);
     }
+    const rowBtn = row.querySelector('.btn-row-toggle');
+    if (rowBtn) rowBtn.textContent = recolherTodos ? '▶' : '▼';
+
     const btn = row.querySelector('.btn-card-toggle');
     if (btn) {
       btn.innerHTML = recolherTodos
@@ -3075,10 +3096,10 @@ function renderTabelaVouchers(dados) {
 
     // Snippet da Trilha de Auditoria
     const trilhaHtml = `
-      <div style="font-size:.76rem;line-height:1.45;color:var(--text-2);">
-        <div>💼 <strong>Gerado por:</strong> ${escHtml(v.pos_venda_nome || 'Pós Venda')} <span style="color:var(--text-3);font-size:.7rem;">(${fmtDateTime(v.created_at)})</span></div>
+      <div class="trilha-wrap" style="font-size:.75rem;line-height:1.4;color:var(--text-2);">
         <div>✍️ <strong>Assinatura:</strong> ${v.assinado_em ? `<span style="color:#15803d;font-weight:600;">✓ ${escHtml(v.admin_assinante_nome || 'Admin')} (${fmtDateTime(v.assinado_em)})</span>` : (isCancelado ? '<span style="color:#991b1b;font-weight:700;">🚫 Cancelado</span>' : '<span style="color:#b45309;font-weight:700;">⏳ Minuta Aguardando Admin</span>')}</div>
-        ${v.solicitante_nome ? `<div style="color:var(--text-3);font-size:.72rem;">🛎️ Solicitado por: <strong>${escHtml(v.solicitante_nome)}</strong></div>` : '<div style="color:var(--text-3);font-size:.72rem;font-style:italic;">🛎️ Emissão Direta</div>'}
+        <div class="trilha-extra-detail">💼 <strong>Gerado por:</strong> ${escHtml(v.pos_venda_nome || 'Pós Venda')} <span style="color:var(--text-3);font-size:.7rem;">(${fmtDateTime(v.created_at)})</span></div>
+        ${v.solicitante_nome ? `<div class="trilha-extra-detail" style="color:var(--text-3);font-size:.72rem;">🛎️ Solicitado por: <strong>${escHtml(v.solicitante_nome)}</strong></div>` : '<div class="trilha-extra-detail" style="color:var(--text-3);font-size:.72rem;font-style:italic;">🛎️ Emissão Direta</div>'}
       </div>
     `;
 
@@ -3091,8 +3112,9 @@ function renderTabelaVouchers(dados) {
 
     return `
       <tr class="voucher-card-row ${isCardRecolhido ? 'is-collapsed' : 'is-expanded'} ${isCancelado ? 'voucher-row-cancelado' : ''}" id="card-voucher-${v.id}" data-voucher-id="${v.id}" style="${isCancelado ? 'background:rgba(254,226,226,0.18);' : ''}">
-        <td class="col-card-top" data-label="Número" onclick="toggleVoucherCard('${v.id}')">
+        <td class="col-card-top" data-label="Número" onclick="toggleVoucherCard('${v.id}')" style="cursor:pointer;">
           <div class="card-num-wrap">
+            <button type="button" class="btn-row-toggle" title="Expandir ou diminuir detalhes">${isCardRecolhido ? '▶' : '▼'}</button>
             <strong class="card-voucher-num">#${v.numero || '—'}</strong>
             ${temObs ? `<span class="badge-obs-alerta" onclick="event.stopPropagation(); abrirModalObservacaoVoucher('${v.id}')" style="cursor:pointer;" title="Clique para ler a observação completa">⚠️ OBS</span>` : ''}
             ${incDoVoucher ? `
@@ -5251,30 +5273,50 @@ document.getElementById('btnConfirmarDelete').addEventListener('click', async ()
 });
 
 // ── Controle de Tema (Dark / Light Mode) ─────────────────────────
-function initTema() {
-  const salvo = localStorage.getItem('rsm_theme') || 'light';
-  aplicarTema(salvo);
-
-  const btnToggle = document.getElementById('btnThemeToggle');
-  if (btnToggle) {
-    btnToggle.addEventListener('click', () => {
-      const atual = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
-      const novo = atual === 'dark' ? 'light' : 'dark';
-      aplicarTema(novo);
-    });
-  }
+function alternarTema() {
+  const isDark = document.body.classList.contains('dark-mode');
+  const novo = isDark ? 'light' : 'dark';
+  aplicarTema(novo);
 }
+window.alternarTema = alternarTema;
 
 function aplicarTema(tema) {
-  const btnToggle = document.getElementById('btnThemeToggle');
-  if (tema === 'dark') {
+  const isDark = tema === 'dark';
+  if (isDark) {
     document.body.classList.add('dark-mode');
     localStorage.setItem('rsm_theme', 'dark');
-    if (btnToggle) btnToggle.textContent = '☀️';
   } else {
     document.body.classList.remove('dark-mode');
     localStorage.setItem('rsm_theme', 'light');
-    if (btnToggle) btnToggle.textContent = '🌙';
+  }
+
+  const btnSidebar = document.getElementById('btnThemeToggle');
+  if (btnSidebar) {
+    btnSidebar.innerHTML = isDark
+      ? `☀️ <span class="theme-text" style="font-size:.78rem;font-weight:600;margin-left:4px;">Modo Claro</span>`
+      : `🌙 <span class="theme-text" style="font-size:.78rem;font-weight:600;margin-left:4px;">Modo Escuro</span>`;
+    btnSidebar.title = isDark ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro';
+  }
+
+  const btnTopbar = document.getElementById('btnThemeToggleTopbar');
+  if (btnTopbar) {
+    btnTopbar.innerHTML = isDark ? '☀️' : '🌙';
+    btnTopbar.title = isDark ? 'Alternar para Modo Claro' : 'Alternar para Modo Escuro';
+  }
+}
+window.aplicarTema = aplicarTema;
+
+function initTema() {
+  const salvo = localStorage.getItem('rsm_theme') || 'dark';
+  aplicarTema(salvo);
+
+  const btnSidebar = document.getElementById('btnThemeToggle');
+  if (btnSidebar) {
+    btnSidebar.onclick = alternarTema;
+  }
+  const btnTopbar = document.getElementById('btnThemeToggleTopbar');
+  if (btnTopbar) {
+    btnTopbar.onclick = alternarTema;
   }
 }
 
@@ -5365,9 +5407,67 @@ function atualizarBadgeSolicitacoes() {
   }
 }
 
+// ── Ordenação de Solicitações (Data ou Período Pretendido) ─────
+let ordemSolicitacoes = localStorage.getItem('rsm_solic_order') || 'data_desc';
+
+function mudarOrdemSolicitacoes(novaOrdem) {
+  ordemSolicitacoes = novaOrdem;
+  localStorage.setItem('rsm_solic_order', novaOrdem);
+  atualizarIndicadoresOrdemSolicitacoes();
+  renderTabelaSolicitacoes();
+}
+window.mudarOrdemSolicitacoes = mudarOrdemSolicitacoes;
+
+function toggleSortSolicitacoes(campo) {
+  if (campo === 'data') {
+    const nova = ordemSolicitacoes === 'data_desc' ? 'data_asc' : 'data_desc';
+    mudarOrdemSolicitacoes(nova);
+  } else if (campo === 'periodo') {
+    const nova = ordemSolicitacoes === 'periodo_asc' ? 'periodo_desc' : 'periodo_asc';
+    mudarOrdemSolicitacoes(nova);
+  }
+}
+window.toggleSortSolicitacoes = toggleSortSolicitacoes;
+
+function atualizarIndicadoresOrdemSolicitacoes() {
+  const sel = document.getElementById('selectOrdemSolicitacoes');
+  if (sel) sel.value = ordemSolicitacoes;
+
+  const iconData = document.getElementById('thSortIconData');
+  if (iconData) {
+    if (ordemSolicitacoes === 'data_desc') {
+      iconData.textContent = '↓';
+      iconData.style.color = 'var(--primary)';
+    } else if (ordemSolicitacoes === 'data_asc') {
+      iconData.textContent = '↑';
+      iconData.style.color = 'var(--primary)';
+    } else {
+      iconData.textContent = '↕️';
+      iconData.style.color = 'var(--text-3)';
+    }
+  }
+
+  const iconPeriodo = document.getElementById('thSortIconPeriodo');
+  if (iconPeriodo) {
+    if (ordemSolicitacoes === 'periodo_asc') {
+      iconPeriodo.textContent = '↑';
+      iconPeriodo.style.color = 'var(--primary)';
+    } else if (ordemSolicitacoes === 'periodo_desc') {
+      iconPeriodo.textContent = '↓';
+      iconPeriodo.style.color = 'var(--primary)';
+    } else {
+      iconPeriodo.textContent = '↕️';
+      iconPeriodo.style.color = 'var(--text-3)';
+    }
+  }
+}
+window.atualizarIndicadoresOrdemSolicitacoes = atualizarIndicadoresOrdemSolicitacoes;
+
 function renderTabelaSolicitacoes() {
   const tbody = document.getElementById('tbodySolicitacoes');
   if (!tbody) return;
+
+  atualizarIndicadoresOrdemSolicitacoes();
 
   const buscaRaw = (document.getElementById('inputBuscaSolicitacoes')?.value || '').trim();
   const buscaNormalizada = normalizarBusca(buscaRaw);
@@ -5391,6 +5491,24 @@ function renderTabelaSolicitacoes() {
       return matchNome || matchMotivo || matchSolic;
     }
     return true;
+  });
+
+  // Ordenação configurada pelo usuário
+  dados.sort((a, b) => {
+    if (ordemSolicitacoes === 'data_desc') {
+      return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+    } else if (ordemSolicitacoes === 'data_asc') {
+      return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+    } else if (ordemSolicitacoes === 'periodo_asc') {
+      const pA = a.periodo_checkin || '9999-12-31';
+      const pB = b.periodo_checkin || '9999-12-31';
+      return pA.localeCompare(pB);
+    } else if (ordemSolicitacoes === 'periodo_desc') {
+      const pA = a.periodo_checkin || '0000-00-00';
+      const pB = b.periodo_checkin || '0000-00-00';
+      return pB.localeCompare(pA);
+    }
+    return 0;
   });
 
   if (!dados.length) {
@@ -5489,9 +5607,10 @@ function renderTabelaSolicitacoes() {
 
     return `
       <tr class="solic-card-row ${isCardRecolhido ? 'is-collapsed' : 'is-expanded'} ${isRecusada ? 'solic-row-recusada' : ''}" id="card-solic-${s.id}" data-solic-id="${s.id}" style="${isRecusada ? 'background:rgba(254,226,226,0.18);' : ''}">
-        <td class="col-card-top" data-label="Data" onclick="toggleSolicCard('${s.id}')">
+        <td class="col-card-top" data-label="Data" onclick="toggleSolicCard('${s.id}')" style="cursor:pointer;">
           <div class="card-num-wrap">
-            <span style="font-size:.8rem;color:var(--text-3);font-weight:600;">📅 ${fmtDateTime(s.created_at)}</span>
+            <button type="button" class="btn-row-toggle" title="Expandir ou diminuir detalhes">${isCardRecolhido ? '▶' : '▼'}</button>
+            <span style="font-size:.8rem;color:var(--text-1);font-weight:600;white-space:nowrap;">📅 ${fmtDateTime(s.created_at)}</span>
           </div>
           <div class="card-top-right-wrap">
             <div class="mobile-only-status">
@@ -5503,18 +5622,18 @@ function renderTabelaSolicitacoes() {
             </button>
           </div>
         </td>
-        <td class="col-card-socio" data-label="Sócio" onclick="toggleSolicCard('${s.id}')">
+        <td class="col-card-socio" data-label="Sócio" onclick="toggleSolicCard('${s.id}')" style="cursor:pointer;">
           <div class="card-socio-header-flex">
             <div>
               <div class="card-socio-name">${escHtml(s.nome_socio)}</div>
-              <div style="font-size:.76rem;color:var(--text-3);margin-top:2px;">Solicitante: <strong>${escHtml(s.solicitante_nome || s.solicitante || 'Reservas')}</strong></div>
+              <div class="solic-subdata" style="font-size:.74rem;color:var(--text-3);margin-top:2px;">Solicitante: <strong>${escHtml(s.solicitante_nome || s.solicitante || 'Reservas')}</strong></div>
             </div>
             <div class="card-mini-summary-pill">
               <span class="diarias-pill ${isRecusada ? 'diarias-usadas' : 'diarias-saldo'}" style="font-size:.72rem;">${diariasSolic}d solicitadas</span>
             </div>
           </div>
           ${todasLeituras.length > 0 ? `
-            <div style="font-size:.72rem;color:#1e6b3e;margin-top:4px;display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;background:#eaf4ed;padding:2px 6px;border-radius:4px;border:1px solid #c9e4d2;">
+            <div class="solic-ciente-strip" style="font-size:.72rem;color:#1e6b3e;margin-top:4px;display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;background:#eaf4ed;padding:2px 6px;border-radius:4px;border:1px solid #c9e4d2;">
               <span>✓ Ciente por: <strong>${escHtml(todasLeituras.map(l => l.usuario).join(', '))}</strong></span>
               ${leituraAtual 
                 ? `<span style="background:#d8ece0;color:#1e6b3e;padding:1px 5px;border-radius:3px;font-weight:600;font-size:.68rem;">(Você já confirmou)</span>` 
@@ -5524,7 +5643,7 @@ function renderTabelaSolicitacoes() {
         </td>
         <td class="col-card-periodo card-collapsible-detail" data-label="Período">
           <div class="card-cell-label">Período Pretendido</div>
-          <div style="font-size:.82rem;font-weight:600;color:var(--primary);">${periodoStr}</div>
+          <div class="solic-periodo-tag" style="font-size:.82rem;font-weight:600;">${periodoStr}</div>
         </td>
         <td class="col-card-diarias card-collapsible-detail" data-label="Diárias">
           <div class="card-cell-label">Diárias</div>
@@ -5538,7 +5657,8 @@ function renderTabelaSolicitacoes() {
         </td>
         <td class="col-card-motivo card-collapsible-detail" data-label="Motivo">
           <div class="card-cell-label">Motivo / Observação</div>
-          <div style="font-size:.82rem;">${escHtml(motivoExibicao || '—')}</div>
+          <div class="solic-motivo-clamp" title="${escHtml(motivoExibicao || '—')}">${escHtml(motivoExibicao || '—')}</div>
+          <div class="solic-motivo-full" style="font-size:.82rem;line-height:1.35;">${escHtml(motivoExibicao || '—')}</div>
           ${isRecusada ? `
             <div onclick="event.stopPropagation(); abrirModalVerMotivoRecusa('${s.id}')" style="cursor:pointer;margin-top:4px;padding:3px 6px;background:#faecec;border-radius:4px;border:1px solid #f1cccc;font-size:.72rem;color:#9c3232;display:inline-flex;align-items:center;gap:4px;" title="Clique para ver motivo completo">
               <span>⛔ <strong>Recusada:</strong> ${escHtml(dadosRecusa ? dadosRecusa.motivo : 'Sem justificativa')}</span>

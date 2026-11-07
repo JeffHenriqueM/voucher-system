@@ -2,36 +2,42 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --primary: #3d5ca8;
-  --primary-hover: #314b8a;
-  --primary-light: #f0f4fa;
-  --danger: #b83a3a;
-  --danger-hover: #9f2d2d;
-  --success: #228653;
-  --warning: #b86d14;
-  --bg: #f7f9fb;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-light: #eff6ff;
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
+  --success: #16a34a;
+  --warning: #d97706;
+  --bg: #f8fafc;
   --surface: #ffffff;
-  --border: #e2e6eb;
-  --text-1: #1e293b;
-  --text-2: #64748b;
-  --text-3: #94a3b8;
+  --border: #e2e8f0;
+  --text-1: #0f172a;
+  --text-2: #475569;
+  --text-3: #64748b;
   --radius: 12px;
   --radius-sm: 8px;
   --shadow: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
   --shadow-md: 0 4px 6px rgba(0,0,0,.06), 0 2px 4px rgba(0,0,0,.04);
   --shadow-lg: 0 10px 25px rgba(0,0,0,.08), 0 4px 6px rgba(0,0,0,.04);
-  --bg-card: #f8fafc;
+  --bg-card: #ffffff;
 }
 
 body.dark-mode {
-  --bg: #090d16;
-  --bg-card: #151f33;
-  --surface: #121929;
-  --border: #24324c;
-  --text-1: #f8fafc;
-  --text-2: #94a3b8;
-  --text-3: #64748b;
-  --primary-light: #1e1b4b;
+  --bg: #0b111e;
+  --bg-card: #131d2e;
+  --surface: #101928;
+  --border: #1e2c44;
+  --text-1: #f1f5f9;
+  --text-2: #cbd5e1;
+  --text-3: #94a3b8;
+  --primary: #60a5fa;
+  --primary-hover: #93c5fd;
+  --primary-light: rgba(96, 165, 250, 0.15);
+  --danger: #f87171;
+  --danger-hover: #ef4444;
+  --success: #34d399;
+  --warning: #fbbf24;
   --shadow: 0 1px 3px rgba(0,0,0,.4);
   --shadow-md: 0 4px 6px rgba(0,0,0,.5);
   --shadow-lg: 0 10px 25px rgba(0,0,0,.7);
@@ -145,8 +151,8 @@ body {
 }
 
 .sidebar {
-  width: 260px;
-  min-width: 260px;
+  width: 240px;
+  min-width: 240px;
   background: var(--surface);
   border-right: 1px solid var(--border);
   display: flex;
@@ -160,7 +166,7 @@ body {
 }
 
 .sidebar-header {
-  padding: 1.1rem 1.15rem;
+  padding: 0.95rem 1rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -207,24 +213,24 @@ body {
 
 /* User Box in Sidebar */
 .sidebar-user-box {
-  padding: 0.75rem 0.95rem;
-  margin: 0.75rem 0.85rem;
+  padding: 0.6rem 0.75rem;
+  margin: 0.65rem 0.75rem;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.6rem;
 }
 
 .sidebar-user-avatar {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   background: var(--primary);
   color: #fff;
   font-weight: 800;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -236,7 +242,7 @@ body {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .sidebar-user-name {
@@ -246,6 +252,26 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.sidebar-user-box .perfil-badge {
+  padding: 0.12rem 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  display: inline-block;
+  line-height: 1.25;
+}
+
+.sidebar-user-box .btn-trocar-perfil {
+  padding: 0.22rem 0.5rem;
+  font-size: 0.72rem;
+  border-radius: 5px;
+  flex-shrink: 0;
 }
 
 /* Sidebar Quick Actions */
@@ -554,10 +580,11 @@ body.dark-mode .sidebar-nav-btn .nav-counter {
 
 /* ─── Container ─────────────────────────────────────────────── */
 .container {
-  max-width: 1560px;
-  width: 96%;
-  margin: 0 auto;
-  padding: 1.5rem 1.25rem 3rem;
+  max-width: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 1.15rem 1.35rem 3rem;
+  box-sizing: border-box;
 }
 
 /* ─── Stats ─────────────────────────────────────────────────── */
@@ -670,20 +697,21 @@ body.dark-mode .sidebar-nav-btn .nav-counter {
 }
 
 .table th {
-  padding: .75rem 1rem;
+  padding: .55rem .75rem;
   text-align: left;
-  font-size: .75rem;
-  font-weight: 600;
+  font-size: .72rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: .05em;
+  letter-spacing: .04em;
   color: var(--text-2);
   white-space: nowrap;
 }
 
 .table td {
-  padding: .875rem 1rem;
+  padding: .65rem .75rem;
   border-bottom: 1px solid var(--border);
   vertical-align: middle;
+  font-size: .8125rem;
 }
 
 .table tbody tr:last-child td { border-bottom: none; }
@@ -700,12 +728,13 @@ body.dark-mode .sidebar-nav-btn .nav-counter {
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: .22em .625em;
+  padding: .2em .6em;
   border-radius: 99px;
-  font-size: .75rem;
-  font-weight: 600;
+  font-size: .72rem;
+  font-weight: 700;
   white-space: nowrap;
   border: 1px solid transparent;
+  line-height: 1.25;
 }
 
 .badge-green  { background: #eaf4ed; color: #1e6b3e; border-color: #c9e4d2; }
@@ -713,6 +742,32 @@ body.dark-mode .sidebar-nav-btn .nav-counter {
 .badge-gray   { background: #f1f4f8; color: #536479; border-color: #dce2ea; }
 .badge-yellow { background: #faf4e8; color: #8a5716; border-color: #f0deb8; }
 .badge-blue   { background: #edf3fa; color: #2d5a86; border-color: #c9dcf0; }
+
+body.dark-mode .badge-green {
+  background: rgba(34, 197, 94, 0.16) !important;
+  color: #4ade80 !important;
+  border-color: rgba(34, 197, 94, 0.35) !important;
+}
+body.dark-mode .badge-red {
+  background: rgba(239, 68, 68, 0.16) !important;
+  color: #f87171 !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+body.dark-mode .badge-yellow {
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+body.dark-mode .badge-blue {
+  background: rgba(96, 165, 250, 0.16) !important;
+  color: #93c5fd !important;
+  border-color: rgba(96, 165, 250, 0.35) !important;
+}
+body.dark-mode .badge-gray {
+  background: rgba(148, 163, 184, 0.15) !important;
+  color: #cbd5e1 !important;
+  border-color: rgba(148, 163, 184, 0.3) !important;
+}
 
 /* ─── Botões ─────────────────────────────────────────────────── */
 .btn {
@@ -1545,6 +1600,67 @@ body.dark-mode .obs-field-badge {
   display: none;
 }
 
+/* ─── Botão de Recolher/Expandir Linha (Desktop & Tablet) ──── */
+.btn-row-toggle {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  cursor: pointer;
+  padding: 1px 5px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  border-radius: 4px;
+  line-height: 1.2;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-row-toggle:hover {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* ─── Estado Recolhido / Minimizado no Desktop ────────────── */
+.table-responsive-cards > table > tbody > tr.is-collapsed .voucher-obs-strip {
+  display: none !important;
+}
+.table-responsive-cards > table > tbody > tr.is-collapsed .card-socio-inc-warning {
+  display: none !important;
+}
+.table-responsive-cards > table > tbody > tr.is-collapsed .voucher-cancelado-strip {
+  display: none !important;
+}
+.table-responsive-cards > table > tbody > tr.is-collapsed .trilha-extra-detail {
+  display: none !important;
+}
+.table-responsive-cards > table > tbody > tr.is-collapsed .solic-motivo-full {
+  display: none !important;
+}
+.table-responsive-cards > table > tbody > tr.is-collapsed .solic-motivo-clamp {
+  display: -webkit-box !important;
+  -webkit-line-clamp: 1 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 260px !important;
+  color: var(--text-2) !important;
+  font-size: .8rem !important;
+}
+.table-responsive-cards > table > tbody > tr:not(.is-collapsed) .solic-motivo-full {
+  display: block !important;
+}
+.table-responsive-cards > table > tbody > tr:not(.is-collapsed) .solic-motivo-clamp {
+  display: none !important;
+}
+.table-responsive-cards > table > tbody > tr.is-collapsed .solic-ciente-strip {
+  display: none !important;
+}
+.table-responsive-cards > table > tbody > tr.is-collapsed .solic-subdata {
+  display: none !important;
+}
+
 @media (max-width: 900px) {
   /* Header Mobile Compacto & Organizado */
   .header-inner {
@@ -1995,6 +2111,27 @@ body.dark-mode .obs-field-badge {
 .perfil-pos_venda { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
 .perfil-recepcao  { background: #ede9fe; color: #6d28d9; border: 1px solid #ddd6fe; }
 
+body.dark-mode .perfil-admin {
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+body.dark-mode .perfil-reservas {
+  background: rgba(56, 189, 248, 0.16) !important;
+  color: #38bdf8 !important;
+  border-color: rgba(56, 189, 248, 0.35) !important;
+}
+body.dark-mode .perfil-pos_venda {
+  background: rgba(34, 197, 94, 0.16) !important;
+  color: #4ade80 !important;
+  border-color: rgba(34, 197, 94, 0.35) !important;
+}
+body.dark-mode .perfil-recepcao {
+  background: rgba(168, 85, 247, 0.16) !important;
+  color: #c084fc !important;
+  border-color: rgba(168, 85, 247, 0.35) !important;
+}
+
 .btn-trocar-perfil {
   background: transparent;
   border: 1px solid var(--border);
@@ -2376,6 +2513,30 @@ body.dark-mode .login-close-btn {
 .diarias-usadas      { background: #faecec; color: #9c3232; border-color: #f1cccc; }
 .diarias-saldo       { background: #edf3fa; color: #2d5a86; border-color: #c9dcf0; }
 
+body.dark-mode .diarias-disponiveis {
+  background: rgba(34, 197, 94, 0.16) !important;
+  color: #4ade80 !important;
+  border-color: rgba(34, 197, 94, 0.35) !important;
+}
+body.dark-mode .diarias-usadas {
+  background: rgba(239, 68, 68, 0.16) !important;
+  color: #f87171 !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
+}
+body.dark-mode .diarias-saldo {
+  background: rgba(96, 165, 250, 0.16) !important;
+  color: #93c5fd !important;
+  border-color: rgba(96, 165, 250, 0.35) !important;
+}
+
+.solic-periodo-tag {
+  color: var(--primary);
+  white-space: nowrap;
+}
+body.dark-mode .solic-periodo-tag {
+  color: #93c5fd !important;
+}
+
 /* ─── Histórico de Uso / Reservas ────────────────────────────── */
 .historico-timeline {
   background: var(--bg);
@@ -2418,6 +2579,13 @@ body.dark-mode .login-close-btn {
   font-size: .72rem;
   padding: .15rem .45rem;
   border-radius: 6px;
+  white-space: nowrap !important;
+  flex-shrink: 0;
+}
+body.dark-mode .badge-inconsistente {
+  background: rgba(239, 68, 68, 0.18) !important;
+  color: #fca5a5 !important;
+  border-color: rgba(239, 68, 68, 0.35) !important;
 }
 
 .banner-alerta-marcio {

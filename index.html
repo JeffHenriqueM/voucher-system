@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="favicon.png?v=20261022_09" />
   <link rel="shortcut icon" href="favicon.ico?v=20261022_09" />
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=20261022_09" />
-  <link rel="stylesheet" href="style.css?v=20261105_02" />
+  <link rel="stylesheet" href="style.css?v=20261107_01" />
 </head>
 <body>
 
@@ -548,6 +548,15 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M10 2a8 8 0 1 1 0 16A8 8 0 0 1 10 2zm0 2a6 6 0 1 0 0 12A6 6 0 0 0 10 4zm8.293 12.293 3.414 3.414-1.414 1.414-3.414-3.414 1.414-1.414z"/></svg>
           <input type="text" id="inputBuscaSolicitacoes" placeholder="Buscar por sócio, motivo..." />
         </div>
+        <div class="sort-wrap" style="display:inline-flex;align-items:center;gap:6px;">
+          <label for="selectOrdemSolicitacoes" style="font-size:.78rem;color:var(--text-2);font-weight:600;white-space:nowrap;">Ordenar:</label>
+          <select id="selectOrdemSolicitacoes" class="filter-select" onchange="mudarOrdemSolicitacoes(this.value)" style="padding:.38rem .65rem;font-size:.78rem;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text-1);cursor:pointer;">
+            <option value="data_desc">📅 Data (Mais recentes)</option>
+            <option value="data_asc">📅 Data (Mais antigas)</option>
+            <option value="periodo_asc">🏖️ Período Pretendido (Mais próximos)</option>
+            <option value="periodo_desc">🏖️ Período Pretendido (Mais distantes)</option>
+          </select>
+        </div>
         <button type="button" class="btn-toggle-all-cards" id="btnToggleTodosCardsSolic" onclick="toggleTodosCardsSolic()" title="Expandir ou diminuir todas as solicitações">
           ↕️ <span id="lblToggleTodosSolic">Expandir Todas</span>
         </button>
@@ -565,15 +574,19 @@
         <table class="table">
           <thead>
             <tr>
-              <th>Data</th>
+              <th onclick="toggleSortSolicitacoes('data')" style="cursor:pointer;user-select:none;" title="Clique para alternar ordem por data">
+                Data <span id="thSortIconData" style="font-size:.8rem;color:var(--primary);">↓</span>
+              </th>
               <th>Sócio Solicitado</th>
-              <th>Período Pretendido</th>
+              <th onclick="toggleSortSolicitacoes('periodo')" style="cursor:pointer;user-select:none;" title="Clique para alternar ordem por período">
+                Período Pretendido <span id="thSortIconPeriodo" style="font-size:.8rem;color:var(--text-3);">↕️</span>
+              </th>
               <th>Diárias Solicitadas</th>
               <th>Modelo Sugerido</th>
               <th>Motivo / Observações</th>
               <th>Solicitante</th>
               <th>Status</th>
-              <th>Ações</th>
+              <th style="text-align:right;">Ações</th>
             </tr>
           </thead>
           <tbody id="tbodySolicitacoes">
@@ -1556,6 +1569,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="config.js?v=20261025_01"></script>
   <script src="cotas_dados.js?v=20261025_01"></script>
-  <script src="app.js?v=20261105_03"></script>
+  <script src="app.js?v=20261107_01"></script>
 </body>
 </html>
